@@ -6,8 +6,9 @@ use App\Repository\recipe\RecipeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\carte\dish; 
+use App\Entity\carte\Dish; 
 use App\Entity\product\Product; 
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: RecipeRepository::class)]
 class Recipe

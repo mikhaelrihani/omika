@@ -5,8 +5,12 @@ namespace App\Entity\user;
 use App\Repository\user\UserRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\media\Picture; 
+use App\Entity\media\Picture;
+use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
+#[UniqueEntity(fields: ['avatar'], message: 'This picture is already used as an avatar by another user.')]
+// TODO : MIGRATION : $this->addSql('ALTER TABLE user ADD CONSTRAINT UNIQUE (avatar_id)');
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 class User
 {
@@ -15,29 +19,77 @@ class User
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(type: Types::GUID)]
+    #[ORM\Column(type: Types::GUID, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $uuid = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: false)]
+    #[Assert\NotBlank(message: "First name should not be blank.")]
     private ?string $firstname = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: false)]
+    #[Assert\NotBlank(message: "Surname should not be blank.")]
     private ?string $surname = null;
 
-    #[ORM\Column(length: 50)]
+    #[ORM\Column(length: 50, nullable: false)]
+    #[Assert\NotBlank(message: "Pseudo should not be blank.")]
     private ?string $pseudo = null;
 
-    #[ORM\Column(length: 20)]
+    #[ORM\Column(length: 20, nullable: false)]
+    #[Assert\NotBlank(message: "Phone number should not be blank.")]
+    #[Assert\Length(
+        min: 10,
+        max: 20,
+        minMessage: "Phone number must be at least {{ limit }} characters long.",
+        maxMessage: "Phone number cannot be longer than {{ limit }} characters."
+    )]
+    #[Assert\Regex(
+        pattern: "/^\+?[0-9\s]*$/",
+        message: "Phone number should contain only digits, spaces, and an optional leading '+' sign."
+    )]
     private ?string $phone = null;
 
     #[ORM\Column(length: 20, nullable: true)]
+    #[Assert\Length(
+        min: 10,
+        max: 20,
+        minMessage: "WhatsApp number must be at least {{ limit }} characters long.",
+        maxMessage: "WhatsApp number cannot be longer than {{ limit }} characters."
+    )]
+    #[Assert\Regex(
+        pattern: "/^\+?[0-9\s]*$/",
+        message: "WhatsApp number should contain only digits, spaces, and an optional leading '+' sign."
+    )]
     private ?string $whatsapp = null;
+
+    #[ORM\Column(type: 'integer', nullable: false)]
+    #[Assert\NotNull(message: "Late count should not be null.")]
+    private int $lateCount = 0;
+
+    #[ORM\Column(type: 'integer', nullable: false)]
+    #[Assert\NotNull(message: "Absent count should not be null.")]
+    private int $absentCount = 0;
+
+
+
+    #[ORM\Column(nullable: false)]
+    private ?\DateTimeImmutable $created_at = null;
+
+    #[ORM\Column(nullable: false)]
+    private ?\DateTimeImmutable $updated_at = null;
+
+
+
+
 
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
     private ?userLogin $userLogin = null;
 
-    #[ORM\ManyToOne]
+    #[ORM\OneToOne(cascade: ['persist'])]
+    private ?picture $avatar = null;
+
+    #[ORM\ManyToOne(targetEntity: Business::class, inversedBy: 'users')]
     #[ORM\JoinColumn(nullable: false)]
     private ?business $business = null;
 
@@ -45,16 +97,15 @@ class User
     #[ORM\JoinColumn(nullable: false)]
     private ?job $job = null;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
-    private ?picture $avatar = null;
 
-    #[ORM\Column]
-    private ?\DateTimeImmutable $created_at = null;
 
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
 
-        public function getId(): ?int
+
+
+
+
+
+    public function getId(): ?int
     {
         return $this->id;
     }
@@ -203,5 +254,29 @@ class User
         return $this;
     }
 
-   
+    public function getLateCount(): ?int
+    {
+        return $this->lateCount;
+    }
+
+    public function setLateCount(int $lateCount): static
+    {
+        $this->lateCount = $lateCount;
+
+        return $this;
+    }
+
+    public function getAbsentCount(): ?int
+    {
+        return $this->absentCount;
+    }
+
+    public function setAbsentCount(int $absentCount): static
+    {
+        $this->absentCount = $absentCount;
+
+        return $this;
+    }
+
+
 }

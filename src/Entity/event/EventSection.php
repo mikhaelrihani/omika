@@ -4,6 +4,7 @@ namespace App\Entity\event;
 
 use App\Repository\event\EventSectionRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: EventSectionRepository::class)]
 class EventSection

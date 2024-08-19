@@ -4,6 +4,7 @@ namespace App\Entity\recipe;
 
 use App\Repository\recipe\UnitRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UnitRepository::class)]
 class Unit

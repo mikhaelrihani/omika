@@ -5,6 +5,7 @@ namespace App\Entity\user;
 use App\Repository\user\AbsenceRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: AbsenceRepository::class)]
 class Absence
@@ -14,52 +15,42 @@ class Absence
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column]
-    private ?int $countNumber = null;
-
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 50, nullable: false)]
+    #[Assert\NotBlank(message: "Status should not be blank.")]
     private ?string $status = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 50, nullable: false)]
+    #[Assert\NotBlank(message: "Author name should not be blank.")]
     private ?string $author = null;
 
-    #[ORM\Column(length: 1000)]
+    #[ORM\Column(length: 1000, nullable: false)]
+    #[Assert\NotBlank(message: "Reason should not be blank.")]
     private ?string $reason = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: false)]
+    #[Assert\NotBlank(message: "The start date should not be blank.")]
     private ?\DateTimeInterface $startDate = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: false)]
+    #[Assert\NotBlank(message: "The end date should not be blank.")]
     private ?\DateTimeInterface $endDate = null;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: false)]
     private ?bool $planningUpdate = null;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: false)]
     private ?\DateTimeImmutable $created_at = null;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: false)]
     private ?\DateTimeImmutable $updated_at = null;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: false)]
     private ?user $staff = null;
 
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getCountNumber(): ?int
-    {
-        return $this->countNumber;
-    }
-
-    public function setCountNumber(int $countNumber): static
-    {
-        $this->countNumber = $countNumber;
-
-        return $this;
     }
 
     public function getStatus(): ?string

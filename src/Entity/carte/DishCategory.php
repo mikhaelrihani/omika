@@ -6,7 +6,8 @@ use App\Repository\carte\DishCategoryRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\media\Picture; 
+use App\Entity\media\Picture;
+use Symfony\Component\Validator\Constraints as Assert; 
 
 #[ORM\Entity(repositoryClass: DishCategoryRepository::class)]
 class DishCategory

@@ -5,7 +5,8 @@ namespace App\Entity\recipe;
 use App\Repository\recipe\IngredientRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\product\product; 
+use App\Entity\product\Product; 
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: IngredientRepository::class)]
 class Ingredient

@@ -4,7 +4,8 @@ namespace App\Entity\supplier;
 
 use App\Repository\supplier\SupplierStaffRepository;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\user\user; 
+use App\Entity\user\User; 
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: SupplierStaffRepository::class)]
 class SupplierStaff

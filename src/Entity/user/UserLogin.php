@@ -6,6 +6,7 @@ use App\Repository\user\UserLoginRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UserLoginRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
@@ -17,6 +18,8 @@ class UserLogin implements UserInterface, PasswordAuthenticatedUserInterface
     private ?int $id = null;
 
     #[ORM\Column(length: 180)]
+    #[Assert\NotBlank(message: "Email should not be blank.")]
+    #[Assert\Email(message: "The email '{{ value }}' is not a valid email.")]
     private ?string $email = null;
 
     /**
@@ -29,7 +32,14 @@ class UserLogin implements UserInterface, PasswordAuthenticatedUserInterface
      * @var string The hashed password
      */
     #[ORM\Column]
+    #[Assert\NotBlank(message: "Password should not be blank.")]
+    #[Assert\Regex(
+        pattern: '/^(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.*\d{2,}).{10,}$/',
+        message: "Your password must be at least 8 characters long, include at least one uppercase letter, one special character, and two digits."
+    )]
     private ?string $password = null;
+
+    // Getters and Setters...
 
     public function getId(): ?int
     {

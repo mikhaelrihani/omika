@@ -5,8 +5,9 @@ namespace App\Entity\order;
 use App\Repository\order\OrderRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\user\user; 
-use App\Entity\supplier\supplier; 
+use App\Entity\user\User; 
+use App\Entity\supplier\Supplier;
+use Symfony\Component\Validator\Constraints as Assert; 
 
 #[ORM\Entity(repositoryClass: OrderRepository::class)]
 #[ORM\Table(name: '`order`')]

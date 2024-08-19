@@ -4,6 +4,7 @@ namespace App\Entity\media;
 
 use App\Repository\media\TemplateRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: TemplateRepository::class)]
 class Template

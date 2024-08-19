@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Repository\Supplier;
+namespace App\Repository\supplier;
 
-use App\Entity\Supplier\Supplier;
+use App\Entity\supplier\Supplier;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

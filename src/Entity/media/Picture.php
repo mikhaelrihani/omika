@@ -4,6 +4,7 @@ namespace App\Entity\media;
 
 use App\Repository\media\PictureRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: PictureRepository::class)]
 class Picture

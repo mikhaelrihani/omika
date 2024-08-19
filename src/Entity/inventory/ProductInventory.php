@@ -6,6 +6,7 @@ use App\Repository\inventory\ProductInventoryRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Entity\product\product; 
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ProductInventoryRepository::class)]
 class ProductInventory

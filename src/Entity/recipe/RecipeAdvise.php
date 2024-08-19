@@ -4,6 +4,7 @@ namespace App\Entity\recipe;
 
 use App\Repository\recipe\RecipeAdviseRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: RecipeAdviseRepository::class)]
 class RecipeAdvise

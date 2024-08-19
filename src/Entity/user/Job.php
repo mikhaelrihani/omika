@@ -5,6 +5,7 @@ namespace App\Entity\user;
 use App\Repository\user\JobRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: JobRepository::class)]
 class Job
@@ -14,7 +15,8 @@ class Job
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 100, nullable: false)]
+    #[Assert\NotBlank(message: "The job name should not be blank.")]
     private ?string $name = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]

@@ -5,6 +5,7 @@ namespace App\Entity\media;
 use App\Repository\media\NoteRepository;
 use Doctrine\ORM\Mapping as ORM;
 use App\Entity\user\user; 
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: NoteRepository::class)]
 class Note

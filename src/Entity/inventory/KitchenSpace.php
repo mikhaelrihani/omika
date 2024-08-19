@@ -4,6 +4,7 @@ namespace App\Entity\inventory;
 
 use App\Repository\inventory\KitchenSpaceRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: KitchenSpaceRepository::class)]
 class KitchenSpace
