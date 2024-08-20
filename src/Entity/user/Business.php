@@ -2,6 +2,7 @@
 
 namespace App\Entity\user;
 
+use App\Entity\BaseEntity;
 use App\Repository\user\BusinessRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -9,7 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: BusinessRepository::class)]
-class Business
+class Business extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -20,28 +21,17 @@ class Business
     #[Assert\NotBlank(message: "The business name should not be blank.")]
     private ?string $name = null;
 
-    #[ORM\Column]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
-
-    #[ORM\OneToMany( targetEntity: User::class, mappedBy: 'business')]
-    private Collection $users;
+    /**
+     * @var Collection<int, Contact>
+     */
+    #[ORM\OneToMany(targetEntity: Contact::class, mappedBy: 'business')]
+    private Collection $contacts;
 
     public function __construct()
     {
-        $this->users = new ArrayCollection();
+        $this->contacts = new ArrayCollection();
     }
 
-     /**
-     * @return Collection<int, User>
-     */
-    public function getUsers(): Collection
-    {
-        return $this->users;
-    }
-    
     public function getId(): ?int
     {
         return $this->id;
@@ -59,49 +49,12 @@ class Business
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    /**
+     * @return Collection<int, Contact>
+     */
+    public function getContacts(): Collection
     {
-        return $this->created_at;
+        return $this->contacts;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
-
-    public function addUser(User $user): static
-    {
-        if (!$this->users->contains($user)) {
-            $this->users->add($user);
-            $user->setBusiness($this);
-        }
-
-        return $this;
-    }
-
-    public function removeUser(User $user): static
-    {
-        if ($this->users->removeElement($user)) {
-            // set the owning side to null (unless already changed)
-            if ($user->getBusiness() === $this) {
-                $user->setBusiness(null);
-            }
-        }
-
-        return $this;
-    }
 }

@@ -2,17 +2,15 @@
 
 namespace App\Entity\user;
 
-use App\Repository\user\UserRepository;
+use App\Entity\BaseEntity;
+use App\Repository\User\ContactRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\media\Picture;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
-#[UniqueEntity(fields: ['avatar'], message: 'This picture is already used as an avatar by another user.')]
-// TODO : MIGRATION : $this->addSql('ALTER TABLE user ADD CONSTRAINT UNIQUE (avatar_id)');
-#[ORM\Entity(repositoryClass: UserRepository::class)]
-class User
+#[ORM\Entity(repositoryClass: ContactRepository::class)]
+class Contact extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -59,38 +57,18 @@ class User
     private ?string $whatsapp = null;
 
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $job = null;
-
-
-    #[ORM\Column(nullable: false)]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column(nullable: false)]
-    private ?\DateTimeImmutable $updated_at = null;
-
-
-
     //! differents properties than contact entity
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[ORM\ManyToOne(inversedBy: 'contacts')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?userLogin $userLogin = null;
+    #[Assert\NotBlank(message: "Business name should not be blank.")]
+    private ?business $business = null;
 
-    #[ORM\OneToOne(cascade: ['persist'])]
-    private ?picture $avatar = null;
+    #[ORM\Column(length: 180)]
+    #[Assert\NotBlank(message: "Email should not be blank.")]
+    #[Assert\Email(message: "The email '{{ value }}' is not a valid email.")]
+    private ?string $email = null;
 
-    #[ORM\Column(type: 'integer', nullable: false)]
-    #[Assert\NotNull(message: "Late count should not be null.")]
-    private int $lateCount = 0;
-
-    #[ORM\Column(type: 'integer', nullable: false)]
-    #[Assert\NotNull(message: "Absent count should not be null.")]
-    private int $absentCount = 0;
-
-    #[ORM\Column(length: 50, nullable: false)]
-    #[Assert\NotBlank(message: "Pseudo should not be blank.")]
-    private ?string $pseudo = null;
 
 
 
@@ -108,6 +86,18 @@ class User
     public function setUuid(string $uuid): static
     {
         $this->uuid = $uuid;
+
+        return $this;
+    }
+    
+    public function getBusiness(): ?business
+    {
+        return $this->business;
+    }
+
+    public function setBusiness(?business $business): static
+    {
+        $this->business = $business;
 
         return $this;
     }
@@ -136,18 +126,6 @@ class User
         return $this;
     }
 
-    public function getPseudo(): ?string
-    {
-        return $this->pseudo;
-    }
-
-    public function setPseudo(string $pseudo): static
-    {
-        $this->pseudo = $pseudo;
-
-        return $this;
-    }
-
     public function getPhone(): ?string
     {
         return $this->phone;
@@ -172,91 +150,16 @@ class User
         return $this;
     }
 
-    public function getUserLogin(): ?userLogin
+    public function getEmail(): ?string
     {
-        return $this->userLogin;
+        return $this->email;
     }
 
-    public function setUserLogin(userLogin $userLogin): static
+    public function setEmail(string $email): static
     {
-        $this->userLogin = $userLogin;
+        $this->email = $email;
 
         return $this;
     }
-
-
-
-    public function getAvatar(): ?picture
-    {
-        return $this->avatar;
-    }
-
-    public function setAvatar(?picture $avatar): static
-    {
-        $this->avatar = $avatar;
-
-        return $this;
-    }
-
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
-
-    public function getLateCount(): ?int
-    {
-        return $this->lateCount;
-    }
-
-    public function setLateCount(int $lateCount): static
-    {
-        $this->lateCount = $lateCount;
-
-        return $this;
-    }
-
-    public function getAbsentCount(): ?int
-    {
-        return $this->absentCount;
-    }
-
-    public function setAbsentCount(int $absentCount): static
-    {
-        $this->absentCount = $absentCount;
-
-        return $this;
-    }
-
-    public function getJob(): ?string
-    {
-        return $this->job;
-    }
-
-    public function setJob(?string $job): static
-    {
-        $this->job = $job;
-
-        return $this;
-    }
-
 
 }

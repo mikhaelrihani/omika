@@ -2,46 +2,41 @@
 
 namespace App\Entity\supplier;
 
+use App\Entity\BaseEntity;
+use App\Entity\user\Contact;
 use App\Repository\supplier\SupplierStaffRepository;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\user\User; 
-use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: SupplierStaffRepository::class)]
-class SupplierStaff
+class SupplierStaff extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne(targetEntity: Contact::class)]
     #[ORM\JoinColumn(nullable: false)]
-    private ?user $user = null;
+    private ?Contact $contact = null;
 
-    #[ORM\ManyToOne(inversedBy: 'supplierStaff')]
+    #[ORM\ManyToOne(targetEntity: Supplier::class, inversedBy: 'supplierStaff')]
     #[ORM\JoinColumn(nullable: false)]
     private ?supplier $supplier = null;
 
-    #[ORM\Column]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
-
+   
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getUser(): ?user
+    public function getContact(): ?Contact
     {
-        return $this->user;
+        return $this->contact;
     }
 
-    public function setUser(user $user): static
+    public function setContact(Contact $contact): static
     {
-        $this->user = $user;
+        $this->contact = $contact;
 
         return $this;
     }
@@ -58,27 +53,4 @@ class SupplierStaff
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
 }

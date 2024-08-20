@@ -2,6 +2,7 @@
 
 namespace App\Entity\supplier;
 
+use App\Entity\BaseEntity;
 use App\Repository\supplier\SupplierRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -12,37 +13,33 @@ use App\Entity\order\Order;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: SupplierRepository::class)]
-class Supplier
+class Supplier extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $name = null;
 
-   
-
-    #[ORM\Column(length: 1000)]
+    #[ORM\Column(length: 1000, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $logistic = null;
 
     #[ORM\Column(length: 1000, nullable: true)]
     private ?string $habits = null;
 
-    #[ORM\Column(type: Types::JSON)]
+    #[ORM\Column(type: Types::JSON, nullable: false)]
+    #[Assert\NotBlank]
     private array $orderDays = [];
 
     #[ORM\Column(length: 1000, nullable: true)]
     private ?string $goodToKnow = null;
 
-    #[ORM\Column]
-    private ?\DateTimeImmutable $created_at = null;
 
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
-
-    #[ORM\OneToOne(mappedBy: 'supplier', cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne(mappedBy: 'supplier')]
     private ?Product $products = null;
 
     /**
@@ -130,29 +127,7 @@ class Supplier
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
+ 
 
     public function getProducts(): ?Product
     {

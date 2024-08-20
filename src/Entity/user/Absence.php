@@ -2,13 +2,14 @@
 
 namespace App\Entity\user;
 
+use App\Entity\BaseEntity;
 use App\Repository\user\AbsenceRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: AbsenceRepository::class)]
-class Absence
+class Absence extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -38,11 +39,7 @@ class Absence
     #[ORM\Column(nullable: false)]
     private ?bool $planningUpdate = null;
 
-    #[ORM\Column(nullable: false)]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column(nullable: false)]
-    private ?\DateTimeImmutable $updated_at = null;
+    
 
     #[ORM\OneToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: false)]
@@ -124,31 +121,7 @@ class Absence
 
         return $this;
     }
-
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
-
+    
     public function getStaff(): ?user
     {
         return $this->staff;
