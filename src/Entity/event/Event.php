@@ -2,13 +2,14 @@
 
 namespace App\Entity\event;
 
+use App\Entity\BaseEntity;
 use App\Repository\event\EventRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: EventRepository::class)]
-class Event
+class Event extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -49,12 +50,6 @@ class Event
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
     private ?eventFrequence $eventFrequence = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
 
     public function getId(): ?int
     {
@@ -193,27 +188,5 @@ class Event
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
+    
 }

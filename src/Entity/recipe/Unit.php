@@ -2,12 +2,13 @@
 
 namespace App\Entity\recipe;
 
+use App\Entity\BaseEntity;
 use App\Repository\recipe\UnitRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UnitRepository::class)]
-class Unit
+class Unit extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -19,12 +20,6 @@ class Unit
 
     #[ORM\Column(length: 5)]
     private ?string $symbol = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
 
     public function getId(): ?int
     {
@@ -51,30 +46,6 @@ class Unit
     public function setSymbol(string $symbol): static
     {
         $this->symbol = $symbol;
-
-        return $this;
-    }
-
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_At): static
-    {
-        $this->created_at = $created_At;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
 
         return $this;
     }

@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Entity\inventory;
+use App\Entity\BaseEntity;
 use App\Repository\inventory\RoomRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -8,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: RoomRepository::class)]
-class Room
+class Room extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -20,12 +21,6 @@ class Room
 
     #[ORM\Column(length: 255)]
     private ?string $locationDetails = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
 
     /**
      * @var Collection<int, Inventory>
@@ -63,30 +58,6 @@ class Room
     public function setLocationDetails(string $locationDetails): static
     {
         $this->locationDetails = $locationDetails;
-
-        return $this;
-    }
-
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
 
         return $this;
     }

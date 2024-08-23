@@ -2,6 +2,7 @@
 
 namespace App\Entity\recipe;
 
+use App\Entity\BaseEntity;
 use App\Repository\recipe\RecipeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -11,7 +12,7 @@ use App\Entity\product\Product;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: RecipeRepository::class)]
-class Recipe
+class Recipe extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -21,12 +22,6 @@ class Recipe
     #[ORM\OneToOne(inversedBy: 'recipe', cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
     private ?dish $dish = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
 
     /**
      * @var Collection<int, RecipeStep>
@@ -77,29 +72,6 @@ class Recipe
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
 
     /**
      * @return Collection<int, RecipeStep>

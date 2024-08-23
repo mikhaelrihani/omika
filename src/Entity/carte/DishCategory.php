@@ -2,6 +2,7 @@
 
 namespace App\Entity\carte;
 
+use App\Entity\BaseEntity;
 use App\Repository\carte\DishCategoryRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -10,7 +11,7 @@ use App\Entity\media\Picture;
 use Symfony\Component\Validator\Constraints as Assert; 
 
 #[ORM\Entity(repositoryClass: DishCategoryRepository::class)]
-class DishCategory
+class DishCategory extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -23,12 +24,6 @@ class DishCategory
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
     private ?picture $picture = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
 
     /**
      * @var Collection<int, Dish>
@@ -70,29 +65,6 @@ class DishCategory
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
 
     /**
      * @return Collection<int, Dish>

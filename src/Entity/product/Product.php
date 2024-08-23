@@ -2,6 +2,7 @@
 
 namespace App\Entity\product;
 
+use App\Entity\BaseEntity;
 use App\Repository\product\ProductRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -13,7 +14,7 @@ use App\Entity\recipe\Recipe;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
-class Product
+class Product extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -37,12 +38,6 @@ class Product
 
     #[ORM\Column(length: 255)]
     private ?string $conditionning = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
@@ -139,30 +134,6 @@ class Product
     public function setConditionning(string $conditionning): static
     {
         $this->conditionning = $conditionning;
-
-        return $this;
-    }
-
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
 
         return $this;
     }

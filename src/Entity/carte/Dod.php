@@ -2,12 +2,13 @@
 
 namespace App\Entity\carte;
 
+use App\Entity\BaseEntity;
 use App\Repository\carte\DodRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: DodRepository::class)]
-class Dod
+class Dod extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -26,12 +27,6 @@ class Dod
     #[ORM\ManyToOne(inversedBy: 'dods')]
     #[ORM\JoinColumn(nullable: false)]
     private ?menu $menu = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
 
     public function getId(): ?int
     {
@@ -86,27 +81,4 @@ class Dod
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
 }

@@ -2,12 +2,13 @@
 
 namespace App\Entity\product;
 
+use App\Entity\BaseEntity;
 use App\Repository\product\ProductRuptureRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ProductRuptureRepository::class)]
-class ProductRupture
+class ProductRupture extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -21,12 +22,6 @@ class ProductRupture
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
     private ?product $product = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
 
     #[ORM\Column(length: 1000, nullable: true)]
     private ?string $solution = null;
@@ -56,30 +51,6 @@ class ProductRupture
     public function setProduct(?product $product): static
     {
         $this->product = $product;
-
-        return $this;
-    }
-
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
 
         return $this;
     }

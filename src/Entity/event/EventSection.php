@@ -2,12 +2,13 @@
 
 namespace App\Entity\event;
 
+use App\Entity\BaseEntity;
 use App\Repository\event\EventSectionRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: EventSectionRepository::class)]
-class EventSection
+class EventSection extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -16,13 +17,7 @@ class EventSection
 
     #[ORM\Column(length: 25)]
     private ?string $name = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
-
+    
     public function getId(): ?int
     {
         return $this->id;
@@ -40,27 +35,4 @@ class EventSection
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
 }

@@ -2,13 +2,14 @@
 
 namespace App\Entity\inventory;
 
+use App\Entity\BaseEntity;
 use App\Repository\inventory\RoomProductRepository;
 use Doctrine\ORM\Mapping as ORM;
 use App\Entity\product\product; 
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: RoomProductRepository::class)]
-class RoomProduct
+class RoomProduct extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
