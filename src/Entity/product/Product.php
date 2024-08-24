@@ -8,9 +8,9 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\supplier\Supplier; 
-use App\Entity\recipe\Unit; 
-use App\Entity\recipe\Recipe; 
+use App\Entity\supplier\Supplier;
+use App\Entity\recipe\Unit;
+use App\Entity\recipe\Recipe;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
@@ -21,40 +21,54 @@ class Product extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 50)]
+    #[ORM\Column(length: 50, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $kitchenName = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $commercialName = null;
 
-    #[ORM\Column(length: 50)]
+    #[ORM\Column(length: 50, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $slug = null;
 
-    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $price = null;
 
-    #[ORM\Column(length: 50)]
-    private ?string $type = null;
-
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $conditionning = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
     private ?unit $unit = null;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: false)]
+    #[Assert\NotBlank]
     private ?bool $supplierFavorite = null;
 
-    #[ORM\OneToOne(inversedBy: 'products', cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne(targetEntity: Supplier::class, inversedBy: 'products')]
     #[ORM\JoinColumn(nullable: false)]
     private ?supplier $supplier = null;
+
+    #[ORM\OneToOne(targetEntity: Rupture::class, mappedBy: 'product')]
+    private ?Rupture $rupture = null;
 
     /**
      * @var Collection<int, Recipe>
      */
-    #[ORM\ManyToMany(targetEntity: Recipe::class, mappedBy: 'product')]
+    #[ORM\ManyToMany(targetEntity: Recipe::class, mappedBy: 'products')]
     private Collection $recipes;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?ProductType $type = null;
+
+    #[ORM\ManyToOne(targetEntity:ProductCategory::class,inversedBy: 'products')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?ProductCategory $category = null;
 
     public function __construct()
     {
@@ -114,17 +128,6 @@ class Product extends BaseEntity
         return $this;
     }
 
-    public function getType(): ?string
-    {
-        return $this->type;
-    }
-
-    public function setType(string $type): static
-    {
-        $this->type = $type;
-
-        return $this;
-    }
 
     public function getConditionning(): ?string
     {
@@ -200,4 +203,33 @@ class Product extends BaseEntity
 
         return $this;
     }
+
+    public function getProductType(): ?ProductType
+    {
+        return $this->type;
+    }
+
+    public function setProductType(?ProductType $productType): static
+    {
+        $this->type = $productType;
+
+        return $this;
+    }
+
+    public function getCategory(): ?ProductCategory
+    {
+        return $this->category;
+    }
+
+    public function setCategory(?ProductCategory $category): static
+    {
+        $this->category = $category;
+
+        return $this;
+    }
+    public function getRupture(): ?Rupture
+    {
+        return $this->rupture;
+    }
+
 }

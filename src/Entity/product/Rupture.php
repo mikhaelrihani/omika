@@ -4,42 +4,46 @@ namespace App\Entity\product;
 
 use App\Entity\BaseEntity;
 use App\Repository\product\RuptureRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use App\Entity\product\Product;
 
+/**
+ * @ORM\Entity(repositoryClass=RuptureRepository::class)
+ */
 #[ORM\Entity(repositoryClass: RuptureRepository::class)]
 class Rupture extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
-    #[ORM\Column(length: 1000, nullable: true)]
+    #[ORM\Column(length: 1000, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $info = null;
 
-    #[ORM\Column(length: 50, nullable: true)]
+    #[ORM\Column(length: 50, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $origin = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $uniqueSolution = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 1000, nullable: true)]
+    private ?string $solution = null;
+
+    #[ORM\Column(length: 255, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $status = null;
 
-
     /**
-     * @var Collection<int, ProductRupture>
+     * @ORM\OneToOne(targetEntity="App\Entity\product\Product", inversedBy="rupture")
+     * @ORM\JoinColumn(nullable=false)
      */
-    #[ORM\OneToMany(targetEntity: ProductRupture::class, mappedBy: 'rupture')]
-    private Collection $productRuptures;
-
-    public function __construct()
-    {
-        $this->productRuptures = new ArrayCollection();
-    }
+    #[ORM\OneToOne(targetEntity: Product::class, inversedBy: 'rupture')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Product $product = null;
 
     public function getId(): ?int
     {
@@ -51,7 +55,7 @@ class Rupture extends BaseEntity
         return $this->info;
     }
 
-    public function setInfo(?string $info): static
+    public function setInfo(string $info): static
     {
         $this->info = $info;
 
@@ -63,7 +67,7 @@ class Rupture extends BaseEntity
         return $this->origin;
     }
 
-    public function setOrigin(?string $origin): static
+    public function setOrigin(string $origin): static
     {
         $this->origin = $origin;
 
@@ -82,6 +86,18 @@ class Rupture extends BaseEntity
         return $this;
     }
 
+    public function getSolution(): ?string
+    {
+        return $this->solution;
+    }
+
+    public function setSolution(?string $solution): static
+    {
+        $this->solution = $solution;
+
+        return $this;
+    }
+
     public function getStatus(): ?string
     {
         return $this->status;
@@ -94,34 +110,9 @@ class Rupture extends BaseEntity
         return $this;
     }
 
-   
-    /**
-     * @return Collection<int, ProductRupture>
-     */
-    public function getProductRuptures(): Collection
+    public function getProduct(): ?Product
     {
-        return $this->productRuptures;
+        return $this->product;
     }
-
-    public function addProductRupture(ProductRupture $productRupture): static
-    {
-        if (!$this->productRuptures->contains($productRupture)) {
-            $this->productRuptures->add($productRupture);
-            $productRupture->setRupture($this);
-        }
-
-        return $this;
-    }
-
-    public function removeProductRupture(ProductRupture $productRupture): static
-    {
-        if ($this->productRuptures->removeElement($productRupture)) {
-            // set the owning side to null (unless already changed)
-            if ($productRupture->getRupture() === $this) {
-                $productRupture->setRupture(null);
-            }
-        }
-
-        return $this;
-    }
+    
 }

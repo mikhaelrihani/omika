@@ -6,7 +6,7 @@ use App\Entity\BaseEntity;
 use App\Repository\recipe\IngredientRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\product\Product; 
+use App\Entity\product\Product;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: IngredientRepository::class)]
@@ -25,9 +25,13 @@ class Ingredient extends BaseEntity
     #[ORM\JoinColumn(nullable: false)]
     private ?product $product = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(targetEntity:Unit::class,nullable: false)]
-    private ?unit $unit = null;
+    /**
+     * @ORM\ManyToOne(targetEntity="App\Entity\Unit")
+     * @ORM\JoinColumn(nullable=false)
+     */
+    #[ORM\ManyToOne(targetEntity: Unit::class, inversedBy: 'ingredients')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Unit $unit = null;
 
     public function getId(): ?int
     {
