@@ -27,7 +27,6 @@ class RoomProduct extends BaseEntity
     #[ORM\Column(type: 'integer')]
     #[Assert\NotBlank(message: "Room Shelf should not be blank.")]
     #[Assert\GreaterThanOrEqual(0)]
-    #[ORM\Column]
     private ?int $roomShelf = null;
 
     public function getId(): ?int

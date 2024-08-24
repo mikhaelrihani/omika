@@ -27,8 +27,10 @@ class Dod extends BaseEntity
     private ?string $infos = null;
 
     #[ORM\ManyToOne(targetEntity: Menu::class, inversedBy: 'dods')]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'SET NULL')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    #[Assert\NotNull(message: "A Dod must be associated with a Menu.")]
     private ?Menu $menu = null;
+    
 
     public function getId(): ?int
     {
