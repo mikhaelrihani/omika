@@ -14,13 +14,15 @@ class RecipeStep extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 1000)]
+    #[ORM\Column(length: 1000, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $description = null;
 
-    #[ORM\Column]
+    #[ORM\Column( nullable: false)]
+    #[Assert\NotBlank]
     private ?int $orderStep = null;
 
-    #[ORM\ManyToOne(inversedBy: 'recipeSteps')]
+    #[ORM\ManyToOne(targetEntity:Recipe::class,inversedBy: 'recipeSteps')]
     #[ORM\JoinColumn(nullable: false)]
     private ?recipe $recipe = null;
 

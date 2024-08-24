@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 #[ORM\Entity(repositoryClass: MenuRepository::class)]
 class Menu extends BaseEntity
@@ -17,10 +18,12 @@ class Menu extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: false)]
+    #[Assert\NotBlank]
     private ?int $week = null;
 
-    #[ORM\Column(length: 100)]
+    #[ORM\Column(length: 100,nullable: false)]
+    #[Assert\NotBlank]
     private ?string $author = null;
 
     #[ORM\Column(length: 50, nullable: true)]
@@ -35,17 +38,18 @@ class Menu extends BaseEntity
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $special = null;
 
-    #[ORM\Column(length: 100)]
+    #[ORM\Column(length: 100,nullable: false)]
+    #[Assert\NotBlank]
     private ?string $status = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)] // nullable true pour permettre les drafts sans PDF
     private ?string $pdfPath = null;
 
 
     /**
      * @var Collection<int, Dod>
      */
-    #[ORM\OneToMany(targetEntity: Dod::class, mappedBy: 'menu', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: Dod::class, mappedBy: 'menu')]
     private Collection $dods;
 
     public function __construct()
@@ -154,6 +158,19 @@ class Menu extends BaseEntity
         $this->pdfPath = $pdfPath;
 
         return $this;
+    }
+
+      /**
+     * @Assert\Callback
+     */
+    public function validatePdfPath(ExecutionContextInterface $context): void
+    {
+        // Si le statut n'est pas "draft", le pdfPath ne doit pas être null
+        if ($this->status !== 'draft' && empty($this->pdfPath)) {
+            $context->buildViolation('Le champ pdfPath est requis lorsque le menu n\'est pas un draft.')
+                ->atPath('pdfPath')
+                ->addViolation();
+        }
     }
 
     /**

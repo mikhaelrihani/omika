@@ -15,18 +15,20 @@ class Dod extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $name = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $description = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $infos = null;
 
-    #[ORM\ManyToOne(inversedBy: 'dods')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?menu $menu = null;
+    #[ORM\ManyToOne(targetEntity: Menu::class, inversedBy: 'dods')]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'SET NULL')]
+    private ?Menu $menu = null;
 
     public function getId(): ?int
     {

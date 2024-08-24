@@ -19,16 +19,20 @@ class Dish extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 100)]
+    #[ORM\Column(length: 100,nullable: false)]
+    #[Assert\NotBlank]
     private ?string $name = null;
 
-    #[ORM\Column(length: 5)]
+    #[ORM\Column(length: 5,nullable: false)]
+    #[Assert\NotBlank]
     private ?string $nameGender = null;
 
-    #[ORM\Column(length: 50)]
+    #[ORM\Column(length: 50,nullable: false)]
+    #[Assert\NotBlank]
     private ?string $slug = null;
 
-    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2,nullable: false)]
+    #[Assert\NotBlank]
     private ?string $price = null;
 
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]
@@ -39,8 +43,10 @@ class Dish extends BaseEntity
     #[ORM\JoinColumn(nullable: false)]
     private ?dishCategory $dishCategory = null;
 
-    #[ORM\OneToOne(mappedBy: 'dish', cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne(targetEntity: Recipe::class, inversedBy: 'dish', cascade: ['remove'])]
+    #[ORM\JoinColumn(nullable: true)]
     private ?Recipe $recipe = null;
+    
 
     public function getId(): ?int
     {
@@ -123,16 +129,5 @@ class Dish extends BaseEntity
     {
         return $this->recipe;
     }
-
-    public function setRecipe(Recipe $recipe): static
-    {
-        // set the owning side of the relation if necessary
-        if ($recipe->getDish() !== $this) {
-            $recipe->setDish($this);
-        }
-
-        $this->recipe = $recipe;
-
-        return $this;
-    }
+   
 }

@@ -15,10 +15,12 @@ class Unit extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 50)]
+    #[ORM\Column(length: 50, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $name = null;
 
-    #[ORM\Column(length: 5)]
+    #[ORM\Column(length: 5, nullable: false)]
+    #[Assert\NotBlank]
     private ?string $symbol = null;
 
     public function getId(): ?int

@@ -19,7 +19,7 @@ class Recipe extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\OneToOne(inversedBy: 'recipe', cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne(mappedBy: 'recipe', targetEntity: Dish::class)]
     #[ORM\JoinColumn(nullable: false)]
     private ?dish $dish = null;
 

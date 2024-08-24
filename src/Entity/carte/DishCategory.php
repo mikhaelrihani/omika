@@ -18,7 +18,8 @@ class DishCategory extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255,nullable: false)]
+    #[Assert\NotBlank]
     private ?string $name = null;
 
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]
@@ -74,25 +75,5 @@ class DishCategory extends BaseEntity
         return $this->dishes;
     }
 
-    public function addDish(Dish $dish): static
-    {
-        if (!$this->dishes->contains($dish)) {
-            $this->dishes->add($dish);
-            $dish->setDishCategory($this);
-        }
-
-        return $this;
-    }
-
-    public function removeDish(Dish $dish): static
-    {
-        if ($this->dishes->removeElement($dish)) {
-            // set the owning side to null (unless already changed)
-            if ($dish->getDishCategory() === $this) {
-                $dish->setDishCategory(null);
-            }
-        }
-
-        return $this;
-    }
+   
 }
