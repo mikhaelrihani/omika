@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20240824144825 extends AbstractMigration
+final class Version20240824153737 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -102,11 +102,18 @@ final class Version20240824144825 extends AbstractMigration
         $this->addSql('ALTER TABLE supplier_staff ADD CONSTRAINT FK_9B75F1B82ADD6D8C FOREIGN KEY (supplier_id) REFERENCES supplier (id)');
         $this->addSql('ALTER TABLE user ADD CONSTRAINT FK_8D93D649BC3F045D FOREIGN KEY (user_login_id) REFERENCES user_login (id)');
         $this->addSql('ALTER TABLE user ADD CONSTRAINT FK_8D93D64986383B10 FOREIGN KEY (avatar_id) REFERENCES picture (id)');
+        //! index added by admin
+        $this->addSql('CREATE INDEX kitchen_idx ON product (kitchen_name)');
+        $this->addSql('CREATE INDEX commercial_idx ON product (commercial_name)');
+        $this->addSql('CREATE INDEX kitchen_commercial_idx ON product (kitchen_Name, commercial_name)');
     }
 
     public function down(Schema $schema): void
     {
         // this down() migration is auto-generated, please modify it to your needs
+
+
+
         $this->addSql('ALTER TABLE absence DROP FOREIGN KEY FK_765AE0C9D4D57CD');
         $this->addSql('ALTER TABLE contact DROP FOREIGN KEY FK_4C62E638A89DB457');
         $this->addSql('ALTER TABLE dish DROP FOREIGN KEY FK_957D8CB8EE45BDBF');
@@ -189,5 +196,11 @@ final class Version20240824144825 extends AbstractMigration
         $this->addSql('DROP TABLE user');
         $this->addSql('DROP TABLE user_login');
         $this->addSql('DROP TABLE messenger_messages');
+
+        //! index added by admin
+        $this->addSql('DROP INDEX kitchen_idx ON product');
+        $this->addSql('DROP INDEX commercial_idx ON product');
+        $this->addSql('DROP INDEX kitchen_commercial_idx ON product');
+        
     }
 }
