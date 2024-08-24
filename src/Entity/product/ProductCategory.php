@@ -18,7 +18,7 @@ class ProductCategory extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(length: 255,nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Category Name should not be blank.")]
     private ?string $name = null;
 
     /**

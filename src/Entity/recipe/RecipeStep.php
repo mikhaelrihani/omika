@@ -15,16 +15,16 @@ class RecipeStep extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(length: 1000, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Description should not be blank.")]
     private ?string $description = null;
 
     #[ORM\Column( nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Order step should not be blank.")]
     private ?int $orderStep = null;
 
     #[ORM\ManyToOne(targetEntity:Recipe::class,inversedBy: 'recipeSteps')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?recipe $recipe = null;
+    private ?Recipe $recipe = null;
 
 
     public function getId(): ?int
@@ -56,7 +56,7 @@ class RecipeStep extends BaseEntity
         return $this;
     }
 
-    public function getRecipe(): ?recipe
+    public function getRecipe(): ?Recipe
     {
         return $this->recipe;
     }

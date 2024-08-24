@@ -16,11 +16,11 @@ class Unit extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(length: 50, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Unit Name should not be blank.")]
     private ?string $name = null;
 
     #[ORM\Column(length: 5, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Unit Symbol should not be blank.")]
     private ?string $symbol = null;
 
     public function getId(): ?int

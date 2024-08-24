@@ -20,7 +20,7 @@ class Recipe extends BaseEntity
     private ?int $id = null;
 
     #[ORM\OneToOne(mappedBy: 'recipe', targetEntity: Dish::class)]
-    private ?dish $dish = null;
+    private ?Dish $dish = null;
 
     /**
      * @var Collection<int, RecipeStep>
@@ -35,15 +35,15 @@ class Recipe extends BaseEntity
     private Collection $recipeAdvises;
 
     /**
-     * @var Collection<int, ingredient>
+     * @var Collection<int, Ingredient>
      */
-    #[ORM\ManyToMany(targetEntity: ingredient::class)]
+    #[ORM\ManyToMany(targetEntity: Ingredient::class)]
     private Collection $ingredients;
 
     /**
-     * @var Collection<int, product>
+     * @var Collection<int, Product>
      */
-    #[ORM\ManyToMany(targetEntity: product::class, inversedBy: 'recipes')]
+    #[ORM\ManyToMany(targetEntity: Product::class, inversedBy: 'recipes')]
     private Collection $products;
 
     public function __construct()
@@ -59,7 +59,7 @@ class Recipe extends BaseEntity
         return $this->id;
     }
 
-    public function getDish(): ?dish
+    public function getDish(): ?Dish
     {
         return $this->dish;
     }
@@ -140,7 +140,7 @@ class Recipe extends BaseEntity
         return $this->ingredients;
     }
 
-    public function addIngredient(ingredient $ingredient): static
+    public function addIngredient(Ingredient $ingredient): static
     {
         if (!$this->ingredients->contains($ingredient)) {
             $this->ingredients->add($ingredient);
@@ -149,7 +149,7 @@ class Recipe extends BaseEntity
         return $this;
     }
 
-    public function removeIngredient(ingredient $ingredient): static
+    public function removeIngredient(Ingredient $ingredient): static
     {
         $this->ingredients->removeElement($ingredient);
 
@@ -157,14 +157,14 @@ class Recipe extends BaseEntity
     }
 
     /**
-     * @return Collection<int, product>
+     * @return Collection<int, Product>
      */
     public function getProduct(): Collection
     {
         return $this->products;
     }
 
-    public function addProduct(product $product): static
+    public function addProduct(Product $product): static
     {
         if (!$this->products->contains($product)) {
             $this->products->add($product);
@@ -173,7 +173,7 @@ class Recipe extends BaseEntity
         return $this;
     }
 
-    public function removeProduct(product $product): static
+    public function removeProduct(Product $product): static
     {
         $this->products->removeElement($product);
 

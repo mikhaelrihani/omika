@@ -19,11 +19,11 @@ class ProductInventory extends BaseEntity
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?product $product = null;
+    private ?Product $product = null;
 
     #[ORM\ManyToOne(targetEntity:Inventory::class, inversedBy: 'productInventories')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?inventory $inventory = null;
+    private ?Inventory $inventory = null;
 
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
     private ?string $quantityBig = null;
@@ -36,24 +36,24 @@ class ProductInventory extends BaseEntity
         return $this->id;
     }
 
-    public function getProduct(): ?product
+    public function getProduct(): ?Product
     {
         return $this->product;
     }
 
-    public function setProduct(?product $product): static
+    public function setProduct(?Product $product): static
     {
         $this->product = $product;
 
         return $this;
     }
 
-    public function getInventory(): ?inventory
+    public function getInventory(): ?Inventory
     {
         return $this->inventory;
     }
 
-    public function setInventory(?inventory $inventory): static
+    public function setInventory(?Inventory $inventory): static
     {
         $this->inventory = $inventory;
 

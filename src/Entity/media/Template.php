@@ -15,10 +15,12 @@ class Template extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255,nullable: false)]
+    #[Assert\NotBlank(message: "Name should not be blank.")]
     private ?string $name = null;
 
-    #[ORM\Column(length: 1000)]
+    #[ORM\Column(length: 1000,nullable: false)]
+    #[Assert\NotBlank(message: "Text should not be blank.")]
     private ?string $text = null;
 
     public function getId(): ?int

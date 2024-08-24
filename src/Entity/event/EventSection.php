@@ -16,7 +16,7 @@ class EventSection extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(length: 25, nullable:false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Event Section Name should not be blank.")]
     private ?string $name = null;
     
     public function getId(): ?int

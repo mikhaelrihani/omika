@@ -16,16 +16,16 @@ class RecipeAdvise extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(nullable:false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Order Advise should not be blank.")]
     private ?int $orderAdvise = null;
 
     #[ORM\Column(length: 1000, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Description should not be blank.")]
     private ?string $description = null;
 
     #[ORM\ManyToOne(targetEntity:Recipe::class,inversedBy: 'recipeAdvises')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?recipe $recipe = null;
+    private ?Recipe $recipe = null;
 
    
     public function getId(): ?int

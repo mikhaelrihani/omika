@@ -3,6 +3,7 @@
 namespace App\Entity\event;
 
 use App\Entity\BaseEntity;
+use App\Entity\user\Contact;
 use App\Repository\event\IssueRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -31,10 +32,10 @@ class Issue extends BaseEntity
 
     #[ORM\OneToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?user $technicianContacted = null;
+    private ?Contact $technicianContacted = null;
 
     #[ORM\OneToOne]
-    private ?user $technicianComing = null;
+    private ?Contact $technicianComing = null;
 
     #[ORM\Column(length: 50, nullable:false)]
     #[Assert\NotBlank]
@@ -97,24 +98,24 @@ class Issue extends BaseEntity
         return $this;
     }
 
-    public function getTechnicianContacted(): ?user
+    public function getTechnicianContacted(): ?Contact
     {
         return $this->technicianContacted;
     }
 
-    public function setTechnicianContacted(user $technicianContacted): static
+    public function setTechnicianContacted(Contact $technicianContacted): static
     {
         $this->technicianContacted = $technicianContacted;
 
         return $this;
     }
 
-    public function getTechnicianComing(): ?user
+    public function getTechnicianComing(): ?Contact
     {
         return $this->technicianComing;
     }
 
-    public function setTechnicianComing(?user $technicianComing): static
+    public function setTechnicianComing(?Contact $technicianComing): static
     {
         $this->technicianComing = $technicianComing;
 

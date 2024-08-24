@@ -3,9 +3,10 @@
 namespace App\Entity\media;
 
 use App\Entity\BaseEntity;
+use App\Entity\user\Contact;
 use App\Repository\media\MessageRepository;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\user\user; 
+use App\Entity\user\User; 
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: MessageRepository::class)]
@@ -18,13 +19,14 @@ class Message extends BaseEntity
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?user $user = null;
+    private ?User $user = null;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?user $recipient = null;
+    private ?Contact $recipient = null;
 
-    #[ORM\Column(length: 1000)]
+    #[ORM\Column(length: 1000, nullable: false)]
+    #[Assert\NotBlank(message: "Text should not be blank.")]
     private ?string $text = null;
 
     public function getId(): ?int
@@ -32,24 +34,24 @@ class Message extends BaseEntity
         return $this->id;
     }
 
-    public function getUser(): ?user
+    public function getUser(): ?User
     {
         return $this->user;
     }
 
-    public function setUser(?user $user): static
+    public function setUser(?User $user): static
     {
         $this->user = $user;
 
         return $this;
     }
 
-    public function getRecipient(): ?user
+    public function getRecipient(): ?Contact
     {
         return $this->recipient;
     }
 
-    public function setRecipient(user $recipient): static
+    public function setRecipient(Contact $recipient): static
     {
         $this->recipient = $recipient;
 

@@ -23,23 +23,23 @@ class Product extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(length: 50, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Kitchen Name should not be blank.")]
     private ?string $kitchenName = null;
 
     #[ORM\Column(length: 255, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Commercial Name should not be blank.")]
     private ?string $commercialName = null;
 
     #[ORM\Column(length: 50, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Slug should not be blank.")]
     private ?string $slug = null;
 
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Price should not be blank.")]
     private ?string $price = null;
 
     #[ORM\Column(length: 255, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Conditionning should not be blank.")]
     private ?string $conditionning = null;
 
     #[ORM\ManyToOne]
@@ -47,7 +47,7 @@ class Product extends BaseEntity
     private ?unit $unit = null;
 
     #[ORM\Column(nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Supplier Favorite should not be blank.")]
     private ?bool $supplierFavorite = null;
 
     #[ORM\OneToOne(targetEntity: Supplier::class, inversedBy: 'products')]
@@ -144,12 +144,12 @@ class Product extends BaseEntity
         return $this;
     }
 
-    public function getUnit(): ?unit
+    public function getUnit(): ?Unit
     {
         return $this->unit;
     }
 
-    public function setUnit(?unit $unit): static
+    public function setUnit(?Unit $unit): static
     {
         $this->unit = $unit;
 
@@ -168,12 +168,12 @@ class Product extends BaseEntity
         return $this;
     }
 
-    public function getSupplier(): ?supplier
+    public function getSupplier(): ?Supplier
     {
         return $this->supplier;
     }
 
-    public function setSupplier(supplier $supplier): static
+    public function setSupplier(Supplier $supplier): static
     {
         $this->supplier = $supplier;
 
@@ -234,8 +234,5 @@ class Product extends BaseEntity
     {
         return $this->rupture;
     }
-      /**
-     * @return Collection<int, ProductInventory>
-     */
-   
+    
 }

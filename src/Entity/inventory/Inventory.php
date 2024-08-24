@@ -18,23 +18,23 @@ class Inventory extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(length: 255,nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Status should not be blank.")]
     private ?string $status = null;
 
     #[ORM\Column(length: 255,nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Type should not be blank.")]
     private ?string $type = null;
 
     #[ORM\Column(length: 25,nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Month should not be blank.")]
     private ?string $month = null;
 
     #[ORM\Column(length: 255,nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Author should not be blank.")]
     private ?string $author = null;
 
     #[ORM\Column(nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Year should not be blank.")]
     private ?int $year = null;
 
     #[ORM\Column(length: 255)]
@@ -44,9 +44,9 @@ class Inventory extends BaseEntity
     private ?string $excelPath = null;
 
     /**
-     * @var Collection<int, room>
+     * @var Collection<int, Room>
      */
-    #[ORM\ManyToMany(targetEntity: room::class, inversedBy: 'inventories')]
+    #[ORM\ManyToMany(targetEntity: Room::class, inversedBy: 'inventories')]
     private Collection $room;
 
     /**
@@ -119,7 +119,7 @@ class Inventory extends BaseEntity
         return $this->year;
     }
 
-    public function setYear(string $year): static
+    public function setYear(int $year): static
     {
         $this->year = $year;
 
@@ -151,14 +151,14 @@ class Inventory extends BaseEntity
     }
 
     /**
-     * @return Collection<int, room>
+     * @return Collection<int, Room>
      */
     public function getRoom(): Collection
     {
         return $this->room;
     }
 
-    public function addRoom(room $room): static
+    public function addRoom(Room $room): static
     {
         if (!$this->room->contains($room)) {
             $this->room->add($room);
@@ -167,7 +167,7 @@ class Inventory extends BaseEntity
         return $this;
     }
 
-    public function removeRoom(room $room): static
+    public function removeRoom(Room $room): static
     {
         $this->room->removeElement($room);
 

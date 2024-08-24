@@ -15,7 +15,8 @@ class Mime extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255,nullable: false)]
+    #[Assert\NotBlank(message: "Mime Name should not be blank.")]
     private ?string $name = null;
 
     public function getId(): ?int

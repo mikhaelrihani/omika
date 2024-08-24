@@ -17,11 +17,11 @@ class Room extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(length: 255,nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Room Name should not be blank.")]
     private ?string $name = null;
 
     #[ORM\Column(length: 255,nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Location Details should not be blank.")]
     private ?string $locationDetails = null;
 
     /**

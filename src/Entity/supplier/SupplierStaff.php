@@ -21,7 +21,7 @@ class SupplierStaff extends BaseEntity
 
     #[ORM\ManyToOne(targetEntity: Supplier::class, inversedBy: 'supplierStaff')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?supplier $supplier = null;
+    private ?Supplier $supplier = null;
 
    
     public function getId(): ?int
@@ -41,12 +41,12 @@ class SupplierStaff extends BaseEntity
         return $this;
     }
 
-    public function getSupplier(): ?supplier
+    public function getSupplier(): ?Supplier
     {
         return $this->supplier;
     }
 
-    public function setSupplier(?supplier $supplier): static
+    public function setSupplier(?Supplier $supplier): static
     {
         $this->supplier = $supplier;
 

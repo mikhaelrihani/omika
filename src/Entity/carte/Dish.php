@@ -20,11 +20,11 @@ class Dish extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(length: 100,nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Dish Name should not be blank.")]
     private ?string $name = null;
 
     #[ORM\Column(length: 5,nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Dish Name should not be blank.")]
     private ?string $nameGender = null;
 
     #[ORM\Column(length: 50,nullable: false)]
@@ -32,7 +32,7 @@ class Dish extends BaseEntity
     private ?string $slug = null;
 
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2,nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Price should not be blank.")]
     private ?string $price = null;
 
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]

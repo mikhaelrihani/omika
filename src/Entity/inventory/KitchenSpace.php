@@ -17,7 +17,7 @@ class KitchenSpace extends BaseEntity
 
 
     #[ORM\Column(length: 255,nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Kitchen Space Name should not be blank.")]
     private ?string $name = null;
 
 

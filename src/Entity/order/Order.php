@@ -8,7 +8,9 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Entity\user\User; 
 use App\Entity\supplier\Supplier;
-use Symfony\Component\Validator\Constraints as Assert; 
+use App\Entity\user\Contact;
+use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface; 
 
 #[ORM\Entity(repositoryClass: OrderRepository::class)]
 #[ORM\Table(name: '`order`')]
@@ -19,16 +21,20 @@ class Order extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    #[ORM\Column(type: Types::DATE_MUTABLE,nullable: false)]
+    #[Assert\NotBlank]
     private ?\DateTimeInterface $deliveryDate = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255,nullable: false)]
+    #[Assert\NotBlank(message: "Author should not be blank.")]
     private ?string $author = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255,nullable: false)]
+    #[Assert\NotBlank(message: "Sending method should not be blank.")]
     private ?string $sendingMethod = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255,nullable: false)]
+    #[Assert\NotBlank(message: "Status should not be blank.")]
     private ?string $status = null;
 
     #[ORM\Column(length: 255)]
@@ -37,13 +43,13 @@ class Order extends BaseEntity
     #[ORM\Column(length: 255)]
     private ?string $pdfPath = null;
 
-    #[ORM\ManyToOne(inversedBy: 'orders')]
+    #[ORM\ManyToOne(targetEntity:Supplier::class,inversedBy: 'orders')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?supplier $supplier = null;
+    private ?Supplier $supplier = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?user $recipient = null;
+    private ?Contact $recipient = null;
 
     public function getId(): ?int
     {
@@ -122,28 +128,41 @@ class Order extends BaseEntity
         return $this;
     }
 
-    public function getSupplier(): ?supplier
+    public function getSupplier(): ?Supplier
     {
         return $this->supplier;
     }
 
-    public function setSupplier(?supplier $supplier): static
+    public function setSupplier(?Supplier $supplier): static
     {
         $this->supplier = $supplier;
 
         return $this;
     }
 
-    public function getRecipient(): ?user
+    public function getRecipient(): ?Contact
     {
         return $this->recipient;
     }
 
-    public function setRecipient(?user $recipient): static
+    public function setRecipient(?Contact $recipient): static
     {
         $this->recipient = $recipient;
 
         return $this;
+    }
+
+      /**
+     * @Assert\Callback
+     */
+    public function validatePdfPath(ExecutionContextInterface $context): void
+    {
+        // Si le statut n'est pas "draft", le pdfPath ne doit pas être null
+        if ($this->status !== 'draft' && empty($this->pdfPath)) {
+            $context->buildViolation('Le champ pdfPath est requis lorsque la commande n\'est pas un draft.')
+                ->atPath('pdfPath')
+                ->addViolation();
+        }
     }
 
 }

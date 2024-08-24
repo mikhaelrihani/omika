@@ -17,23 +17,23 @@ class Event extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(length: 255, nullable:false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Side should not be blank.")]
     private ?string $side = null;
 
     #[ORM\Column(nullable:false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Visible should not be blank.")]
     private ?bool $visible = null;
 
     #[ORM\Column(length: 255, nullable:false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Status should not be blank.")]
     private ?string $status = null;
 
     #[ORM\Column(length: 255, nullable:false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Text should not be blank.")]
     private ?string $text = null;
 
     #[ORM\Column(length: 255, nullable:false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Author should not be blank.")]
     private ?string $author = null;
 
     #[ORM\Column(length: 255, nullable:false)]
@@ -53,11 +53,11 @@ class Event extends BaseEntity
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?eventSection $eventSection = null;
+    private ?EventSection $eventSection = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?eventFrequence $eventFrequence = null;
+    private ?EventFrequence $eventFrequence = null;
 
     public function getId(): ?int
     {
@@ -172,24 +172,24 @@ class Event extends BaseEntity
         return $this;
     }
 
-    public function getEventSection(): ?eventSection
+    public function getEventSection(): ?EventSection
     {
         return $this->eventSection;
     }
 
-    public function setEventSection(?eventSection $eventSection): static
+    public function setEventSection(?EventSection $eventSection): static
     {
         $this->eventSection = $eventSection;
 
         return $this;
     }
 
-    public function getEventFrequence(): ?eventFrequence
+    public function getEventFrequence(): ?EventFrequence
     {
         return $this->eventFrequence;
     }
 
-    public function setEventFrequence(?eventFrequence $eventFrequence): static
+    public function setEventFrequence(?EventFrequence $eventFrequence): static
     {
         $this->eventFrequence = $eventFrequence;
 

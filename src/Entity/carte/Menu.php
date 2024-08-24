@@ -19,11 +19,11 @@ class Menu extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Week should not be blank.")]
     private ?int $week = null;
 
     #[ORM\Column(length: 100,nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Author should not be blank.")]
     private ?string $author = null;
 
     #[ORM\Column(length: 50, nullable: true)]

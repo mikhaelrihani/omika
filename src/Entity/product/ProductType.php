@@ -16,7 +16,7 @@ class ProductType extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(length: 255,nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Type Name should not be blank.")]
     private ?string $name = null;
 
 

@@ -90,12 +90,12 @@ class Contact extends BaseEntity
         return $this;
     }
     
-    public function getBusiness(): ?business
+    public function getBusiness(): ?Business
     {
         return $this->business;
     }
 
-    public function setBusiness(?business $business): static
+    public function setBusiness(?Business $business): static
     {
         $this->business = $business;
 

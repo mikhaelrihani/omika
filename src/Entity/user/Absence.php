@@ -41,9 +41,9 @@ class Absence extends BaseEntity
 
     
 
-    #[ORM\OneToOne(targetEntity: User::class)]
+    #[ORM\OneToOne(targetEntity: Contact::class)]
     #[ORM\JoinColumn(nullable: false)]
-    private ?user $staff = null;
+    private ?Contact $staff = null;
 
     public function getId(): ?int
     {
@@ -122,12 +122,12 @@ class Absence extends BaseEntity
         return $this;
     }
     
-    public function getStaff(): ?user
+    public function getStaff(): ?Contact
     {
         return $this->staff;
     }
 
-    public function setStaff(user $staff): static
+    public function setStaff(Contact $staff): static
     {
         $this->staff = $staff;
 

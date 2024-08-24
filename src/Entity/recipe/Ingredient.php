@@ -18,12 +18,12 @@ class Ingredient extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Quantity should not be blank.")]
     private ?string $quantity = null;
 
     #[ORM\OneToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?product $product = null;
+    private ?Product $product = null;
 
     /**
      * @ORM\ManyToOne(targetEntity="App\Entity\Unit")
@@ -55,19 +55,19 @@ class Ingredient extends BaseEntity
         return $this->product;
     }
 
-    public function setProduct(product $product): static
+    public function setProduct(Product $product): static
     {
         $this->product = $product;
 
         return $this;
     }
 
-    public function getUnit(): ?unit
+    public function getUnit(): ?Unit
     {
         return $this->unit;
     }
 
-    public function setUnit(?unit $unit): static
+    public function setUnit(?Unit $unit): static
     {
         $this->unit = $unit;
 

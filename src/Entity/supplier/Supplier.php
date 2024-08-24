@@ -21,18 +21,18 @@ class Supplier extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(length: 255, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Supplier Name should not be blank.")]
     private ?string $name = null;
 
     #[ORM\Column(length: 1000, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Supplier Logistic should not be blank.")]
     private ?string $logistic = null;
 
     #[ORM\Column(length: 1000, nullable: true)]
     private ?string $habits = null;
 
     #[ORM\Column(type: Types::JSON, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Order Days should not be blank.")]
     private array $orderDays = [];
 
     #[ORM\Column(length: 1000, nullable: true)]

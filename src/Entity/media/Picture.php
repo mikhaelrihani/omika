@@ -19,10 +19,12 @@ class Picture extends BaseEntity
     #[ORM\JoinColumn(nullable: false)]
     private ?Mime $mime = null;
 
-    #[ORM\Column(length: 50)]
+    #[ORM\Column(length: 50,nullable: false)]
+    #[Assert\NotBlank(message: "Slug should not be blank.")]
     private ?string $slug = null;
 
-    #[ORM\Column(length: 100)]
+    #[ORM\Column(length: 100,nullable: false)]
+    #[Assert\NotBlank(message: "Name should not be blank.")]
     private ?string $name = null;
 
     public function getId(): ?int

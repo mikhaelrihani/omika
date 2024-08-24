@@ -16,11 +16,11 @@ class Dod extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(length: 255, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Dod Name should not be blank.")]
     private ?string $name = null;
 
     #[ORM\Column(length: 255, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Dod Description should not be blank.")]
     private ?string $description = null;
 
     #[ORM\Column(length: 255, nullable: true)]

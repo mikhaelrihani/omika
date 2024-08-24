@@ -20,11 +20,11 @@ class Rupture extends BaseEntity
     private ?int $id = null;
 
     #[ORM\Column(length: 1000, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Info should not be blank.")]
     private ?string $info = null;
 
     #[ORM\Column(length: 50, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Origin should not be blank.")]
     private ?string $origin = null;
 
     #[ORM\Column(length: 255, nullable: true)]
@@ -34,7 +34,7 @@ class Rupture extends BaseEntity
     private ?string $solution = null;
 
     #[ORM\Column(length: 255, nullable: false)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Status should not be blank.")]
     private ?string $status = null;
 
     /**

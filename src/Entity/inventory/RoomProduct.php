@@ -25,7 +25,7 @@ class RoomProduct extends BaseEntity
     private ?Product $product = null;
 
     #[ORM\Column(type: 'integer')]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(message: "Room Shelf should not be blank.")]
     #[Assert\GreaterThanOrEqual(0)]
     #[ORM\Column]
     private ?int $roomShelf = null;
@@ -35,24 +35,24 @@ class RoomProduct extends BaseEntity
         return $this->id;
     }
 
-    public function getRoom(): ?room
+    public function getRoom(): ?Room
     {
         return $this->room;
     }
 
-    public function setRoom(?room $room): static
+    public function setRoom(?Room $room): static
     {
         $this->room = $room;
 
         return $this;
     }
 
-    public function getProduct(): ?product
+    public function getProduct(): ?Product
     {
         return $this->product;
     }
 
-    public function setProduct(?product $product): static
+    public function setProduct(?Product $product): static
     {
         $this->product = $product;
 

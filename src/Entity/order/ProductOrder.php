@@ -19,13 +19,15 @@ class ProductOrder extends BaseEntity
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?order $orders = null;
+    private ?Order $orders = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?product $product = null;
+    private ?Product $product = null;
 
-    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: false)]
+    #[Assert\NotBlank]
+    #[Assert\GreaterThanOrEqual(0)]
     private ?string $quantity = null;
 
     public function getId(): ?int
@@ -33,24 +35,24 @@ class ProductOrder extends BaseEntity
         return $this->id;
     }
 
-    public function getOrders(): ?order
+    public function getOrders(): ?Order
     {
         return $this->orders;
     }
 
-    public function setOrders(?order $orders): static
+    public function setOrders(?Order $orders): static
     {
         $this->orders = $orders;
 
         return $this;
     }
 
-    public function getProduct(): ?product
+    public function getProduct(): ?Product
     {
         return $this->product;
     }
 
-    public function setProduct(?product $product): static
+    public function setProduct(?Product $product): static
     {
         $this->product = $product;
 
