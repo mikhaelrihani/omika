@@ -17,26 +17,31 @@ class Issue extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable:false)]
+    #[Assert\NotBlank]
     private ?int $countNumber = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable:false)]
+    #[Assert\NotBlank]
     private ?string $status = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable:false)]
+    #[Assert\NotBlank]
     private ?string $author = null;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne]
     #[ORM\JoinColumn(nullable: false)]
     private ?user $technicianContacted = null;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne]
     private ?user $technicianComing = null;
 
-    #[ORM\Column(length: 50)]
+    #[ORM\Column(length: 50, nullable:false)]
+    #[Assert\NotBlank]
     private ?string $summary = null;
 
-    #[ORM\Column(length: 1000)]
+    #[ORM\Column(length: 1000, nullable:false)]
+    #[Assert\NotBlank]
     private ?string $description = null;
 
     #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
@@ -48,7 +53,7 @@ class Issue extends BaseEntity
     #[ORM\Column(nullable: true)]
     private ?int $followUp = null;
 
-    #[ORM\Column(length: 1000)]
+    #[ORM\Column(length: 1000, nullable:true)]
     private ?string $solution = null;
 
     public function getId(): ?int

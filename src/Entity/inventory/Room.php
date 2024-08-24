@@ -16,10 +16,12 @@ class Room extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255,nullable: false)]
+    #[Assert\NotBlank]
     private ?string $name = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255,nullable: false)]
+    #[Assert\NotBlank]
     private ?string $locationDetails = null;
 
     /**
@@ -69,23 +71,5 @@ class Room extends BaseEntity
     {
         return $this->inventories;
     }
-
-    public function addInventory(Inventory $inventory): static
-    {
-        if (!$this->inventories->contains($inventory)) {
-            $this->inventories->add($inventory);
-            $inventory->addRoom($this);
-        }
-
-        return $this;
-    }
-
-    public function removeInventory(Inventory $inventory): static
-    {
-        if ($this->inventories->removeElement($inventory)) {
-            $inventory->removeRoom($this);
-        }
-
-        return $this;
-    }
+   
 }

@@ -15,7 +15,8 @@ class EventSection extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 25)]
+    #[ORM\Column(length: 25, nullable:false)]
+    #[Assert\NotBlank]
     private ?string $name = null;
     
     public function getId(): ?int

@@ -16,28 +16,36 @@ class Event extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable:false)]
+    #[Assert\NotBlank]
     private ?string $side = null;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable:false)]
+    #[Assert\NotBlank]
     private ?bool $visible = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable:false)]
+    #[Assert\NotBlank]
     private ?string $status = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable:false)]
+    #[Assert\NotBlank]
     private ?string $text = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable:false)]
+    #[Assert\NotBlank]
     private ?string $author = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable:false)]
+    #[Assert\NotBlank]
     private ?string $type = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable:false)]
+    #[Assert\NotBlank]
     private ?\DateTimeInterface $periodeStart = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable:false)]
+    #[Assert\NotBlank]
     private ?\DateTimeInterface $periodeEnd = null;
 
     #[ORM\Column]

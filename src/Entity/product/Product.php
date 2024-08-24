@@ -3,6 +3,7 @@
 namespace App\Entity\product;
 
 use App\Entity\BaseEntity;
+use App\Entity\inventory\ProductInventory;
 use App\Repository\product\ProductRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -66,9 +67,11 @@ class Product extends BaseEntity
     #[ORM\JoinColumn(nullable: false)]
     private ?ProductType $type = null;
 
-    #[ORM\ManyToOne(targetEntity:ProductCategory::class,inversedBy: 'products')]
+    #[ORM\ManyToOne(targetEntity: ProductCategory::class, inversedBy: 'products')]
     #[ORM\JoinColumn(nullable: false)]
     private ?ProductCategory $category = null;
+
+
 
     public function __construct()
     {
@@ -231,5 +234,8 @@ class Product extends BaseEntity
     {
         return $this->rupture;
     }
-
+      /**
+     * @return Collection<int, ProductInventory>
+     */
+   
 }

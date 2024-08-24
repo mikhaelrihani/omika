@@ -21,7 +21,7 @@ class ProductInventory extends BaseEntity
     #[ORM\JoinColumn(nullable: false)]
     private ?product $product = null;
 
-    #[ORM\ManyToOne(inversedBy: 'productInventories')]
+    #[ORM\ManyToOne(targetEntity:Inventory::class, inversedBy: 'productInventories')]
     #[ORM\JoinColumn(nullable: false)]
     private ?inventory $inventory = null;
 

@@ -17,20 +17,25 @@ class Inventory extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255,nullable: false)]
+    #[Assert\NotBlank]
     private ?string $status = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255,nullable: false)]
+    #[Assert\NotBlank]
     private ?string $type = null;
 
-    #[ORM\Column(length: 25)]
+    #[ORM\Column(length: 25,nullable: false)]
+    #[Assert\NotBlank]
     private ?string $month = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255,nullable: false)]
+    #[Assert\NotBlank]
     private ?string $author = null;
 
-    #[ORM\Column(length: 255)]
-    private ?string $year = null;
+    #[ORM\Column(nullable: false)]
+    #[Assert\NotBlank]
+    private ?int $year = null;
 
     #[ORM\Column(length: 255)]
     private ?string $pdfPath = null;

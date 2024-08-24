@@ -5,7 +5,7 @@ namespace App\Entity\inventory;
 use App\Entity\BaseEntity;
 use App\Repository\inventory\RoomProductRepository;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\product\product; 
+use App\Entity\product\product;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: RoomProductRepository::class)]
@@ -18,12 +18,15 @@ class RoomProduct extends BaseEntity
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?room $room = null;
+    private ?Room $room = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?product $product = null;
+    private ?Product $product = null;
 
+    #[ORM\Column(type: 'integer')]
+    #[Assert\NotBlank]
+    #[Assert\GreaterThanOrEqual(0)]
     #[ORM\Column]
     private ?int $roomShelf = null;
 
