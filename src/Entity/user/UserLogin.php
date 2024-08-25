@@ -119,5 +119,4 @@ class UserLogin extends BaseEntity implements UserInterface, PasswordAuthenticat
         // $this->plainPassword = null;
     }
 
-   
 }

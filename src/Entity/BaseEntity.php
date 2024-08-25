@@ -11,11 +11,11 @@ use Doctrine\ORM\Mapping\PreUpdate;
 #[HasLifecycleCallbacks]
 abstract class BaseEntity
 {
-    #[ORM\Column(nullable: false)]
-    protected ?\DateTimeImmutable $created_at = null;
+    #[ORM\Column(type: 'datetime_immutable', nullable: false)]
+    protected ?\DateTimeImmutable $createdAt = null;
 
-    #[ORM\Column(nullable: false)]
-    protected ?\DateTimeImmutable $updated_at = null;
+    #[ORM\Column(type: 'datetime_immutable', nullable: false)]
+    protected ?\DateTimeImmutable $updatedAt = null;
 
     public function __construct()
     {
@@ -25,30 +25,43 @@ abstract class BaseEntity
     public function initializeTimestamps(): void
     {
         $now = new \DateTimeImmutable();
-        $this->created_at = $now;
-        $this->updated_at = $now;
+        $this->createdAt = $now;
+        $this->updatedAt = $now;
     }
 
     #[PrePersist]
     public function onPrePersist(): void
     {
-        $this->created_at = new \DateTimeImmutable();
-        $this->updated_at = new \DateTimeImmutable();
+        $now = new \DateTimeImmutable();
+        $this->createdAt = $now;
+        $this->updatedAt = $now;
     }
 
     #[PreUpdate]
     public function onPreUpdate(): void
     {
-        $this->updated_at = new \DateTimeImmutable();
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function getCreatedAt(): ?\DateTimeImmutable
     {
-        return $this->created_at;
+        return $this->createdAt;
+    }
+
+    public function setCreatedAt(\DateTimeImmutable $createdAt): static
+    {
+        $this->createdAt = $createdAt;
+        return $this;
     }
 
     public function getUpdatedAt(): ?\DateTimeImmutable
     {
-        return $this->updated_at;
+        return $this->updatedAt;
+    }
+
+    public function setUpdatedAt(\DateTimeImmutable $updatedAt): static
+    {
+        $this->updatedAt = $updatedAt;
+        return $this;
     }
 }

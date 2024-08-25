@@ -2,6 +2,7 @@
 
 namespace App\Entity\user;
 
+use App\Entity\BaseEntity;
 use App\Repository\user\UserRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -12,7 +13,7 @@ use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 #[UniqueEntity(fields: ['avatar'], message: 'This picture is already used as an avatar by another user.')]
 // TODO : MIGRATION : $this->addSql('ALTER TABLE user ADD CONSTRAINT UNIQUE (avatar_id)');
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-class User
+class User extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -62,12 +63,6 @@ class User
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $job = null;
 
-
-    #[ORM\Column(nullable: false)]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column(nullable: false)]
-    private ?\DateTimeImmutable $updated_at = null;
 
 
 
@@ -198,29 +193,7 @@ class User
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
+   
 
     public function getLateCount(): ?int
     {
