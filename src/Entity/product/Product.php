@@ -3,13 +3,12 @@
 namespace App\Entity\product;
 
 use App\Entity\BaseEntity;
-use App\Entity\inventory\ProductInventory;
 use App\Repository\product\ProductRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\supplier\Supplier;
+use App\Entity\product\Supplier;
 use App\Entity\recipe\Unit;
 use App\Entity\recipe\Recipe;
 use Symfony\Component\Validator\Constraints as Assert;

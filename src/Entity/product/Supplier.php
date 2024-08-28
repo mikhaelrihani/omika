@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Entity\supplier;
+namespace App\Entity\product;
 
 use App\Entity\BaseEntity;
-use App\Repository\supplier\SupplierRepository;
+use App\Entity\user\Business;
+use App\Repository\product\SupplierRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -20,9 +21,10 @@ class Supplier extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255, nullable: false)]
-    #[Assert\NotBlank(message: "Supplier Name should not be blank.")]
-    private ?string $name = null;
+    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Business $business = null;
+
 
     #[ORM\Column(length: 1000, nullable: false)]
     #[Assert\NotBlank(message: "Supplier Logistic should not be blank.")]
@@ -43,20 +45,14 @@ class Supplier extends BaseEntity
     private ?Product $products = null;
 
     /**
-     * @var Collection<int, SupplierStaff>
-     */
-    #[ORM\OneToMany(targetEntity: SupplierStaff::class, mappedBy: 'supplier', orphanRemoval: true)]
-    private Collection $supplierStaff;
-
-    /**
      * @var Collection<int, Order>
      */
     #[ORM\OneToMany(targetEntity: Order::class, mappedBy: 'supplier', orphanRemoval: true)]
     private Collection $orders;
 
+   
     public function __construct()
     {
-        $this->supplierStaff = new ArrayCollection();
         $this->orders = new ArrayCollection();
     }
 
@@ -65,19 +61,6 @@ class Supplier extends BaseEntity
         return $this->id;
     }
 
-    public function getName(): ?string
-    {
-        return $this->name;
-    }
-
-    public function setName(string $name): static
-    {
-        $this->name = $name;
-
-        return $this;
-    }
-
-    
 
     public function getLogistic(): ?string
     {
@@ -128,7 +111,6 @@ class Supplier extends BaseEntity
     }
 
  
-
     public function getProducts(): ?Product
     {
         return $this->products;
@@ -146,35 +128,6 @@ class Supplier extends BaseEntity
         return $this;
     }
 
-    /**
-     * @return Collection<int, SupplierStaff>
-     */
-    public function getSupplierStaff(): Collection
-    {
-        return $this->supplierStaff;
-    }
-
-    public function addSupplierStaff(SupplierStaff $supplierStaff): static
-    {
-        if (!$this->supplierStaff->contains($supplierStaff)) {
-            $this->supplierStaff->add($supplierStaff);
-            $supplierStaff->setSupplier($this);
-        }
-
-        return $this;
-    }
-
-    public function removeSupplierStaff(SupplierStaff $supplierStaff): static
-    {
-        if ($this->supplierStaff->removeElement($supplierStaff)) {
-            // set the owning side to null (unless already changed)
-            if ($supplierStaff->getSupplier() === $this) {
-                $supplierStaff->setSupplier(null);
-            }
-        }
-
-        return $this;
-    }
 
     /**
      * @return Collection<int, Order>
@@ -202,6 +155,18 @@ class Supplier extends BaseEntity
                 $order->setSupplier(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getBusiness(): ?Business
+    {
+        return $this->business;
+    }
+
+    public function setBusiness(Business $business): static
+    {
+        $this->business = $business;
 
         return $this;
     }

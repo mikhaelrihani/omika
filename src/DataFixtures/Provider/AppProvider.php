@@ -2,7 +2,6 @@
 
 namespace App\DataFixtures\Provider;
 
-use Faker\Generator;
 use Faker\Provider\Base;
 
 class AppProvider extends Base
@@ -85,4 +84,21 @@ class AppProvider extends Base
     {
         return $this->business[array_rand($this->business)];
     }
+    public function businessList()
+    {
+        return $this->business;
+    }
+
+    private $status = [
+        "draft",
+        "pending",
+        "submitted",
+        "approved",
+    ];
+   
+    public function status()
+    {
+        return $this->status[array_rand($this->status)];
+    }
+
 }

@@ -4,12 +4,15 @@ namespace App\Entity\user;
 
 use App\Entity\BaseEntity;
 use App\Repository\User\ContactRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 #[ORM\Entity(repositoryClass: ContactRepository::class)]
+#[ORM\UniqueConstraint(name: 'UNIQ_EMAIL', fields: ['email'])]
+
 class Contact extends BaseEntity
 {
     #[ORM\Id]
@@ -28,6 +31,11 @@ class Contact extends BaseEntity
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Surname should not be blank.")]
     private ?string $surname = null;
+
+    #[ORM\Column(length: 180)]
+    #[Assert\NotBlank(message: "Email should not be blank.")]
+    #[Assert\Email(message: "The email '{{ value }}' is not a valid email.")]
+    private ?string $email = null;
 
     #[ORM\Column(length: 20, nullable: false)]
     #[Assert\NotBlank(message: "Phone number should not be blank.")]
@@ -56,22 +64,31 @@ class Contact extends BaseEntity
     )]
     private ?string $whatsapp = null;
 
-
-    //! differents properties than contact entity
-
-    #[ORM\ManyToOne(inversedBy: 'contacts')]
+    
+    #[ORM\ManyToOne(targetEntity: Business::class, inversedBy: 'contacts')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Assert\NotBlank(message: "Business name should not be blank.")]
-    private ?business $business = null;
+    private ?Business $business = null;
 
-    #[ORM\Column(length: 180)]
-    #[Assert\NotBlank(message: "Email should not be blank.")]
-    #[Assert\Email(message: "The email '{{ value }}' is not a valid email.")]
-    private ?string $email = null;
+    #[ORM\Column(length: 255, nullable: false)]
+    #[Assert\NotBlank(message: "Job should not be blank.")]
+    private ?string $job = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?int $lateCount = null;
 
+    /**
+     * @var Collection<int, Absence>
+     */
+    #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'contact')]
+    private Collection $absence;
 
+    public function __construct()
+    {
+        parent::__construct();
+        $this->absence = new ArrayCollection();
+    }
 
+   
 
     public function getId(): ?int
     {
@@ -89,7 +106,7 @@ class Contact extends BaseEntity
 
         return $this;
     }
-    
+
     public function getBusiness(): ?Business
     {
         return $this->business;
@@ -161,5 +178,61 @@ class Contact extends BaseEntity
 
         return $this;
     }
+
+    public function getJob(): ?string
+    {
+        return $this->job;
+    }
+
+    public function setJob(string $job): static
+    {
+        $this->job = $job;
+
+        return $this;
+    }
+
+    public function getLateCount(): ?int
+    {
+        return $this->lateCount;
+    }
+
+    public function setLateCount(?int $lateCount): static
+    {
+        $this->lateCount = $lateCount;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Absence>
+     */
+    public function getAbsence(): Collection
+    {
+        return $this->absence;
+    }
+
+    public function addAbsence(Absence $absence): static
+    {
+        if (!$this->absence->contains($absence)) {
+            $this->absence->add($absence);
+            $absence->setContact($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAbsence(Absence $absence): static
+    {
+        if ($this->absence->removeElement($absence)) {
+            // set the owning side to null (unless already changed)
+            if ($absence->getContact() === $this) {
+                $absence->setContact(null);
+            }
+        }
+
+        return $this;
+    }
+
+   
 
 }

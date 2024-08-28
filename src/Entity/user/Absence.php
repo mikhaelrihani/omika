@@ -39,12 +39,13 @@ class Absence extends BaseEntity
     #[ORM\Column(nullable: false)]
     private ?bool $planningUpdate = null;
 
+    #[ORM\ManyToOne(inversedBy: 'absence')]
+    private ?User $user = null;
+
+    #[ORM\ManyToOne(inversedBy: 'absence')]
+    private ?Contact $contact = null;
+
     
-
-    #[ORM\OneToOne(targetEntity: Contact::class)]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?Contact $staff = null;
-
     public function getId(): ?int
     {
         return $this->id;
@@ -121,16 +122,30 @@ class Absence extends BaseEntity
 
         return $this;
     }
-    
-    public function getStaff(): ?Contact
+
+    public function getUser(): ?User
     {
-        return $this->staff;
+        return $this->user;
     }
 
-    public function setStaff(Contact $staff): static
+    public function setUser(?User $user): static
     {
-        $this->staff = $staff;
+        $this->user = $user;
 
         return $this;
     }
+
+    public function getContact(): ?Contact
+    {
+        return $this->contact;
+    }
+
+    public function setContact(?Contact $contact): static
+    {
+        $this->contact = $contact;
+
+        return $this;
+    }
+    
+   
 }

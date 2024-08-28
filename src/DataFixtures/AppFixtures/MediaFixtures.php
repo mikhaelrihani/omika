@@ -3,11 +3,11 @@
 namespace App\DataFixtures\AppFixtures;
 
 use App\DataFixtures\Provider\AppProvider;
-use App\DataFixtures\AppFixtures\CoreFixtures;
+use App\DataFixtures\AppFixtures\BaseFixtures;
 use Doctrine\Persistence\ObjectManager;
 
 
-class MediaFixtures extends CoreFixtures
+class MediaFixtures extends BaseFixtures
 {
     public function load(ObjectManager $manager): void
     {

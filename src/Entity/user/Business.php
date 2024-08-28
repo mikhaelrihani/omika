@@ -24,12 +24,19 @@ class Business extends BaseEntity
     /**
      * @var Collection<int, Contact>
      */
-    #[ORM\OneToMany(targetEntity: Contact::class, mappedBy: 'business')]
+    #[ORM\OneToMany(mappedBy: 'business', targetEntity: Contact::class, cascade: ['remove'], orphanRemoval: true)]
     private Collection $contacts;
+    
+    /**
+     * @var Collection<int, User>
+     */
+    #[ORM\OneToMany(targetEntity: User::class, mappedBy: 'business', cascade: ['remove'], orphanRemoval: true)]
+    private Collection $users;
 
     public function __construct()
     {
         $this->contacts = new ArrayCollection();
+        $this->users = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -55,6 +62,36 @@ class Business extends BaseEntity
     public function getContacts(): Collection
     {
         return $this->contacts;
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    public function getUsers(): Collection
+    {
+        return $this->users;
+    }
+
+    public function addUser(User $user): static
+    {
+        if (!$this->users->contains($user)) {
+            $this->users->add($user);
+            $user->setBusiness($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUser(User $user): static
+    {
+        if ($this->users->removeElement($user)) {
+            // set the owning side to null (unless already changed)
+            if ($user->getBusiness() === $this) {
+                $user->setBusiness(null);
+            }
+        }
+
+        return $this;
     }
 
 }

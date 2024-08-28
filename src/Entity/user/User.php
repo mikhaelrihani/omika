@@ -4,6 +4,8 @@ namespace App\Entity\user;
 
 use App\Entity\BaseEntity;
 use App\Repository\user\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Entity\media\Picture;
@@ -59,13 +61,18 @@ class User extends BaseEntity
     )]
     private ?string $whatsapp = null;
 
+    #[ORM\ManyToOne(targetEntity: Business::class, inversedBy: 'users')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Business $business = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $job = null;
 
+    #[ORM\Column(type: 'integer', nullable: false)]
+    #[Assert\NotNull(message: "Late count should not be null.")]
+    private int $lateCount = 0;
 
-
-
+   
     //! differents properties than contact entity
 
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]
@@ -75,17 +82,23 @@ class User extends BaseEntity
     #[ORM\OneToOne(cascade: ['persist'])]
     private ?picture $avatar = null;
 
-    #[ORM\Column(type: 'integer', nullable: false)]
-    #[Assert\NotNull(message: "Late count should not be null.")]
-    private int $lateCount = 0;
-
-    #[ORM\Column(type: 'integer', nullable: false)]
-    #[Assert\NotNull(message: "Absent count should not be null.")]
-    private int $absentCount = 0;
-
     #[ORM\Column(length: 50, nullable: false)]
     #[Assert\NotBlank(message: "Pseudo should not be blank.")]
     private ?string $pseudo = null;
+
+    /**
+     * @var Collection<int, Absence>
+     */
+    #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'user')]
+    private Collection $absence;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->absence = new ArrayCollection();
+    }
+
+   
 
 
 
@@ -193,7 +206,7 @@ class User extends BaseEntity
         return $this;
     }
 
-   
+
 
     public function getLateCount(): ?int
     {
@@ -207,18 +220,7 @@ class User extends BaseEntity
         return $this;
     }
 
-    public function getAbsentCount(): ?int
-    {
-        return $this->absentCount;
-    }
-
-    public function setAbsentCount(int $absentCount): static
-    {
-        $this->absentCount = $absentCount;
-
-        return $this;
-    }
-
+  
     public function getJob(): ?string
     {
         return $this->job;
@@ -227,6 +229,48 @@ class User extends BaseEntity
     public function setJob(?string $job): static
     {
         $this->job = $job;
+
+        return $this;
+    }
+
+    public function getBusiness(): ?Business
+    {
+        return $this->business;
+    }
+
+    public function setBusiness(?Business $business): static
+    {
+        $this->business = $business;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Absence>
+     */
+    public function getAbsence(): Collection
+    {
+        return $this->absence;
+    }
+
+    public function addAbsence(Absence $absence): static
+    {
+        if (!$this->absence->contains($absence)) {
+            $this->absence->add($absence);
+            $absence->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAbsence(Absence $absence): static
+    {
+        if ($this->absence->removeElement($absence)) {
+            // set the owning side to null (unless already changed)
+            if ($absence->getUser() === $this) {
+                $absence->setUser(null);
+            }
+        }
 
         return $this;
     }
