@@ -27,7 +27,8 @@ class Picture extends BaseEntity
     #[Assert\NotBlank(message: "Name should not be blank.")]
     private ?string $name = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255,nullable: false)]
+    #[Assert\NotBlank(message: "Path should not be blank.")]
     private ?string $path = null;
 
     public function getId(): ?int

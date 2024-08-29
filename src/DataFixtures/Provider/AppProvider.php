@@ -4,71 +4,47 @@ namespace App\DataFixtures\Provider;
 
 use Faker\Provider\Base;
 
+
 class AppProvider extends Base
 {
- 
+
+    //! TimeStamps property
     public function dateTimeImmutableBetween($startDate = '-30 years', $endDate = 'now')
     {
         $dateTime = $this->generator->dateTimeBetween($startDate, $endDate);
         return \DateTimeImmutable::createFromMutable($dateTime);
     }
-
-    public static function generatePassword(): string
+    public function createTimeStamps(): array
     {
-        $length = 10;
-        $uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        $specialChars = '!@#$%^&*';
-        $numbers = '0123456789';
-
-        // Generate a password
-        $password = '';
-        $password .= $uppercase[random_int(0, strlen($uppercase) - 1)];
-        $password .= $specialChars[random_int(0, strlen($specialChars) - 1)];
-        $password .= $numbers[random_int(0, strlen($numbers) - 1)];
-        $password .= $numbers[random_int(0, strlen($numbers) - 1)];
-
-        // Fill the rest of the password length with random characters
-        $allChars = $uppercase . $specialChars . $numbers . strtolower($uppercase);
-        for ($i = strlen($password); $i < $length; $i++) {
-            $password .= $allChars[random_int(0, strlen($allChars) - 1)];
-        }
-
-        // Shuffle the password to avoid predictable patterns
-        return str_shuffle($password);
+        $createdAt = $this->dateTimeImmutableBetween('-5 years', 'now');
+        $updatedAt = $this->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), 'now');
+        return compact('createdAt', 'updatedAt');
     }
 
-    public static function generatePhoneNumber(): string
-    {
-        // Générer un numéro de téléphone de 10 chiffres
-        $number = sprintf('%010d', rand(0, 9999999999));
-        
-        // Ajouter un préfixe '+' de manière aléatoire pour simuler un code international
-        $prefix = rand(0, 1) ? '+' : '';
-        
-        // Ajouter des espaces de manière aléatoire dans le numéro pour le format
-        $formattedNumber = $prefix . implode(' ', str_split($number, 2));
-        
-        // S'assurer que la longueur totale est entre 10 et 20 caractères
-        // Si le numéro est trop court, ajouter des espaces jusqu'à 20 caractères
-        $maxLength = 20;
-        $formattedNumber = str_pad($formattedNumber, $maxLength, ' ', STR_PAD_RIGHT);
-
-        // Limiter à une longueur maximale de 20 caractères
-        return substr($formattedNumber, 0, $maxLength);
-    }
-
-
+    //! Role property
     private $roles = [
         ["ROLE_USER"],
         ["ROLE_ADMIN"],
         ["ROLE_SUPER_ADMIN"]
     ];
-   
-    public function role()
+    public function role(): array
     {
         return $this->roles[array_rand($this->roles)];
     }
-    
+
+    //! Status Property
+    private $status = [
+        "draft",
+        "pending",
+        "submitted",
+        "approved",
+    ];
+    public function getOneRandomStatus(): string
+    {
+        return $this->status[array_rand($this->status)];
+    }
+
+    //! Business entity
     private $business = [
         "3Brasseurs",
         "FraisImport",
@@ -79,26 +55,33 @@ class AppProvider extends Base
         "ArmementDesMascareignes",
         "SalaisonsdeBourbon"
     ];
-   
-    public function business()
+    public function getOneRandombusiness(): string
     {
         return $this->business[array_rand($this->business)];
     }
-    public function businessList()
+    public function getBusinessList(): array
     {
         return $this->business;
     }
 
-    private $status = [
-        "draft",
-        "pending",
-        "submitted",
-        "approved",
+    //! Mimes Entity
+    private $mimes = [
+        "jpeg",
+        "png",
+        "gif",
+        "bmp",
+        "tiff",
+        "webp",
+        "svg",
+        "x-icon"
     ];
-   
-    public function status()
+    public function oneRandomMime(): string
     {
-        return $this->status[array_rand($this->status)];
+        return $this->mimes[array_rand($this->mimes)];
+    }
+    public function getMimelist(): array
+    {
+        return $this->mimes;
     }
 
 }

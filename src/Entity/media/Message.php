@@ -19,7 +19,7 @@ class Message extends BaseEntity
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?User $user = null;
+    private ?User $writer = null;
 
     #[ORM\OneToOne]
     #[ORM\JoinColumn(nullable: false)]
@@ -34,14 +34,14 @@ class Message extends BaseEntity
         return $this->id;
     }
 
-    public function getUser(): ?User
+    public function getWriter(): ?User
     {
-        return $this->user;
+        return $this->writer;
     }
 
-    public function setUser(?User $user): static
+    public function setWriter(?User $writer): static
     {
-        $this->user = $user;
+        $this->writer = $writer;
 
         return $this;
     }
