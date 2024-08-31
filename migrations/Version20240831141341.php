@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20240827145706 extends AbstractMigration
+final class Version20240831141341 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -35,11 +35,11 @@ final class Version20240827145706 extends AbstractMigration
         $this->addSql('CREATE TABLE issue (id INT AUTO_INCREMENT NOT NULL, technician_contacted_id INT NOT NULL, technician_coming_id INT DEFAULT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', count_number INT NOT NULL, status VARCHAR(255) NOT NULL, author VARCHAR(255) NOT NULL, summary VARCHAR(50) NOT NULL, description VARCHAR(1000) NOT NULL, fix_date DATE DEFAULT NULL, fix_time TIME DEFAULT NULL, follow_up INT DEFAULT NULL, solution VARCHAR(1000) DEFAULT NULL, UNIQUE INDEX UNIQ_12AD233ED5AFAE6D (technician_contacted_id), UNIQUE INDEX UNIQ_12AD233E5E1744C5 (technician_coming_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE kitchen_space (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', name VARCHAR(255) NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE menu (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', week INT NOT NULL, author VARCHAR(100) NOT NULL, fish_grill VARCHAR(50) DEFAULT NULL, meat_grill VARCHAR(50) DEFAULT NULL, chef_special VARCHAR(100) DEFAULT NULL, special VARCHAR(100) DEFAULT NULL, status VARCHAR(100) NOT NULL, pdf_path VARCHAR(255) DEFAULT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE message (id INT AUTO_INCREMENT NOT NULL, user_id INT NOT NULL, recipient_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', text VARCHAR(1000) NOT NULL, INDEX IDX_B6BD307FA76ED395 (user_id), UNIQUE INDEX UNIQ_B6BD307FE92F8F78 (recipient_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE message (id INT AUTO_INCREMENT NOT NULL, writer_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', recipient_id INT NOT NULL, recipient_type VARCHAR(255) NOT NULL, text VARCHAR(1000) NOT NULL, INDEX IDX_B6BD307F1BC7E6B6 (writer_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE mime (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', name VARCHAR(255) NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE note (id INT AUTO_INCREMENT NOT NULL, user_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', text VARCHAR(1000) NOT NULL, UNIQUE INDEX UNIQ_CFBDFA14A76ED395 (user_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE `order` (id INT AUTO_INCREMENT NOT NULL, supplier_id INT NOT NULL, recipient_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', delivery_date DATE NOT NULL, author VARCHAR(255) NOT NULL, sending_method VARCHAR(255) NOT NULL, status VARCHAR(255) NOT NULL, note VARCHAR(255) NOT NULL, pdf_path VARCHAR(255) NOT NULL, INDEX IDX_F52993982ADD6D8C (supplier_id), INDEX IDX_F5299398E92F8F78 (recipient_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE picture (id INT AUTO_INCREMENT NOT NULL, mime_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', slug VARCHAR(50) NOT NULL, name VARCHAR(100) NOT NULL, INDEX IDX_16DB4F89ACAC0426 (mime_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE picture (id INT AUTO_INCREMENT NOT NULL, mime_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', slug VARCHAR(50) NOT NULL, name VARCHAR(100) NOT NULL, path VARCHAR(255) NOT NULL, INDEX IDX_16DB4F89ACAC0426 (mime_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE product (id INT AUTO_INCREMENT NOT NULL, unit_id INT NOT NULL, supplier_id INT NOT NULL, type_id INT NOT NULL, category_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', kitchen_name VARCHAR(50) NOT NULL, commercial_name VARCHAR(255) NOT NULL, slug VARCHAR(50) NOT NULL, price NUMERIC(10, 2) NOT NULL, conditionning VARCHAR(255) NOT NULL, supplier_favorite TINYINT(1) NOT NULL, INDEX IDX_D34A04ADF8BD700D (unit_id), UNIQUE INDEX UNIQ_D34A04AD2ADD6D8C (supplier_id), INDEX IDX_D34A04ADC54C8C93 (type_id), INDEX IDX_D34A04AD12469DE2 (category_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE product_category (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', name VARCHAR(255) NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE product_inventory (id INT AUTO_INCREMENT NOT NULL, product_id INT NOT NULL, inventory_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', quantity_big NUMERIC(10, 2) NOT NULL, quantity_small NUMERIC(10, 2) NOT NULL, INDEX IDX_DF8DFCBB4584665A (product_id), INDEX IDX_DF8DFCBB9EEA759 (inventory_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
@@ -56,7 +56,7 @@ final class Version20240827145706 extends AbstractMigration
         $this->addSql('CREATE TABLE supplier (id INT AUTO_INCREMENT NOT NULL, business_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', logistic VARCHAR(1000) NOT NULL, habits VARCHAR(1000) DEFAULT NULL, order_days JSON NOT NULL, good_to_know VARCHAR(1000) DEFAULT NULL, UNIQUE INDEX UNIQ_9B2A6C7EA89DB457 (business_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE template (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', name VARCHAR(255) NOT NULL, text VARCHAR(1000) NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE unit (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', name VARCHAR(50) NOT NULL, symbol VARCHAR(5) NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE user (id INT AUTO_INCREMENT NOT NULL, business_id INT NOT NULL, user_login_id INT NOT NULL, avatar_id INT DEFAULT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', uuid CHAR(36) NOT NULL COMMENT \'(DC2Type:guid)\', firstname VARCHAR(255) NOT NULL, surname VARCHAR(255) NOT NULL, phone VARCHAR(20) NOT NULL, whatsapp VARCHAR(20) DEFAULT NULL, job VARCHAR(255) DEFAULT NULL, late_count INT NOT NULL, pseudo VARCHAR(50) NOT NULL, INDEX IDX_8D93D649A89DB457 (business_id), UNIQUE INDEX UNIQ_8D93D649BC3F045D (user_login_id), UNIQUE INDEX UNIQ_8D93D64986383B10 (avatar_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE user (id INT AUTO_INCREMENT NOT NULL, business_id INT NOT NULL, user_login_id INT NOT NULL, avatar_id INT DEFAULT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', uuid CHAR(36) NOT NULL COMMENT \'(DC2Type:guid)\', firstname VARCHAR(255) NOT NULL, surname VARCHAR(255) NOT NULL, phone VARCHAR(20) NOT NULL, whatsapp VARCHAR(20) DEFAULT NULL, job VARCHAR(255) DEFAULT NULL, late_count INT NOT NULL, pseudo VARCHAR(50) NOT NULL, private_note VARCHAR(1000) NOT NULL, INDEX IDX_8D93D649A89DB457 (business_id), UNIQUE INDEX UNIQ_8D93D649BC3F045D (user_login_id), UNIQUE INDEX UNIQ_8D93D64986383B10 (avatar_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE user_login (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', email VARCHAR(180) NOT NULL, roles JSON NOT NULL, password VARCHAR(255) NOT NULL, UNIQUE INDEX UNIQ_IDENTIFIER_EMAIL (email), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE messenger_messages (id BIGINT AUTO_INCREMENT NOT NULL, body LONGTEXT NOT NULL, headers LONGTEXT NOT NULL, queue_name VARCHAR(190) NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', available_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', delivered_at DATETIME DEFAULT NULL COMMENT \'(DC2Type:datetime_immutable)\', INDEX IDX_75EA56E0FB7336F0 (queue_name), INDEX IDX_75EA56E0E3BD61CE (available_at), INDEX IDX_75EA56E016BA31DB (delivered_at), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('ALTER TABLE absence ADD CONSTRAINT FK_765AE0C9A76ED395 FOREIGN KEY (user_id) REFERENCES user (id)');
@@ -75,8 +75,7 @@ final class Version20240827145706 extends AbstractMigration
         $this->addSql('ALTER TABLE inventory_room ADD CONSTRAINT FK_38399EB554177093 FOREIGN KEY (room_id) REFERENCES room (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE issue ADD CONSTRAINT FK_12AD233ED5AFAE6D FOREIGN KEY (technician_contacted_id) REFERENCES contact (id)');
         $this->addSql('ALTER TABLE issue ADD CONSTRAINT FK_12AD233E5E1744C5 FOREIGN KEY (technician_coming_id) REFERENCES contact (id)');
-        $this->addSql('ALTER TABLE message ADD CONSTRAINT FK_B6BD307FA76ED395 FOREIGN KEY (user_id) REFERENCES user (id)');
-        $this->addSql('ALTER TABLE message ADD CONSTRAINT FK_B6BD307FE92F8F78 FOREIGN KEY (recipient_id) REFERENCES contact (id)');
+        $this->addSql('ALTER TABLE message ADD CONSTRAINT FK_B6BD307F1BC7E6B6 FOREIGN KEY (writer_id) REFERENCES user (id)');
         $this->addSql('ALTER TABLE note ADD CONSTRAINT FK_CFBDFA14A76ED395 FOREIGN KEY (user_id) REFERENCES user (id)');
         $this->addSql('ALTER TABLE `order` ADD CONSTRAINT FK_F52993982ADD6D8C FOREIGN KEY (supplier_id) REFERENCES supplier (id)');
         $this->addSql('ALTER TABLE `order` ADD CONSTRAINT FK_F5299398E92F8F78 FOREIGN KEY (recipient_id) REFERENCES contact (id)');
@@ -103,12 +102,10 @@ final class Version20240827145706 extends AbstractMigration
         $this->addSql('ALTER TABLE user ADD CONSTRAINT FK_8D93D649BC3F045D FOREIGN KEY (user_login_id) REFERENCES user_login (id)');
         $this->addSql('ALTER TABLE user ADD CONSTRAINT FK_8D93D64986383B10 FOREIGN KEY (avatar_id) REFERENCES picture (id)');
 
-
         //! index added by admin
         $this->addSql('CREATE INDEX kitchen_idx ON product (kitchen_name)');
         $this->addSql('CREATE INDEX commercial_idx ON product (commercial_name)');
         $this->addSql('CREATE INDEX kitchen_commercial_idx ON product (kitchen_Name, commercial_name)');
-       
     }
 
     public function down(Schema $schema): void
@@ -130,8 +127,7 @@ final class Version20240827145706 extends AbstractMigration
         $this->addSql('ALTER TABLE inventory_room DROP FOREIGN KEY FK_38399EB554177093');
         $this->addSql('ALTER TABLE issue DROP FOREIGN KEY FK_12AD233ED5AFAE6D');
         $this->addSql('ALTER TABLE issue DROP FOREIGN KEY FK_12AD233E5E1744C5');
-        $this->addSql('ALTER TABLE message DROP FOREIGN KEY FK_B6BD307FA76ED395');
-        $this->addSql('ALTER TABLE message DROP FOREIGN KEY FK_B6BD307FE92F8F78');
+        $this->addSql('ALTER TABLE message DROP FOREIGN KEY FK_B6BD307F1BC7E6B6');
         $this->addSql('ALTER TABLE note DROP FOREIGN KEY FK_CFBDFA14A76ED395');
         $this->addSql('ALTER TABLE `order` DROP FOREIGN KEY FK_F52993982ADD6D8C');
         $this->addSql('ALTER TABLE `order` DROP FOREIGN KEY FK_F5299398E92F8F78');
@@ -201,6 +197,5 @@ final class Version20240827145706 extends AbstractMigration
         $this->addSql('DROP INDEX kitchen_idx ON product');
         $this->addSql('DROP INDEX commercial_idx ON product');
         $this->addSql('DROP INDEX kitchen_commercial_idx ON product');
-      
     }
 }

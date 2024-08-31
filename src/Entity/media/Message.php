@@ -3,12 +3,24 @@
 namespace App\Entity\media;
 
 use App\Entity\BaseEntity;
+use App\Entity\RecipientInterface;
 use App\Entity\user\Contact;
 use App\Repository\media\MessageRepository;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\user\User; 
+use App\Entity\user\User;
 use Symfony\Component\Validator\Constraints as Assert;
 
+/**
+ * Class Message
+ * 
+ * Represents a message entity with a writer and a polymorphic recipient.
+ * 
+ * This class allows a message to have either a User or Contact as a recipient.
+ * The recipient is identified by both an ID (`recipientId`) and a type (`recipientType`).
+ * The `recipientType` determines which entity to fetch (either `User` or `Contact`).
+ * 
+ * @package App\Entity\media
+ */
 #[ORM\Entity(repositoryClass: MessageRepository::class)]
 class Message extends BaseEntity
 {
@@ -17,13 +29,15 @@ class Message extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne]
+    #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: false)]
     private ?User $writer = null;
 
-    #[ORM\OneToOne]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?Contact $recipient = null;
+    #[ORM\Column(type: 'integer', nullable: false)]
+    private ?int $recipientId = null;
+
+    #[ORM\Column(type: 'string', length: 255, nullable: false)]
+    private ?string $recipientType = null;
 
     #[ORM\Column(length: 1000, nullable: false)]
     #[Assert\NotBlank(message: "Text should not be blank.")]
@@ -45,19 +59,38 @@ class Message extends BaseEntity
 
         return $this;
     }
+   
+   public function getRecipientType(): ?string
+   {
+       return $this->recipientType;
+   }
 
-    public function getRecipient(): ?Contact
-    {
-        return $this->recipient;
-    }
+   
+   public function setRecipientType(string $recipientType): self
+   {
+       if (!in_array($recipientType, ['user', 'contact'])) {
+           throw new \InvalidArgumentException('Invalid recipient type');
+       }
 
-    public function setRecipient(Contact $recipient): static
+       $this->recipientType = $recipientType;
+
+       return $this;
+   }
+   
+    public function setRecipient(BaseEntity $recipient): self
     {
-        $this->recipient = $recipient;
+        if ($recipient instanceof User) {
+            $this->recipientType = 'user';
+        } elseif ($recipient instanceof Contact) {
+            $this->recipientType = 'contact';
+        } else {
+            throw new \InvalidArgumentException('Invalid recipient type');
+        }
+
+        $this->recipientId = $recipient->getId();
 
         return $this;
     }
-
     public function getText(): ?string
     {
         return $this->text;
@@ -69,6 +102,4 @@ class Message extends BaseEntity
 
         return $this;
     }
-
-    
 }

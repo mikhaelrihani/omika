@@ -9,13 +9,13 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Entity\media\Picture;
+use App\Entity\RecipientInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 #[UniqueEntity(fields: ['avatar'], message: 'This picture is already used as an avatar by another user.')]
-// TODO : MIGRATION : $this->addSql('ALTER TABLE user ADD CONSTRAINT UNIQUE (avatar_id)');
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-class User extends BaseEntity
+class User extends BaseEntity implements RecipientInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -72,7 +72,7 @@ class User extends BaseEntity
     #[Assert\NotNull(message: "Late count should not be null.")]
     private int $lateCount = 0;
 
-   
+
     //! differents properties than contact entity
 
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]
@@ -92,16 +92,15 @@ class User extends BaseEntity
     #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'user')]
     private Collection $absence;
 
+    #[ORM\Column(length: 1000, nullable: false)]
+    #[Assert\NotBlank(message: "Private note should not be blank.")]
+    private ?string $privateNote = null;
+
     public function __construct()
     {
         parent::__construct();
         $this->absence = new ArrayCollection();
     }
-
-   
-
-
-
 
     public function getId(): ?int
     {
@@ -142,6 +141,11 @@ class User extends BaseEntity
         $this->surname = $surname;
 
         return $this;
+    }
+
+    public function getFullName(): string
+    {
+        return $this->firstname . ' ' . $this->surname;
     }
 
     public function getPseudo(): ?string
@@ -220,7 +224,7 @@ class User extends BaseEntity
         return $this;
     }
 
-  
+
     public function getJob(): ?string
     {
         return $this->job;
@@ -271,6 +275,18 @@ class User extends BaseEntity
                 $absence->setUser(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getPrivateNote(): ?string
+    {
+        return $this->privateNote;
+    }
+
+    public function setPrivateNote(string $privateNote): static
+    {
+        $this->privateNote = $privateNote;
 
         return $this;
     }

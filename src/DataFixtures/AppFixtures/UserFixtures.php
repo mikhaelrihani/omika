@@ -4,6 +4,8 @@ namespace App\DataFixtures\AppFixtures;
 
 use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
+use App\Entity\media\Message;
+use App\Entity\media\Note;
 use App\Entity\user\Absence;
 use App\Entity\user\Business;
 use App\Entity\user\Contact;
@@ -50,8 +52,19 @@ class UserFixtures extends BaseFixtures
         $this->faker->addProvider(new AppProvider($this->faker));
         $this->pictures = $this->retrieveEntities('picture', $this);
         $this->createBusiness();
-        $this->createContacts();
-        $this->createUsers(10); // You can specify the number of users to create
+        $this->createContacts(20);
+        $this->createUsers(10);
+        $users = $this->retrieveEntities('user', $this);
+        $contacts = $this->retrieveEntities('contact', $this);
+        // Flush to set the ID of each recipient entity when sending message
+        $this->em->flush();
+        //* To avoid a circular dependency between UserFixtures and MediaFixtures,
+        //* we implement the logic for creating notes and messages here, rather than in MediaFixtures.
+        $this->createMessages($users, $contacts);
+        $this->createNotes($users);
+
+
+
         $this->em->flush();
     }
 
@@ -128,7 +141,9 @@ class UserFixtures extends BaseFixtures
                     ->setWhatsapp($this->generatePhoneNumber());
                 $user->setUserLogin($this->createUserLogin());
             }
-            $user->setCreatedAt($timestamps[ 'createdAt' ])
+            $user
+                ->setPrivateNote($this->faker->realText(1000))
+                ->setCreatedAt($timestamps[ 'createdAt' ])
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
             // Assign an avatar to the user
@@ -139,8 +154,12 @@ class UserFixtures extends BaseFixtures
             $user->setBusiness($this->businessEntities[$randomIndexBusiness]);
 
             $this->setAbsenceEntity($user, $this->surnames);
-            
+
             $this->em->persist($user);
+            
+            // Store the surnames for absence authoring
+            $this->surnames[] = $user->getSurname();
+
             // Add a reference to retrieve users in other fixtures
             $this->addReference("user_{$u}", $user);
         }
@@ -149,9 +168,9 @@ class UserFixtures extends BaseFixtures
     /**
      * Create a number of Contact entities.
      */
-    public function createContacts(): void
+    public function createContacts(int $num): void
     {
-        for ($c = 0; $c < 10; $c++) {
+        for ($c = 0; $c < $num; $c++) {
             $timestamps = $this->faker->createTimeStamps();
             $contact = new Contact();
             $contact
@@ -173,6 +192,9 @@ class UserFixtures extends BaseFixtures
             // Set the absence information for the contact
             $this->setAbsenceEntity($contact, $this->surnames);
             $this->em->persist($contact);
+
+            // Store the surnames for absence authoring
+            $this->surnames[] = $contact->getSurname();
 
             // Add a reference to retrieve contacts in other fixtures
             $this->addReference("contact_{$c}", $contact);
@@ -216,6 +238,7 @@ class UserFixtures extends BaseFixtures
         $randomIndexAbsence = rand(0, 4);
 
         for ($a = 0; $a < $randomIndexAbsence; $a++) {
+           
             $absence = new Absence();
             // Associate the absence with the correct entity
             if ($entity instanceof User) {
@@ -236,9 +259,68 @@ class UserFixtures extends BaseFixtures
             $absence->setAuthor($surnames[$randomKey]);
 
             $this->em->persist($absence);
+
         }
     }
 
+
+    /**
+     * Create Note entities.
+     *
+     * @param array $users The array of User entities.
+     */
+    private function createNotes(array $users): void
+    {
+        foreach ($users as $user) {
+
+
+            $timestamps = $this->faker->createTimeStamps();
+
+            $note = new Note();
+            $note
+                ->setUser($user)
+                ->setText($this->faker->realText(1000))
+                ->setCreatedAt($timestamps[ 'createdAt' ])
+                ->setUpdatedAt($timestamps[ 'updatedAt' ]);
+
+            $this->em->persist($note);
+        }
+    }
+    /**
+     * Create Message entities.
+     *
+     * @param array $everybody The array of users and contacts for message creation.
+     */
+    private function createMessages(array $users, array $contacts): void
+    {
+        for ($m = 0; $m < 30; $m++) {
+            if (!empty($users) && !empty($contacts)) {
+
+                $timestamps = $this->faker->createTimeStamps();
+
+                $message = new Message();
+                $randomIndexUsers = array_rand($users);
+                $writer = $users[$randomIndexUsers];
+                // we take out the user from users array to avoid sending a message to himself
+                array_splice($users, $randomIndexUsers, 1);
+
+                $everybody = array_merge($users, $contacts);
+                if (!empty($everybody)) {
+                    $recipient = $this->faker->randomElement($everybody);
+                    $message
+                        ->setWriter($writer)
+                        ->setText($this->faker->realText(1000))
+                        ->setRecipient($recipient)
+                        ->setCreatedAt($timestamps[ 'createdAt' ])
+                        ->setUpdatedAt($timestamps[ 'updatedAt' ]);
+
+                    $this->em->persist($message);
+                }
+                // we put back the user in the users array
+                $users[] = $writer;
+            }
+        }
+    }
     /**
      * Get the dependencies for this fixture.
      *

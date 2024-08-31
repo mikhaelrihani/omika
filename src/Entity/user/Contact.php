@@ -3,6 +3,7 @@
 namespace App\Entity\user;
 
 use App\Entity\BaseEntity;
+use App\Entity\RecipientInterface;
 use App\Repository\User\ContactRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -13,7 +14,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Entity(repositoryClass: ContactRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_EMAIL', fields: ['email'])]
 
-class Contact extends BaseEntity
+class Contact extends BaseEntity implements RecipientInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -64,7 +65,7 @@ class Contact extends BaseEntity
     )]
     private ?string $whatsapp = null;
 
-    
+
     #[ORM\ManyToOne(targetEntity: Business::class, inversedBy: 'contacts')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Business $business = null;
@@ -88,7 +89,7 @@ class Contact extends BaseEntity
         $this->absence = new ArrayCollection();
     }
 
-   
+
 
     public function getId(): ?int
     {
@@ -141,6 +142,11 @@ class Contact extends BaseEntity
         $this->surname = $surname;
 
         return $this;
+    }
+
+    public function getFullName(): string
+    {
+        return $this->firstname . ' ' . $this->surname;
     }
 
     public function getPhone(): ?string
@@ -233,6 +239,6 @@ class Contact extends BaseEntity
         return $this;
     }
 
-   
+
 
 }

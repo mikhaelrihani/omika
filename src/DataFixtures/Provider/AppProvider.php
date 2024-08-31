@@ -18,8 +18,10 @@ class AppProvider extends Base
     {
         $createdAt = $this->dateTimeImmutableBetween('-5 years', 'now');
         $updatedAt = $this->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), 'now');
+    
         return compact('createdAt', 'updatedAt');
     }
+    
 
     //! Role property
     private $roles = [
