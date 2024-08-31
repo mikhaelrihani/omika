@@ -3,7 +3,7 @@
 namespace App\Entity\user;
 
 use App\Entity\BaseEntity;
-use App\Entity\RecipientInterface;
+use App\Interface\entity\RecipientInterface;
 use App\Repository\User\ContactRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;

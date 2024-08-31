@@ -1,5 +1,5 @@
 <?php
-namespace App\Entity;
+namespace App\Interface\entity;
 
 interface RecipientInterface
 {
