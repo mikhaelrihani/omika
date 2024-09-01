@@ -54,7 +54,7 @@ class Product extends BaseEntity
     #[Assert\NotBlank(message: "Supplier Favorite should not be blank.")]
     private ?bool $supplierFavorite = null;
 
-    #[ORM\OneToOne(targetEntity: Supplier::class, inversedBy: 'products')]
+    #[ORM\ManyToOne(targetEntity: Supplier::class, inversedBy: 'products')]
     #[ORM\JoinColumn(nullable: false)]
     private ?supplier $supplier = null;
 
@@ -71,15 +71,10 @@ class Product extends BaseEntity
     #[ORM\JoinColumn(nullable: false)]
     private ?ProductType $type = null;
 
-    #[ORM\ManyToOne(targetEntity: ProductCategory::class, inversedBy: 'products')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?ProductCategory $category = null;
-
-
-
     public function __construct()
     {
         $this->recipes = new ArrayCollection();
+        
     }
 
     public function getId(): ?int
@@ -223,17 +218,6 @@ class Product extends BaseEntity
         return $this;
     }
 
-    public function getCategory(): ?ProductCategory
-    {
-        return $this->category;
-    }
-
-    public function setCategory(?ProductCategory $category): static
-    {
-        $this->category = $category;
-
-        return $this;
-    }
     public function getRupture(): ?Rupture
     {
         return $this->rupture;

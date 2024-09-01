@@ -7,10 +7,10 @@ use App\DataFixtures\AppFixtures\BaseFixtures;
 use App\Entity\media\Message;
 use App\Entity\media\Note;
 use App\Entity\user\Absence;
-use App\Entity\user\Business;
 use App\Entity\user\Contact;
 use App\Entity\user\User;
 use App\Entity\user\UserLogin;
+use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\Uid\Uuid;
 
@@ -19,13 +19,9 @@ use Symfony\Component\Uid\Uuid;
  *
  * Fixture class responsible for loading user-related data into the database.
  */
-class UserFixtures extends BaseFixtures
+class UserFixtures extends BaseFixtures implements FixtureGroupInterface
 {
-    /**
-     * @var array $businessEntities Array of Business entities created in the fixture.
-     */
-    private array $businessEntities;
-
+   private array $businessEntities;
     /**
      * @var array $pictures Array of pictures retrieved for setting user avatars.
      */
@@ -36,12 +32,15 @@ class UserFixtures extends BaseFixtures
      */
     private array $surnames = [];
 
-
     /**
      * @var bool $userAdminExists Flag indicating if a super admin user has already been created.
      */
     private bool $userAdminExists;
 
+    public static function getGroups(): array
+    {
+        return ['group_user'];
+    }
     /**
      * Load the user fixtures into the database.
      *
@@ -49,9 +48,9 @@ class UserFixtures extends BaseFixtures
      */
     public function load(ObjectManager $manager): void
     {
+        $this->businessEntities = $this->retrieveEntities('business', $this);
         $this->faker->addProvider(new AppProvider($this->faker));
         $this->pictures = $this->retrieveEntities('picture', $this);
-        $this->createBusiness();
         $this->createContacts(20);
         $this->createUsers(10);
         $users = $this->retrieveEntities('user', $this);
@@ -201,25 +200,7 @@ class UserFixtures extends BaseFixtures
         }
     }
 
-    /**
-     * Create Business entities and store them in $businessEntities.
-     */
-    public function createBusiness(): void
-    {
-        $businessList = $this->faker->getBusinessList();
-        $this->businessEntities = [];
-        foreach ($businessList as $businessName) {
-            $timestamps = $this->faker->createTimeStamps();
-            $business = new Business();
-            $business
-                ->setName($businessName)
-                ->setCreatedAt($timestamps[ 'createdAt' ])
-                ->setUpdatedAt($timestamps[ 'updatedAt' ]);
-
-            $this->businessEntities[] = $business;
-            $this->em->persist($business);
-        }
-    }
+    
 
     /**
      * Set the absence information for a given entity (User or Contact).
@@ -330,6 +311,7 @@ class UserFixtures extends BaseFixtures
     {
         return [
             MediaFixtures::class,
+            BusinessFixtures::class,
         ];
     }
 }

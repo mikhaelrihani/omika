@@ -9,8 +9,8 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\product\Product; 
-use App\Entity\order\Order; 
+use App\Entity\product\Product;
+use App\Entity\order\Order;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: SupplierRepository::class)]
@@ -41,8 +41,12 @@ class Supplier extends BaseEntity
     private ?string $goodToKnow = null;
 
 
-    #[ORM\OneToOne(mappedBy: 'supplier')]
-    private ?Product $products = null;
+
+    /**
+     * @ORM\OneToMany(targetEntity="App\Entity\product\Product", mappedBy="supplier")
+     */
+    #[ORM\OneToMany(targetEntity: Product::class,mappedBy: 'supplier', orphanRemoval: true)]
+    private Collection $products;
 
     /**
      * @var Collection<int, Order>
@@ -50,10 +54,14 @@ class Supplier extends BaseEntity
     #[ORM\OneToMany(targetEntity: Order::class, mappedBy: 'supplier', orphanRemoval: true)]
     private Collection $orders;
 
-   
+    #[ORM\Column]
+    private array $deliveryDays = [];
+
+
     public function __construct()
     {
         $this->orders = new ArrayCollection();
+        $this->products = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -110,20 +118,28 @@ class Supplier extends BaseEntity
         return $this;
     }
 
- 
-    public function getProducts(): ?Product
+
+    /**
+     * @return Collection|Product[]
+     */
+    public function getProducts(): Collection
     {
         return $this->products;
     }
 
-    public function setProducts(Product $products): static
+    public function addProduct(Product $product): self
     {
-        // set the owning side of the relation if necessary
-        if ($products->getSupplier() !== $this) {
-            $products->setSupplier($this);
+        if (!$this->products->contains($product)) {
+            $this->products[] = $product;
+            $product->setSupplier($this);
         }
 
-        $this->products = $products;
+        return $this;
+    }
+
+    public function removeProduct(Product $product): self
+    {
+        $this->products->removeElement($product);
 
         return $this;
     }
@@ -167,6 +183,18 @@ class Supplier extends BaseEntity
     public function setBusiness(Business $business): static
     {
         $this->business = $business;
+
+        return $this;
+    }
+
+    public function getDeliveryDays(): array
+    {
+        return $this->deliveryDays;
+    }
+
+    public function setDeliveryDays(array $deliveryDays): static
+    {
+        $this->deliveryDays = $deliveryDays;
 
         return $this;
     }

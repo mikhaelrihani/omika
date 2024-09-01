@@ -18,10 +18,10 @@ class AppProvider extends Base
     {
         $createdAt = $this->dateTimeImmutableBetween('-5 years', 'now');
         $updatedAt = $this->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), 'now');
-    
+
         return compact('createdAt', 'updatedAt');
     }
-    
+
 
     //! Role property
     private $roles = [
@@ -86,4 +86,38 @@ class AppProvider extends Base
         return $this->mimes;
     }
 
+    //! Units Entity
+    private $units = [
+        "Kilogram"   => "kg",
+        "Gram"       => "g",
+        "Liter"      => "l",
+        "Centiliter" => "cl",
+        "Unit"       => "unit",
+        "Piece"      => "piece",
+    ];
+    public function oneRandomUnit(): string
+    {
+        return array_rand($this->units);
+
+    }
+    public function getUnitList(): array
+    {
+        return $this->units;
+    }
+
+    //! ProductType Entity
+    private $productTypes = [
+        "surgelé",
+        "frais",
+        "sec",
+        "autre"
+    ];
+    public function oneRandomProductType(): string
+    {
+        return $this->productTypes[array_rand($this->productTypes)];
+    }
+    public function getProductTypeList(): array
+    {
+        return $this->productTypes;
+    }
 }

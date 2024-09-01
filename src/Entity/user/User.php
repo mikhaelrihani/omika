@@ -77,7 +77,7 @@ class User extends BaseEntity implements RecipientInterface
 
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
-    private ?userLogin $userLogin = null;
+    private ?UserLogin $userLogin = null;
 
     #[ORM\OneToOne(cascade: ['persist'])]
     private ?picture $avatar = null;
@@ -184,12 +184,12 @@ class User extends BaseEntity implements RecipientInterface
         return $this;
     }
 
-    public function getUserLogin(): ?userLogin
+    public function getUserLogin(): ?UserLogin
     {
         return $this->userLogin;
     }
 
-    public function setUserLogin(userLogin $userLogin): static
+    public function setUserLogin(UserLogin $userLogin): static
     {
         $this->userLogin = $userLogin;
 

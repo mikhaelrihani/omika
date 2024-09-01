@@ -9,7 +9,9 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ObjectManager;
 use Faker\Factory;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-
+//! Due to memory issue on php ini ---> load fixtures on terminal with these command:
+// php bin/console doctrine:fixtures:load --group=group_media 
+// php bin/console doctrine:fixtures:load --group=group_product --group=group_user --append
 class BaseFixtures extends Fixture
 {
     protected EntityManagerInterface $em;
