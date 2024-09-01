@@ -172,7 +172,7 @@ class Product extends BaseEntity
         return $this->supplier;
     }
 
-    public function setSupplier(Supplier $supplier): static
+    public function setSupplier(?Supplier $supplier): static
     {
         $this->supplier = $supplier;
 

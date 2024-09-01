@@ -22,7 +22,7 @@ class BusinessFixtures extends BaseFixtures implements FixtureGroupInterface
 
     public static function getGroups(): array
     {
-        return ['group_user'];
+        return ['group_business'];
     }
     /**
      * Load the Business fixtures into the database.
@@ -32,6 +32,7 @@ class BusinessFixtures extends BaseFixtures implements FixtureGroupInterface
         $this->faker->addProvider(new AppProvider($this->faker));
         $this->createBusiness();
         $this->em->flush();
+        
     }
 
 
@@ -56,6 +57,7 @@ class BusinessFixtures extends BaseFixtures implements FixtureGroupInterface
             $this->addReference("business_{$b}", $business);
             $b++;
         }
+      
     }
 
 

@@ -24,10 +24,10 @@ class ProductFixtures extends BaseFixtures implements FixtureGroupInterface
     public function load(ObjectManager $manager): void
     {
         $this->faker->addProvider(new AppProvider($this->faker));
-
         $this->createUnits();
         $this->createProductTypes();
         $this->createSuppliers();
+        $this->em->flush();
         $this->createProducts(100);
 
         $this->em->flush();
@@ -107,21 +107,22 @@ class ProductFixtures extends BaseFixtures implements FixtureGroupInterface
 
     private function createProducts($numProduct): void
     {
+       
         $units = $this->retrieveEntities('unit', $this);
         $productTypes = $this->retrieveEntities('productType', $this);
         $suppliers = $this->retrieveEntities('supplier', $this);
         $favoriteAssigned = [];
+        $kitchenName = [];
+
+        for ($i = 0; $i < floor($numProduct / 3); $i++) {
+            $name = $this->faker->unique->realText(10);
+            $type = $this->faker->randomElement($productTypes);
+            $kitchenName[$name] = $type;
+        }
 
         for ($p = 0; $p < $numProduct; $p++) {
 
             $timestamps = $this->faker->createTimeStamps();
-            $kitchenName = [];
-            for ($i = 0; $i < floor($numProduct / 3); $i++) {
-                $name = $this->faker->unique->realText(10);
-                $type = $this->faker->randomElement($productTypes);
-                $kitchenName[$name] = $type;
-            }
-
             $product = new Product();
             $product
                 ->setUnit($this->faker->randomElement($units))

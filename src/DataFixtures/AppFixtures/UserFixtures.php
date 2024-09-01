@@ -21,7 +21,7 @@ use Symfony\Component\Uid\Uuid;
  */
 class UserFixtures extends BaseFixtures implements FixtureGroupInterface
 {
-   private array $businessEntities;
+    private array $businessEntities;
     /**
      * @var array $pictures Array of pictures retrieved for setting user avatars.
      */
@@ -155,7 +155,7 @@ class UserFixtures extends BaseFixtures implements FixtureGroupInterface
             $this->setAbsenceEntity($user, $this->surnames);
 
             $this->em->persist($user);
-            
+
             // Store the surnames for absence authoring
             $this->surnames[] = $user->getSurname();
 
@@ -200,7 +200,7 @@ class UserFixtures extends BaseFixtures implements FixtureGroupInterface
         }
     }
 
-    
+
 
     /**
      * Set the absence information for a given entity (User or Contact).
@@ -219,7 +219,7 @@ class UserFixtures extends BaseFixtures implements FixtureGroupInterface
         $randomIndexAbsence = rand(0, 4);
 
         for ($a = 0; $a < $randomIndexAbsence; $a++) {
-           
+
             $absence = new Absence();
             // Associate the absence with the correct entity
             if ($entity instanceof User) {
