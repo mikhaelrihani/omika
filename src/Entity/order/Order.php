@@ -46,10 +46,6 @@ class Order extends BaseEntity
     #[ORM\JoinColumn(nullable: false)]
     private ?Supplier $supplier = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?Contact $recipient = null;
-
     public function getId(): ?int
     {
         return $this->id;
@@ -135,18 +131,6 @@ class Order extends BaseEntity
     public function setSupplier(?Supplier $supplier): static
     {
         $this->supplier = $supplier;
-
-        return $this;
-    }
-
-    public function getRecipient(): ?Contact
-    {
-        return $this->recipient;
-    }
-
-    public function setRecipient(?Contact $recipient): static
-    {
-        $this->recipient = $recipient;
 
         return $this;
     }

@@ -10,7 +10,6 @@ use App\Entity\user\Absence;
 use App\Entity\user\Contact;
 use App\Entity\user\User;
 use App\Entity\user\UserLogin;
-use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\Uid\Uuid;
 
@@ -19,7 +18,7 @@ use Symfony\Component\Uid\Uuid;
  *
  * Fixture class responsible for loading user-related data into the database.
  */
-class UserFixtures extends BaseFixtures implements FixtureGroupInterface
+class UserFixtures extends BaseFixtures 
 {
     private array $businessEntities;
     /**
@@ -37,10 +36,7 @@ class UserFixtures extends BaseFixtures implements FixtureGroupInterface
      */
     private bool $userAdminExists;
 
-    public static function getGroups(): array
-    {
-        return ['group_user'];
-    }
+   
     /**
      * Load the user fixtures into the database.
      *
@@ -53,16 +49,17 @@ class UserFixtures extends BaseFixtures implements FixtureGroupInterface
         $this->pictures = $this->retrieveEntities('picture', $this);
         $this->createContacts(20);
         $this->createUsers(10);
+        $manager->flush();
         $users = $this->retrieveEntities('user', $this);
         $contacts = $this->retrieveEntities('contact', $this);
         // Flush to set the ID of each recipient entity when sending message
-        $this->em->flush();
+        $manager->flush();
         //* To avoid a circular dependency between UserFixtures and MediaFixtures,
         //* we implement the logic for creating notes and messages here, rather than in MediaFixtures.
         $this->createMessages($users, $contacts);
         $this->createNotes($users);
 
-        $this->em->flush();
+        $manager->flush();
     }
 
     /**
@@ -267,8 +264,6 @@ class UserFixtures extends BaseFixtures implements FixtureGroupInterface
     }
     /**
      * Create Message entities.
-     *
-     * @param array $everybody The array of users and contacts for message creation.
      */
     private function createMessages(array $users, array $contacts): void
     {

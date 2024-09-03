@@ -8,7 +8,6 @@ use App\Entity\media\Mime;
 use App\Entity\media\Picture;
 use App\Entity\media\Template;
 use App\Service\UnsplashApiService;
-use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -18,7 +17,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
  *
  * Fixture class responsible for loading media-related data into the database.
  */
-class MediaFixtures extends BaseFixtures implements FixtureGroupInterface
+class MediaFixtures extends BaseFixtures 
 {
     /**
      * @var UnsplashApiService $unsplashApiService Service for fetching images from Unsplash.
@@ -38,10 +37,7 @@ class MediaFixtures extends BaseFixtures implements FixtureGroupInterface
         $this->unsplashApiService = $unsplashApi;
     }
 
-    public static function getGroups(): array
-    {
-        return ['group_media'];
-    }
+   
     /**
      * Load the media fixtures into the database.
      */

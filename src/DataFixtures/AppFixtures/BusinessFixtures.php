@@ -5,7 +5,6 @@ namespace App\DataFixtures\AppFixtures;
 use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
 use App\Entity\user\Business;
-use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
 
 /**
@@ -13,17 +12,14 @@ use Doctrine\Persistence\ObjectManager;
  *
  * Fixture class responsible for loading Business-related data into the database.
  */
-class BusinessFixtures extends BaseFixtures implements FixtureGroupInterface
+class BusinessFixtures extends BaseFixtures 
 {
     /**
      * @var array $businessEntities Array of Business entities created in the fixture.
      */
     private array $businessEntities;
 
-    public static function getGroups(): array
-    {
-        return ['group_business'];
-    }
+
     /**
      * Load the Business fixtures into the database.
      */

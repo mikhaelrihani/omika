@@ -4,12 +4,14 @@ namespace App\DataFixtures\AppFixtures;
 
 use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
+use App\Entity\order\Order;
+use App\Entity\order\ProductOrder;
 use App\Entity\product\Product;
 use App\Entity\product\ProductType;
 use App\Entity\product\Rupture;
 use App\Entity\product\Supplier;
 use App\Entity\recipe\Unit;
-use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
+use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 
 /**
@@ -17,27 +19,28 @@ use Doctrine\Persistence\ObjectManager;
  *
  * Fixture class responsible for loading product-related data into the database.
  */
-class ProductFixtures extends BaseFixtures implements FixtureGroupInterface
+class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
 {
     private $numProduct = 100;
+    private array $users;
     /**
      * Load the product fixtures into the database.
      */
     public function load(ObjectManager $manager): void
     {
         $this->faker->addProvider(new AppProvider($this->faker));
+        $this->users = $this->retrieveEntities('user', $this);
         $this->createUnits();
         $this->createProductTypes();
         $this->createSuppliers();
         $this->createProducts($this->numProduct);
         $this->createRuptures();
+        $this->createOrders(20);
+        $this->Products_Orders();
 
         $this->em->flush();
     }
-    public static function getGroups(): array
-    {
-        return ['group_product'];
-    }
+   
 
     private function createUnits(): void
     {
@@ -92,11 +95,11 @@ class ProductFixtures extends BaseFixtures implements FixtureGroupInterface
             $supplier = new Supplier();
             $supplier
                 ->setBusiness($business)
-                ->setLogistic($this->faker->realText(150))
-                ->setHabits($this->faker->realText(150))
+                ->setLogistic($this->faker->text(50))
+                ->setHabits($this->faker->text(50))
                 ->setOrderDays($this->faker->randomElements(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], $numOrderDays))
                 ->setDeliveryDays($this->faker->randomElements(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], $numDeliveryDays))
-                ->setGoodToKnow($this->faker->realText(100))
+                ->setGoodToKnow($this->faker->text(50))
                 ->setCreatedAt($timestamps[ 'createdAt' ])
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
@@ -117,7 +120,7 @@ class ProductFixtures extends BaseFixtures implements FixtureGroupInterface
         $kitchenName = [];
 
         for ($i = 0; $i < floor($numProduct / 3); $i++) {
-            $name = $this->faker->unique->realText(10);
+            $name = $this->faker->unique->text(10);
             $type = $this->faker->randomElement($productTypes);
             $kitchenName[$name] = $type;
         }
@@ -145,10 +148,10 @@ class ProductFixtures extends BaseFixtures implements FixtureGroupInterface
             }
 
             $product
-                ->setCommercialName($this->faker->unique->realText(50))
+                ->setCommercialName($this->faker->unique->text(50))
                 ->setSlug($this->faker->unique->slug)
                 ->setPrice($this->faker->randomFloat(2, 0.01, 100))
-                ->setConditionning($this->faker->realText(50))
+                ->setConditionning($this->faker->text(50))
                 ->setCreatedAt($timestamps[ 'createdAt' ])
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
@@ -166,10 +169,10 @@ class ProductFixtures extends BaseFixtures implements FixtureGroupInterface
 
             $timestamps = $this->faker->createTimeStamps();
             $rupture = new Rupture();
-            $rupture->setInfo($this->faker->realText(200))
-                ->setOrigin($this->faker->realText(50))
-                ->setUniqueSolution($this->faker->realText(50))
-                ->setSolution($this->faker->realText(200))
+            $rupture->setInfo($this->faker->text(50))
+                ->setOrigin($this->faker->text(50))
+                ->setUniqueSolution($this->faker->text(50))
+                ->setSolution($this->faker->text(50))
                 ->setStatus($this->faker->randomElement(['pending', 'solved']))
                 ->setCreatedAt($timestamps[ 'createdAt' ])
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);
@@ -187,6 +190,82 @@ class ProductFixtures extends BaseFixtures implements FixtureGroupInterface
 
         }
     }
+
+    private function createOrders($numOrder): void
+    {
+
+        $suppliers = $this->retrieveEntities('supplier', $this);
+
+
+        for ($o = 0; $o < $numOrder; $o++) {
+
+            $timestamps = $this->faker->createTimeStamps();
+            $orderDate = $timestamps[ 'updatedAt' ];
+            $daysToAdd = rand(1, 5);
+            $deliveryDate = $orderDate->modify("+{$daysToAdd} days");
+            $author = $this->faker->randomElement($this->users);
+
+            $order = new Order();
+            $order
+                ->setSupplier($this->faker->randomElement($suppliers))
+                ->setAuthor($author->getFullName())
+                ->setStatus($this->faker->randomElement(['draft', 'sent']))
+                ->setSendingMethod($this->faker->randomElement(['phone', 'email']))
+                ->setNote($this->faker->text(50))
+                ->setPdfPath($this->faker->unique->url . '.pdf')
+                ->setDeliveryDate( $deliveryDate)
+                ->setCreatedAt($timestamps[ 'createdAt' ])
+                ->setUpdatedAt($timestamps[ 'updatedAt' ]);
+
+            $this->em->persist($order);
+            $this->addReference("order_{$o}", $order);
+
+        }
+
+    }
+    private function products_Orders(): void
+    {
+        $products = $this->retrieveEntities('product', $this);
+        $orders = $this->retrieveEntities('order', $this);
+
+        foreach ($orders as $order) { {
+
+                $timestamps = $this->faker->createTimeStamps();
+                $supplier = $order->getSupplier();
+                $supplierProducts = [];
+
+                // Filtrer les produits pour ne garder que ceux du fournisseur sélectionné
+                foreach ($products as $product) {
+                    if ($supplier === $product->getSupplier()) {
+                        $supplierProducts[] = $product;
+                    }
+                }
+
+                $numProductByOrder = floor(count($supplierProducts) / 3);
+                for ($i = 0; $i < $numProductByOrder; $i++) {
+
+                    // Sélectionner un produit aléatoire 
+                    $randomIndexProduct = array_rand($supplierProducts);
+                    $product = $supplierProducts[$randomIndexProduct];
+
+
+                    $product_Order = new ProductOrder();
+                    $product_Order
+                        ->setProduct($product)
+                        ->setOrder($order)
+                        ->setQuantity($this->faker->numberBetween(1, 50))
+                        ->setCreatedAt($timestamps[ 'createdAt' ])
+                        ->setUpdatedAt($timestamps[ 'updatedAt' ]);
+
+                    $this->em->persist($product_Order);
+
+                    // Retirer le produit de la liste pour éviter les duplications
+                    array_splice($supplierProducts, $randomIndexProduct, 1);
+                }
+
+            }
+        }
+    }
     /**
      * Get the dependencies for this fixture.
      *
@@ -194,9 +273,12 @@ class ProductFixtures extends BaseFixtures implements FixtureGroupInterface
      */
     public function getDependencies()
     {
+
         return [
+            UserFixtures::class,
             BusinessFixtures::class,
         ];
     }
+
 
 }

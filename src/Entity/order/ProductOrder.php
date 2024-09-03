@@ -35,12 +35,12 @@ class ProductOrder extends BaseEntity
         return $this->id;
     }
 
-    public function getOrders(): ?Order
+    public function getOrder(): ?Order
     {
         return $this->orders;
     }
 
-    public function setOrders(?Order $orders): static
+    public function setOrder(?Order $orders): static
     {
         $this->orders = $orders;
 

@@ -5,6 +5,7 @@ namespace App\DataFixtures\AppFixtures;
 use App\Entity\carte\Dish;
 use App\Entity\user\User;
 use Doctrine\Bundle\FixturesBundle\Fixture;
+use Doctrine\Common\DataFixtures\FixtureInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ObjectManager;
 use Faker\Factory;
@@ -12,7 +13,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 //! Due to memory issue on php ini ---> load fixtures on terminal with these command:
 // php bin/console doctrine:fixtures:load --group=group_media --group=group_business --group=group_user 
 // php bin/console doctrine:fixtures:load --group=group_business --group=group_product --append
-class BaseFixtures extends Fixture
+class BaseFixtures extends Fixture implements FixtureInterface
 {
     protected EntityManagerInterface $em;
     protected UserPasswordHasherInterface $userPasswordHasher;
@@ -40,7 +41,6 @@ class BaseFixtures extends Fixture
             $entities[] = $fixture->getReference("{$entityName}_{$i}");
             $i++;
         }
-
         return $entities;
     }
 
