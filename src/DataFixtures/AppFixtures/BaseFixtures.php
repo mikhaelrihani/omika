@@ -67,7 +67,6 @@ class BaseFixtures extends Fixture
         } else {
             throw new \InvalidArgumentException('Entity type not supported for setting a picture.');
         }
-
         // Retirer l'image choisie par réference (&)du tableau pour garantir l'unicité
         array_splice($pictures, $randomIndexPicture, 1);
     }

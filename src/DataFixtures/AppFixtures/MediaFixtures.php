@@ -56,7 +56,7 @@ class MediaFixtures extends BaseFixtures implements FixtureGroupInterface
         $this->em->flush();
     }
 
-   
+
 
     /**
      * Create Mime entities.
@@ -103,7 +103,7 @@ class MediaFixtures extends BaseFixtures implements FixtureGroupInterface
         }
     }
 
-    
+
     /**
      * Create Picture entities.
      *
@@ -127,10 +127,11 @@ class MediaFixtures extends BaseFixtures implements FixtureGroupInterface
                 ->setPath($this->faker->unique()->imageUrl(640, 480, 'food'))
                 ->setCreatedAt($timestamps[ 'createdAt' ])
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);
+            $this->addReference("picture_{$p}", $picture);
 
             $this->em->persist($picture);
         }
     }
 
-   
+
 }

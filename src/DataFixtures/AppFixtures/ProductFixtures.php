@@ -6,6 +6,7 @@ use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
 use App\Entity\product\Product;
 use App\Entity\product\ProductType;
+use App\Entity\product\Rupture;
 use App\Entity\product\Supplier;
 use App\Entity\recipe\Unit;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
@@ -18,6 +19,7 @@ use Doctrine\Persistence\ObjectManager;
  */
 class ProductFixtures extends BaseFixtures implements FixtureGroupInterface
 {
+    private $numProduct = 100;
     /**
      * Load the product fixtures into the database.
      */
@@ -27,8 +29,8 @@ class ProductFixtures extends BaseFixtures implements FixtureGroupInterface
         $this->createUnits();
         $this->createProductTypes();
         $this->createSuppliers();
-        $this->em->flush();
-        $this->createProducts(100);
+        $this->createProducts($this->numProduct);
+        $this->createRuptures();
 
         $this->em->flush();
     }
@@ -107,7 +109,7 @@ class ProductFixtures extends BaseFixtures implements FixtureGroupInterface
 
     private function createProducts($numProduct): void
     {
-       
+
         $units = $this->retrieveEntities('unit', $this);
         $productTypes = $this->retrieveEntities('productType', $this);
         $suppliers = $this->retrieveEntities('supplier', $this);
@@ -156,6 +158,35 @@ class ProductFixtures extends BaseFixtures implements FixtureGroupInterface
         ;
     }
 
+    private function createRuptures(): void
+    {
+        $products = $this->retrieveEntities('product', $this);
+        $numRuptures = floor($this->numProduct / 7);
+        for ($r = 0; $r < $numRuptures; $r++) {
+
+            $timestamps = $this->faker->createTimeStamps();
+            $rupture = new Rupture();
+            $rupture->setInfo($this->faker->realText(200))
+                ->setOrigin($this->faker->realText(50))
+                ->setUniqueSolution($this->faker->realText(50))
+                ->setSolution($this->faker->realText(200))
+                ->setStatus($this->faker->randomElement(['pending', 'solved']))
+                ->setCreatedAt($timestamps[ 'createdAt' ])
+                ->setUpdatedAt($timestamps[ 'updatedAt' ]);
+
+            // We add a unique product to the rupture, all ruptures need to be assigned to a product
+            if (!empty($products)) {
+                $randomIndexProduct = array_rand($products);
+                $product = $products[$randomIndexProduct];
+                $rupture->setProduct($product);
+                array_splice($products, $randomIndexProduct, 1);
+            }
+
+            $this->em->persist($rupture);
+            $this->addReference("rupture_{$r}", $rupture);
+
+        }
+    }
     /**
      * Get the dependencies for this fixture.
      *

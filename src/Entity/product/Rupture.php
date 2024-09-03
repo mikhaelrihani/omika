@@ -114,5 +114,11 @@ class Rupture extends BaseEntity
     {
         return $this->product;
     }
+    public function setProduct(?Product $product): static
+    {
+        $this->product = $product;
+
+        return $this;
+    }
     
 }

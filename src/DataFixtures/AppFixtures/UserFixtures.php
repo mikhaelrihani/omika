@@ -62,8 +62,6 @@ class UserFixtures extends BaseFixtures implements FixtureGroupInterface
         $this->createMessages($users, $contacts);
         $this->createNotes($users);
 
-
-
         $this->em->flush();
     }
 

@@ -223,4 +223,5 @@ class Product extends BaseEntity
         return $this->rupture;
     }
     
+   
 }
