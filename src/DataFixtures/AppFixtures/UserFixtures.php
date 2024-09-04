@@ -49,7 +49,6 @@ class UserFixtures extends BaseFixtures
         $this->pictures = $this->retrieveEntities('picture', $this);
         $this->createContacts(20);
         $this->createUsers(10);
-        $manager->flush();
         $users = $this->retrieveEntities('user', $this);
         $contacts = $this->retrieveEntities('contact', $this);
         // Flush to set the ID of each recipient entity when sending message
@@ -136,7 +135,7 @@ class UserFixtures extends BaseFixtures
                 $user->setUserLogin($this->createUserLogin());
             }
             $user
-                ->setPrivateNote($this->faker->realText(1000))
+                ->setPrivateNote($this->faker->text(200))
                 ->setCreatedAt($timestamps[ 'createdAt' ])
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
@@ -255,7 +254,7 @@ class UserFixtures extends BaseFixtures
             $note = new Note();
             $note
                 ->setUser($user)
-                ->setText($this->faker->realText(1000))
+                ->setText($this->faker->text(200))
                 ->setCreatedAt($timestamps[ 'createdAt' ])
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
@@ -283,7 +282,7 @@ class UserFixtures extends BaseFixtures
                     $recipient = $this->faker->randomElement($everybody);
                     $message
                         ->setWriter($writer)
-                        ->setText($this->faker->realText(1000))
+                        ->setText($this->faker->text(200))
                         ->setRecipient($recipient)
                         ->setCreatedAt($timestamps[ 'createdAt' ])
                         ->setUpdatedAt($timestamps[ 'updatedAt' ]);

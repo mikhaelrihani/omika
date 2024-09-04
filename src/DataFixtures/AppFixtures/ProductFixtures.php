@@ -275,6 +275,7 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
     {
 
         return [
+            
             UserFixtures::class,
             BusinessFixtures::class,
         ];

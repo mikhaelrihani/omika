@@ -20,7 +20,7 @@ class Recipe extends BaseEntity
     private ?int $id = null;
 
     #[ORM\OneToOne(mappedBy: 'recipe', targetEntity: Dish::class)]
-    #[ORM\Column(name: 'dish_id', nullable: true)]
+    #[ORM\Column(name: 'dish_id', nullable: true, type: 'integer')]
     private ?Dish $dish = null;
     
 

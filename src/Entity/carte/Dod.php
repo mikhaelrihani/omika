@@ -30,6 +30,9 @@ class Dod extends BaseEntity
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     #[Assert\NotNull(message: "A Dod must be associated with a Menu.")]
     private ?Menu $menu = null;
+
+    #[ORM\Column]
+    private ?int $orderDay = null;
     
 
     public function getId(): ?int
@@ -81,6 +84,18 @@ class Dod extends BaseEntity
     public function setMenu(?menu $menu): static
     {
         $this->menu = $menu;
+
+        return $this;
+    }
+
+    public function getOrderDay(): ?int
+    {
+        return $this->orderDay;
+    }
+
+    public function setOrderDay(int $orderDay): static
+    {
+        $this->orderDay = $orderDay;
 
         return $this;
     }

@@ -3,6 +3,7 @@
 namespace App\DataFixtures\AppFixtures;
 
 use App\Entity\carte\Dish;
+use App\Entity\carte\DishCategory;
 use App\Entity\user\User;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\FixtureInterface;
@@ -63,6 +64,8 @@ class BaseFixtures extends Fixture implements FixtureInterface
         if ($entity instanceof User) {
             $entity->setAvatar($picture);
         } elseif ($entity instanceof Dish) {
+            $entity->setPicture($picture);
+        } elseif ($entity instanceof DishCategory) {
             $entity->setPicture($picture);
         } else {
             throw new \InvalidArgumentException('Entity type not supported for setting a picture.');
