@@ -9,7 +9,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use App\Entity\carte\Dish; 
 use App\Entity\product\Product; 
-use Symfony\Component\Validator\Constraints as Assert;
+
 
 #[ORM\Entity(repositoryClass: RecipeRepository::class)]
 class Recipe extends BaseEntity
@@ -20,7 +20,9 @@ class Recipe extends BaseEntity
     private ?int $id = null;
 
     #[ORM\OneToOne(mappedBy: 'recipe', targetEntity: Dish::class)]
+    #[ORM\Column(name: 'dish_id', nullable: true)]
     private ?Dish $dish = null;
+    
 
     /**
      * @var Collection<int, RecipeStep>
@@ -45,6 +47,9 @@ class Recipe extends BaseEntity
      */
     #[ORM\ManyToMany(targetEntity: Product::class, inversedBy: 'recipes')]
     private Collection $products;
+
+    #[ORM\Column(length: 255)]
+    private ?string $name = null;
 
     public function __construct()
     {
@@ -176,6 +181,18 @@ class Recipe extends BaseEntity
     public function removeProduct(Product $product): static
     {
         $this->products->removeElement($product);
+
+        return $this;
+    }
+
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
+
+    public function setName(string $name): static
+    {
+        $this->name = $name;
 
         return $this;
     }

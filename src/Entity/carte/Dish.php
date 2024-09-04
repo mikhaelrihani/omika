@@ -43,9 +43,10 @@ class Dish extends BaseEntity
     #[ORM\JoinColumn(nullable: false)]
     private ?dishCategory $dishCategory = null;
 
-    #[ORM\OneToOne(targetEntity: Recipe::class, inversedBy: 'dish', cascade: ['remove'])]
-    #[ORM\JoinColumn(nullable: true)]
+    #[ORM\OneToOne(inversedBy: 'dish', targetEntity: Recipe::class, cascade: ['remove'])]
+    #[ORM\JoinColumn(name: 'recipe_id', referencedColumnName: 'id', nullable: true)]
     private ?Recipe $recipe = null;
+    
     
 
     public function getId(): ?int

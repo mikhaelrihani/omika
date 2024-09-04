@@ -29,7 +29,7 @@ class Ingredient extends BaseEntity
      * @ORM\ManyToOne(targetEntity="App\Entity\Unit")
      * @ORM\JoinColumn(nullable=false)
      */
-    #[ORM\ManyToOne(targetEntity: Unit::class, inversedBy: 'ingredients')]
+    #[ORM\ManyToOne(targetEntity: Unit::class)]
     #[ORM\JoinColumn(nullable: false)]
     private ?Unit $unit = null;
 

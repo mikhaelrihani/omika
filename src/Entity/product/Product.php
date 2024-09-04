@@ -14,11 +14,10 @@ use App\Entity\recipe\Recipe;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
-#[ORM\Table(name: 'product', indexes: [
-    new ORM\Index(name: 'kitchen_idx', columns: ['kitchenName']),
-    new ORM\Index(name: 'commercial_idx', columns: ['commercialName']),
-    new ORM\Index(name: 'kitchen_commercial_idx', columns: ['kitchenName', 'commercialName']),
-])]
+#[ORM\Index(name: "kitchen_name_idx", columns: ["kitchen_name"])]
+#[ORM\Index(name: "commercial_name_idx", columns: ["commercial_name"])]
+#[ORM\Index(name: "kitchen_commercial_name_idx", columns: ["kitchen_name", "commercial_name"])]
+
 class Product extends BaseEntity
 {
     #[ORM\Id]
