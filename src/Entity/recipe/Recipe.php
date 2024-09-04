@@ -7,7 +7,6 @@ use App\Repository\recipe\RecipeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\carte\Dish; 
 use App\Entity\product\Product; 
 
 
@@ -18,11 +17,6 @@ class Recipe extends BaseEntity
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
-
-    #[ORM\OneToOne(mappedBy: 'recipe', targetEntity: Dish::class)]
-    #[ORM\Column(name: 'dish_id', nullable: true, type: 'integer')]
-    private ?Dish $dish = null;
-    
 
     /**
      * @var Collection<int, RecipeStep>
@@ -39,7 +33,7 @@ class Recipe extends BaseEntity
     /**
      * @var Collection<int, Ingredient>
      */
-    #[ORM\ManyToMany(targetEntity: Ingredient::class)]
+    #[ORM\OneToMany(targetEntity: Ingredient::class, mappedBy: 'recipe', orphanRemoval: true)]
     private Collection $ingredients;
 
     /**
@@ -63,19 +57,6 @@ class Recipe extends BaseEntity
     {
         return $this->id;
     }
-
-    public function getDish(): ?Dish
-    {
-        return $this->dish;
-    }
-
-    public function setDish(dish $dish): static
-    {
-        $this->dish = $dish;
-
-        return $this;
-    }
-
 
     /**
      * @return Collection<int, RecipeStep>

@@ -7,7 +7,6 @@ use App\DataFixtures\AppFixtures\BaseFixtures;
 use App\Entity\carte\DishCategory;
 use App\Entity\carte\Dod;
 use App\Entity\carte\Menu;
-use App\Entity\user\User;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 

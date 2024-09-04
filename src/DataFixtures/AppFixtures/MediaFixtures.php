@@ -107,7 +107,7 @@ class MediaFixtures extends BaseFixtures
      */
     private function createPictures(array $mimes): void
     {
-        for ($p = 0; $p < 15; $p++) {
+        for ($p = 0; $p < 80; $p++) {
             // Generate timestamps for each picture
             $timestamps = $this->faker->createTimeStamps();
 
