@@ -120,4 +120,27 @@ class AppProvider extends Base
     {
         return $this->productTypes;
     }
+
+    //! EventSection entity
+    private $eventSections = [
+        "carte",
+        "product",
+        "recipe",
+        "menu",
+        "supplier",
+        "planning",
+        "contact",
+        "inventaire",
+        "other"
+
+
+    ];
+    public function oneRandomEventSection(): string
+    {
+        return $this->eventSections[array_rand($this->eventSections)];
+    }
+    public function getEventSectionList(): array
+    {
+        return $this->eventSections;
+    }
 }

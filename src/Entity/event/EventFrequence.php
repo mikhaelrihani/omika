@@ -16,15 +16,15 @@ class EventFrequence extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column]
+    #[ORM\Column(type: Types::BOOLEAN, nullable: true)]
     private ?bool $everyday = null;
-
-    #[ORM\Column(type: Types::JSON)]
-    private array $weekDays = [];
-
-    #[ORM\Column]
+    
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $weekDays = [];
+    
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
     private ?int $monthDay = null;
-
+    
     public function getId(): ?int
     {
         return $this->id;
@@ -35,19 +35,19 @@ class EventFrequence extends BaseEntity
         return $this->everyday;
     }
 
-    public function setEveryday(bool $everyday): static
+    public function setEveryday(?bool $everyday): static
     {
         $this->everyday = $everyday;
 
         return $this;
     }
 
-    public function getWeekDays(): array
+    public function getWeekDays(): ?array
     {
         return $this->weekDays;
     }
 
-    public function setWeekDays(array $weekDays): static
+    public function setWeekDays(?array $weekDays): static
     {
         $this->weekDays = $weekDays;
 
@@ -59,7 +59,7 @@ class EventFrequence extends BaseEntity
         return $this->monthDay;
     }
 
-    public function setMonthDay(int $monthDay): static
+    public function setMonthDay(?int $monthDay): static
     {
         $this->monthDay = $monthDay;
 

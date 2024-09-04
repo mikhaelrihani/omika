@@ -44,18 +44,18 @@ class Event extends BaseEntity
     #[Assert\NotBlank]
     private ?\DateTimeInterface $periodeStart = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE, nullable:false)]
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable:true)]
     #[Assert\NotBlank]
     private ?\DateTimeInterface $periodeEnd = null;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable:true) ]
     private ?bool $periodeUnlimited = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
     private ?EventSection $eventSection = null;
 
-    #[ORM\ManyToOne]
+    #[ORM\OneToOne]
     #[ORM\JoinColumn(nullable: false)]
     private ?EventFrequence $eventFrequence = null;
 
@@ -153,7 +153,7 @@ class Event extends BaseEntity
         return $this->periodeEnd;
     }
 
-    public function setPeriodeEnd(\DateTimeInterface $periodeEnd): static
+    public function setPeriodeEnd(?\DateTimeInterface $periodeEnd): static
     {
         $this->periodeEnd = $periodeEnd;
 
@@ -165,7 +165,7 @@ class Event extends BaseEntity
         return $this->periodeUnlimited;
     }
 
-    public function setPeriodeUnlimited(bool $periodeUnlimited): static
+    public function setPeriodeUnlimited(?bool $periodeUnlimited): static
     {
         $this->periodeUnlimited = $periodeUnlimited;
 
