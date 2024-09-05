@@ -18,7 +18,7 @@ use Symfony\Component\Uid\Uuid;
  *
  * Fixture class responsible for loading user-related data into the database.
  */
-class UserFixtures extends BaseFixtures 
+class UserFixtures extends BaseFixtures
 {
     private array $businessEntities;
     /**
@@ -36,7 +36,7 @@ class UserFixtures extends BaseFixtures
      */
     private bool $userAdminExists;
 
-   
+
     /**
      * Load the user fixtures into the database.
      *
@@ -172,8 +172,14 @@ class UserFixtures extends BaseFixtures
                 ->setSurname($this->faker->lastName())
                 ->setEmail($this->faker->unique()->email())
                 ->setPhone($this->generatePhoneNumber())
-                ->setWhatsapp($this->generatePhoneNumber())
-                ->setJob($this->faker->jobTitle())
+                ->setWhatsapp($this->generatePhoneNumber());
+            if ($c < 4) {
+                $contact->setJob("technicien");
+            } else {
+                $contact->setJob($this->faker->jobTitle());
+            }
+            ;
+            $contact
                 ->setLateCount($this->faker->numberBetween(0, 10))
                 ->setCreatedAt($timestamps[ 'createdAt' ])
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);

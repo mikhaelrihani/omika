@@ -30,11 +30,11 @@ class Issue extends BaseEntity
     #[Assert\NotBlank]
     private ?string $author = null;
 
-    #[ORM\OneToOne]
+    #[ORM\ManyToOne(targetEntity: Contact::class)]
     #[ORM\JoinColumn(nullable: false)]
     private ?Contact $technicianContacted = null;
 
-    #[ORM\OneToOne]
+    #[ORM\ManyToOne(targetEntity: Contact::class)]
     private ?Contact $technicianComing = null;
 
     #[ORM\Column(length: 50, nullable:false)]
