@@ -98,8 +98,8 @@ class InventoryFixtures extends BaseFixtures implements DependentFixtureInterfac
                 $newRoom->setCreatedAt($timestamps[ 'createdAt' ]);
                 $newRoom->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
-                $this->em->persist($room);
-                $this->addReference("room_{$r}", $room);
+                $this->em->persist($newRoom);
+                $this->addReference("room_{$r}", $newRoom);
                 $r++;
             }
         }
