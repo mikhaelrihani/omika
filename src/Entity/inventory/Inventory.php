@@ -3,6 +3,7 @@
 namespace App\Entity\inventory;
 
 use App\Entity\BaseEntity;
+use App\Entity\product\Product;
 use App\Repository\inventory\InventoryRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -17,19 +18,19 @@ class Inventory extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255,nullable: false)]
+    #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Status should not be blank.")]
     private ?string $status = null;
 
-    #[ORM\Column(length: 255,nullable: false)]
+    #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Type should not be blank.")]
     private ?string $type = null;
 
-    #[ORM\Column(length: 25,nullable: false)]
+    #[ORM\Column(length: 25, nullable: false)]
     #[Assert\NotBlank(message: "Month should not be blank.")]
     private ?string $month = null;
 
-    #[ORM\Column(length: 255,nullable: false)]
+    #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Author should not be blank.")]
     private ?string $author = null;
 
@@ -52,7 +53,7 @@ class Inventory extends BaseEntity
     /**
      * @var Collection<int, ProductInventory>
      */
-    #[ORM\OneToMany(targetEntity: ProductInventory::class, mappedBy: 'inventory', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: ProductInventory::class, mappedBy: 'inventory', orphanRemoval: true, cascade: ['persist'])]
     private Collection $productInventories;
 
     public function __construct()
@@ -182,15 +183,37 @@ class Inventory extends BaseEntity
         return $this->productInventories;
     }
 
-    public function addProductInventory(ProductInventory $productInventory): static
+    public function getProducts(): Collection
     {
-        if (!$this->productInventories->contains($productInventory)) {
-            $this->productInventories->add($productInventory);
-            $productInventory->setInventory($this);
-        }
+        return $this->productInventories->map(function (ProductInventory $productInventory) {
+            return $productInventory->getProduct();
+        });
+    }
 
+    public function addProductInventory(Product $product, string $quantityBig, string $quantitySmall): static
+    {
+        // Chercher s'il existe déjà un ProductInventory avec ce produit
+        foreach ($this->productInventories as $existingProductInventory) {
+            if ($existingProductInventory->getProduct() === $product) {
+                // Si un ProductInventory pour ce produit existe déjà, on peut modifier les quantités si nécessaire
+                $existingProductInventory->setQuantityBig($quantityBig);
+                $existingProductInventory->setQuantitySmall($quantitySmall);
+                return $this;
+            }
+        }
+    
+        // Si aucun ProductInventory n'existe pour ce produit, on en crée un nouveau
+        $productInventory = new ProductInventory();
+        $productInventory->setInventory($this);
+        $productInventory->setProduct($product);
+        $productInventory->setQuantityBig($quantityBig);
+        $productInventory->setQuantitySmall($quantitySmall);
+    
+        $this->productInventories->add($productInventory);
+    
         return $this;
     }
+    
 
     public function removeProductInventory(ProductInventory $productInventory): static
     {

@@ -16,11 +16,11 @@ class Room extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255,nullable: false)]
+    #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Room Name should not be blank.")]
     private ?string $name = null;
 
-    #[ORM\Column(length: 255,nullable: false)]
+    #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Location Details should not be blank.")]
     private ?string $locationDetails = null;
 
@@ -30,9 +30,16 @@ class Room extends BaseEntity
     #[ORM\ManyToMany(targetEntity: Inventory::class, mappedBy: 'room')]
     private Collection $inventories;
 
+    /**
+     * @ORM\OneToMany(targetEntity="RoomProduct", mappedBy="room")
+     */
+    #[ORM\OneToMany(targetEntity: RoomProduct::class, mappedBy: 'room')]
+    private Collection $roomProducts;
+
     public function __construct()
     {
         $this->inventories = new ArrayCollection();
+        $this->roomProducts = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -71,5 +78,35 @@ class Room extends BaseEntity
     {
         return $this->inventories;
     }
-   
+
+    /**
+     * @return Collection<int, RoomProduct>
+     */
+    public function getRoomProducts(): Collection
+    {
+        return $this->roomProducts;
+    }
+    public function addRoomProduct(RoomProduct $roomProduct): static
+    {
+
+        if (!$this->roomProducts->contains($roomProduct)) {
+            $this->roomProducts->add($roomProduct);
+        }
+
+        return $this;
+    }
+
+
+
+    /**
+     * Get all products associated with the room via the RoomProduct pivot table
+     *
+     * @return Collection
+     */
+    public function getProducts(): Collection
+    {
+        return $this->roomProducts->map(function (RoomProduct $roomProduct) {
+            return $roomProduct->getProduct();
+        });
+    }
 }

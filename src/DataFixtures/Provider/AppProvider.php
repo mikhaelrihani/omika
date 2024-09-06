@@ -132,8 +132,6 @@ class AppProvider extends Base
         "contact",
         "inventaire",
         "other"
-
-
     ];
     public function oneRandomEventSection(): string
     {
@@ -142,5 +140,42 @@ class AppProvider extends Base
     public function getEventSectionList(): array
     {
         return $this->eventSections;
+    }
+
+    //! kitchenSpace Property
+    private $kitchenSpace = [
+        "Chaud",
+        "Livraison",
+        "salade",
+        "dessert",
+        "flam",
+        "Frite"
+    ];
+    public function oneRandomKitchenSpace(): string
+    {
+        return $this->kitchenSpace[array_rand($this->kitchenSpace)];
+    }
+    public function getKitchenSpaceList(): array
+    {
+        return $this->kitchenSpace;
+    }
+
+     //! kitchenSpace Property
+     private $rooms = [
+        "Chambre Chaud",
+        "Chambre Dur",
+        "Sèche",
+        "BOF",
+        "FrigoFlam",
+        "FrigoDessert",
+        "CongélateurGlaces"
+    ];
+    public function oneRandomRoom(): string
+    {
+        return $this->rooms[array_rand($this->rooms)];
+    }
+    public function getRoomList(): array
+    {
+        return $this->rooms;
     }
 }

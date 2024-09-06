@@ -20,7 +20,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 {
 
     /**
-     * Load the recipe fixtures into the database.
+     * Load the event fixtures into the database.
      */
     public function load(ObjectManager $manager): void
     {

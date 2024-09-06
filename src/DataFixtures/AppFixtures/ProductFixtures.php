@@ -18,36 +18,58 @@ use Doctrine\Persistence\ObjectManager;
  * Class ProductFixtures
  *
  * Fixture class responsible for loading product-related data into the database.
+ * This class creates and persists Units, ProductTypes, Suppliers, Products, Ruptures, and Orders,
+ * and manages the relationships between Products and Orders.
  */
 class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
 {
-    private $numProduct = 100;
-    private array $users;
+    private $numProduct = 200; 
+    private array $users; 
+
     /**
      * Load the product fixtures into the database.
+     *
+     * This method is responsible for orchestrating the creation and persistence of product-related
+     * data, including units, product types, suppliers, products, ruptures, orders, and their relationships.
+     * 
+     * @param ObjectManager $manager 
      */
     public function load(ObjectManager $manager): void
     {
+
         $this->faker->addProvider(new AppProvider($this->faker));
+
         $this->users = $this->retrieveEntities('user', $this);
+
         $this->createUnits();
+
         $this->createProductTypes();
+
         $this->createSuppliers();
+
         $this->createProducts($this->numProduct);
+
         $this->createRuptures();
+
         $this->createOrders(20);
-        $this->Products_Orders();
+
+        $this->products_Orders();
 
         $this->em->flush();
     }
-   
 
+    /**
+     * Create Units and persist them to the database.
+     *
+     * Generates a list of units with names and symbols, and saves them into the database.
+     * Each unit is initialized with creation and update timestamps.
+     */
     private function createUnits(): void
     {
         $unitNames = $this->faker->getUnitList();
         $u = 0;
-        foreach ($unitNames as $unitName => $unitSymbol) {
 
+        foreach ($unitNames as $unitName => $unitSymbol) {
             $timestamps = $this->faker->createTimeStamps();
 
             $unit = new Unit();
@@ -63,12 +85,18 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
         }
     }
 
+    /**
+     * Create ProductTypes and persist them to the database.
+     *
+     * Generates a list of product types and saves them into the database.
+     * Each product type is initialized with creation and update timestamps.
+     */
     private function createProductTypes(): void
     {
         $productTypes = $this->faker->getProductTypeList();
         $t = 0;
-        foreach ($productTypes as $type) {
 
+        foreach ($productTypes as $type) {
             $timestamps = $this->faker->createTimeStamps();
 
             $productType = new ProductType();
@@ -83,15 +111,22 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
         }
     }
 
+    /**
+     * Create Suppliers and persist them to the database.
+     *
+     * Generates a list of suppliers associated with businesses and saves them into the database.
+     * Each supplier includes logistical details, ordering habits, and delivery information.
+     */
     private function createSuppliers(): void
     {
         $businesses = $this->retrieveEntities('business', $this);
         $s = 0;
-        foreach ($businesses as $business) {
 
+        foreach ($businesses as $business) {
             $timestamps = $this->faker->createTimeStamps();
             $numOrderDays = $this->faker->numberBetween(1, 7);
             $numDeliveryDays = $this->faker->numberBetween(1, 7);
+
             $supplier = new Supplier();
             $supplier
                 ->setBusiness($business)
@@ -107,42 +142,48 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
             $this->addReference("supplier_{$s}", $supplier);
             $s++;
         }
-
     }
 
-    private function createProducts($numProduct): void
+    /**
+     * Create Products and persist them to the database.
+     *
+     * Generates a specified number of products, each with a unit, supplier, and product type.
+     * Ensures that products with the same kitchen name share the same product type and at least one product is marked as a supplier favorite.
+     *
+     * @param int $numProduct The number of products to create.
+     */
+    private function createProducts(int $numProduct): void
     {
-
         $units = $this->retrieveEntities('unit', $this);
         $productTypes = $this->retrieveEntities('productType', $this);
         $suppliers = $this->retrieveEntities('supplier', $this);
-        $favoriteAssigned = [];
-        $kitchenName = [];
+        $favoriteAssigned = []; // Track favorite products for each kitchen name
+        $kitchenName = []; // Map kitchen names to product types
 
+        // Pre-create a few kitchen names with product types
         for ($i = 0; $i < floor($numProduct / 3); $i++) {
-            $name = $this->faker->unique->text(10);
+            $name = $this->faker->unique->text(10); // Unique kitchen name
             $type = $this->faker->randomElement($productTypes);
             $kitchenName[$name] = $type;
         }
 
         for ($p = 0; $p < $numProduct; $p++) {
-
             $timestamps = $this->faker->createTimeStamps();
+
             $product = new Product();
             $product
                 ->setUnit($this->faker->randomElement($units))
                 ->setSupplier($this->faker->randomElement($suppliers));
 
-            // A product can have a same kitchenName than other products but they all have to get the same type
+            // Set product type and kitchen name
             $productKitchenName = $this->faker->randomElement(array_keys($kitchenName));
             $product->setProductType($kitchenName[$productKitchenName]);
             $product->setKitchenName($productKitchenName);
 
-            // we check if the product is a supplier favorite, if not we set the value to true 
-            //to ensure that among the product with the similar kitchenName we have at least one supplier favorite
+            // Ensure at least one product per kitchen name is marked as a supplier favorite
             if (!isset($favoriteAssigned[$productKitchenName])) {
                 $product->setSupplierFavorite(true);
-                $favoriteAssigned[$productKitchenName] = true; // Marque ce produit comme favori pour ce nom de cuisine
+                $favoriteAssigned[$productKitchenName] = true;
             } else {
                 $product->setSupplierFavorite(false);
             }
@@ -158,18 +199,25 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
             $this->em->persist($product);
             $this->addReference("product_{$p}", $product);
         }
-        ;
     }
 
+    /**
+     * Create Ruptures and persist them to the database.
+     *
+     * Generates a list of ruptures (disruptions) with associated products and persists them to the database.
+     * Each rupture is assigned to a unique product.
+     */
     private function createRuptures(): void
     {
         $products = $this->retrieveEntities('product', $this);
         $numRuptures = floor($this->numProduct / 7);
-        for ($r = 0; $r < $numRuptures; $r++) {
 
+        for ($r = 0; $r < $numRuptures; $r++) {
             $timestamps = $this->faker->createTimeStamps();
+
             $rupture = new Rupture();
-            $rupture->setInfo($this->faker->text(50))
+            $rupture
+                ->setInfo($this->faker->text(50))
                 ->setOrigin($this->faker->text(50))
                 ->setUniqueSolution($this->faker->text(50))
                 ->setSolution($this->faker->text(50))
@@ -177,28 +225,32 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
                 ->setCreatedAt($timestamps[ 'createdAt' ])
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
-            // We add a unique product to the rupture, all ruptures need to be assigned to a product
+            // Assign a unique product to the rupture
             if (!empty($products)) {
                 $randomIndexProduct = array_rand($products);
                 $product = $products[$randomIndexProduct];
                 $rupture->setProduct($product);
-                array_splice($products, $randomIndexProduct, 1);
+                array_splice($products, $randomIndexProduct, 1); // Remove the assigned product from the list
             }
 
             $this->em->persist($rupture);
             $this->addReference("rupture_{$r}", $rupture);
-
         }
     }
 
-    private function createOrders($numOrder): void
+    /**
+     * Create Orders and persist them to the database.
+     *
+     * Generates a list of orders with random suppliers, authors, statuses, and delivery dates.
+     * Each order is associated with a random supplier and user.
+     *
+     * @param int $numOrder The number of orders to create.
+     */
+    private function createOrders(int $numOrder): void
     {
-
         $suppliers = $this->retrieveEntities('supplier', $this);
 
-
         for ($o = 0; $o < $numOrder; $o++) {
-
             $timestamps = $this->faker->createTimeStamps();
             $orderDate = $timestamps[ 'updatedAt' ];
             $daysToAdd = rand(1, 5);
@@ -213,73 +265,74 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
                 ->setSendingMethod($this->faker->randomElement(['phone', 'email']))
                 ->setNote($this->faker->text(50))
                 ->setPdfPath($this->faker->unique->url . '.pdf')
-                ->setDeliveryDate( $deliveryDate)
+                ->setDeliveryDate($deliveryDate)
                 ->setCreatedAt($timestamps[ 'createdAt' ])
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
             $this->em->persist($order);
             $this->addReference("order_{$o}", $order);
-
         }
-
     }
+
+    /**
+     * Create ProductOrder relationships and persist them to the database.
+     *
+     * Creates associations between products and orders, ensuring that each order contains a set of products from the same supplier.
+     * Each product is assigned a quantity and associated with an order.
+     */
     private function products_Orders(): void
     {
         $products = $this->retrieveEntities('product', $this);
         $orders = $this->retrieveEntities('order', $this);
 
-        foreach ($orders as $order) { {
+        foreach ($orders as $order) {
+            $timestamps = $this->faker->createTimeStamps();
+            $supplier = $order->getSupplier();
+            $supplierProducts = [];
 
-                $timestamps = $this->faker->createTimeStamps();
-                $supplier = $order->getSupplier();
-                $supplierProducts = [];
-
-                // Filtrer les produits pour ne garder que ceux du fournisseur sélectionné
-                foreach ($products as $product) {
-                    if ($supplier === $product->getSupplier()) {
-                        $supplierProducts[] = $product;
-                    }
+            // Filter products to include only those from the supplier of the current order
+            foreach ($products as $product) {
+                if ($supplier === $product->getSupplier()) {
+                    $supplierProducts[] = $product;
                 }
+            }
 
-                $numProductByOrder = floor(count($supplierProducts) / 3);
-                for ($i = 0; $i < $numProductByOrder; $i++) {
+            // Create product-order associations
+            $numProductByOrder = floor(count($supplierProducts) / 3); // Determine the number of products per order
+            for ($i = 0; $i < $numProductByOrder; $i++) {
+                // Select a random product from the filtered list
+                $randomIndexProduct = array_rand($supplierProducts);
+                $product = $supplierProducts[$randomIndexProduct];
 
-                    // Sélectionner un produit aléatoire 
-                    $randomIndexProduct = array_rand($supplierProducts);
-                    $product = $supplierProducts[$randomIndexProduct];
+                $product_Order = new ProductOrder();
+                $product_Order
+                    ->setProduct($product)
+                    ->setOrder($order)
+                    ->setQuantity($this->faker->numberBetween(1, 50))
+                    ->setCreatedAt($timestamps[ 'createdAt' ])
+                    ->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
+                $this->em->persist($product_Order);
 
-                    $product_Order = new ProductOrder();
-                    $product_Order
-                        ->setProduct($product)
-                        ->setOrder($order)
-                        ->setQuantity($this->faker->numberBetween(1, 50))
-                        ->setCreatedAt($timestamps[ 'createdAt' ])
-                        ->setUpdatedAt($timestamps[ 'updatedAt' ]);
-
-                    $this->em->persist($product_Order);
-
-                    // Retirer le produit de la liste pour éviter les duplications
-                    array_splice($supplierProducts, $randomIndexProduct, 1);
-                }
-
+                // Remove the product from the list to avoid duplication
+                array_splice($supplierProducts, $randomIndexProduct, 1);
             }
         }
     }
+
     /**
      * Get the dependencies for this fixture.
+     *
+     * Specifies the fixture classes that this fixture depends on. This ensures that dependent fixtures
+     * (such as UserFixtures and BusinessFixtures) are loaded before this fixture.
      *
      * @return array The array of fixture classes that this fixture depends on.
      */
     public function getDependencies()
     {
-
         return [
-            
             UserFixtures::class,
             BusinessFixtures::class,
         ];
     }
-
-
 }
