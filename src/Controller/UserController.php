@@ -2,18 +2,28 @@
 
 namespace App\Controller;
 
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use App\Repository\user\UserLoginRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-class UserController extends AbstractController
+
+#[Route('/user', name:"app_user_" )]
+class UserController extends BaseController
 {
-    #[Route('/user', name: 'app_user')]
-    public function index(): JsonResponse
+
+    //! Get USER Login
+
+    #[Route('/userLogin/{id}', name: 'getUserLogin', methods: 'GET')]
+    public function getUserLogin(int $id, UserLoginRepository $userLoginRepository): JsonResponse
     {
-        return $this->json([
-            'message' => 'Welcome to your new controller!',
-            'path' => 'src/Controller/UserController.php',
-        ]);
+        $userLogin = $userLoginRepository->find($id);
+        if (!$userLogin) {
+            return $this->json(["error" => "There is no userLogin with this id"], Response::HTTP_BAD_REQUEST);
+        }
+        return $this->json($userLogin, Response::HTTP_OK, []);
+
     }
+
+
 }
