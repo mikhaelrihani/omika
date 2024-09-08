@@ -6,6 +6,7 @@ use App\Entity\user\User;
 use App\Entity\user\UserLogin;
 use App\Service\TokenService;
 use Lexik\Bundle\JWTAuthenticationBundle\Encoder\JWTEncoderInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTManager;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
@@ -16,6 +17,7 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\PassportInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
 use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
 
@@ -23,11 +25,14 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticatorInt
 {
     private JWTEncoderInterface $jwtEncoder;
     private TokenService $tokenService;
+    private JWTManager $jwtManager;
 
-    public function __construct(JWTEncoderInterface $jwtEncoder, TokenService $tokenService)
+
+    public function __construct(JWTEncoderInterface $jwtEncoder, TokenService $tokenService, JWTManager $jwtManager)
     {
         $this->jwtEncoder = $jwtEncoder;
         $this->tokenService = $tokenService;
+        $this->jwtManager = $jwtManager;
     }
 
     /**
@@ -98,10 +103,18 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticatorInt
 
     public function authenticate(Request $request): Passport
     {
+        // Extract the JWT credentials from the request
         $jwtCredentials = $this->getJwtCredential($request);
         $jwtToken = $jwtCredentials[ 'jwtToken' ];
 
-        // Validate and possibly refresh the JWT token
+        // Create a new JWTUserToken object and pass it to the decode method
+        $jwtUserToken = new JwtUserToken($jwtToken);
+
+        // Decode the token to validate and retrieve the payload to get the user identifier
+        $decodedPayload = $this->jwtManager->decode($jwtUserToken);
+        $userIdentifier = $decodedPayload[ 'username' ];
+
+        // Check if the token is expired and refresh if necessary
         if ($this->tokenService->isTokenExpired($jwtToken)) {
             $response = $this->tokenService->validateAndRefreshToken($request);
             if ($response) {
@@ -125,11 +138,11 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticatorInt
         * This method is called when authentication executed and was successful.
 
         */
-    public function onAuthenticationSuccess(Request $request, PassportInterface $passport, string $providerKey): ?Response
+    public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
     {
-        // Allow the request to continue normally
         return null;
     }
+
     /*
      * This method is called when authentication is required but the client
      * hasn't provided any credentials (e.g., no JWT token in the Authorization header).

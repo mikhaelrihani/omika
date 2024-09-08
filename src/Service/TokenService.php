@@ -55,7 +55,7 @@ class TokenService
         return null; // Token still valid, no need to refresh
     }
 
-    private function isTokenExpired(string $jwtToken): bool
+    public function isTokenExpired(string $jwtToken): bool
     {
         $decodedToken = $this->jwtManager->parse($jwtToken);
         $expiration = $decodedToken[ 'exp' ] ?? null;
