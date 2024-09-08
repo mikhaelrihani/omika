@@ -24,10 +24,21 @@ services:
         arguments:
             $apiKey: '%env(string:unsplash_KEY)%'
 
-    # Explicitly define the RefreshTokenRepository
-    App\Repository\RefreshTokenRepository:
+    App\Service\TokenService:
         arguments:
-            $registry: '@doctrine'
+            $refreshTokenManager: '@gesdinet.jwtrefreshtoken.refresh_token_manager'
+            $jwtManager: '@lexik_jwt_authentication.jwt_manager'
+            
+    # Assurez-vous que le service JWTManager est correctement configuré
+    Lexik\Bundle\JWTAuthenticationBundle\Services\JWTManager:
+        alias: lexik_jwt_authentication.jwt_manager
 
+    App\Security\JwtAuthenticator:
+        arguments:
+            $tokenService: '@App\Service\TokenService'
+        tags:
+            - { name: 'security.authenticator' }
+
+    
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

@@ -24,6 +24,8 @@ security:
         # Firewall pour les API sécurisées avec JWT
         api:
             pattern: ^/api
+            custom_authenticators: 
+                - App\Security\JwtAuthenticator
             stateless: true
             entry_point: jwt
             jwt: ~

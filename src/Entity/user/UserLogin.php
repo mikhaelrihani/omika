@@ -40,6 +40,9 @@ class UserLogin extends BaseEntity implements UserInterface, PasswordAuthenticat
     )]
     private ?string $password = null;
 
+    #[ORM\Column]
+    private ?bool $isEnabled = null;
+
    
 
     // Getters and Setters...
@@ -117,6 +120,18 @@ class UserLogin extends BaseEntity implements UserInterface, PasswordAuthenticat
     {
         // If you store any temporary, sensitive data on the user, clear it here
         // $this->plainPassword = null;
+    }
+
+    public function isEnabled(): bool
+    {
+        return $this->isEnabled;
+    }
+
+    public function setEnabled(bool $isEnabled): static
+    {
+        $this->isEnabled = $isEnabled;
+
+        return $this;
     }
 
 }
