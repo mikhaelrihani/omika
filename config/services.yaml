@@ -40,8 +40,17 @@ services:
             - { name: 'security.authenticator' }
 
     App\EventListener\AuthenticationSuccessListener:
+        arguments:
+            $router: '@router'
+            $logger: '@logger'
         tags:
             - { name: kernel.event_listener, event: kernel.response, method: onKernelResponse }
 
+    App\EventListener\TokenCleanupListener:
+        arguments:
+            $entityManager: '@doctrine.orm.entity_manager'
+            $logger: '@logger'
+        tags:
+            - { name: 'kernel.event_listener', event: 'lexik_jwt_authentication.on_authentication_success', method: 'onAuthenticationSuccess' }
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

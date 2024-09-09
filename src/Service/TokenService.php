@@ -25,33 +25,33 @@ class TokenService
         $this->userProvider = $userProvider;
     }
 
-    public function validateAndRefreshToken(Request $request): ?Response //! validate?
-    {
-        $authorizationHeader = $request->headers->get('Authorization');
+    // public function validateAndRefreshToken(Request $request): ?Response //! validate?
+    // {
+    //     $authorizationHeader = $request->headers->get('Authorization');
 
-        if ($authorizationHeader && strpos($authorizationHeader, 'Bearer ') === 0) {
-            $jwtToken = substr($authorizationHeader, 7);
+    //     if ($authorizationHeader && strpos($authorizationHeader, 'Bearer ') === 0) {
+    //         $jwtToken = substr($authorizationHeader, 7);
 
-            if ($this->isTokenExpired($jwtToken)) {//! pourquoi revéirfier si le token est expirer
-                $refreshToken = $request->cookies->get('refresh_token');
+    //         if ($this->isTokenExpired($jwtToken)) {//! pourquoi revéirfier si le token est expirer
+    //             $refreshToken = $request->cookies->get('refresh_token');
 
-                if ($refreshToken) {
-                    $newJwtToken = $this->handleRefreshToken($refreshToken);
+    //             if ($refreshToken) {
+    //                 $newJwtToken = $this->handleRefreshToken($refreshToken);
 
-                    if ($newJwtToken) {
-                        // Create the response with the new token in a secure cookie
-                        return $this->createJwtCookieResponse($newJwtToken);
-                    } else {
-                        throw new AuthenticationException('Token refresh failed');
-                    }
-                } else {
-                    throw new AuthenticationException('Refresh token missing');
-                }
-            }
-        }
+    //                 if ($newJwtToken) {
+    //                     // Create the response with the new token in a secure cookie
+    //                     return $this->createJwtCookieResponse($newJwtToken);
+    //                 } else {
+    //                     throw new AuthenticationException('Token refresh failed');
+    //                 }
+    //             } else {
+    //                 throw new AuthenticationException('Refresh token missing');
+    //             }
+    //         }
+    //     }
 
-        return null; // Token still valid, no need to refresh
-    }
+    //     return null; // Token still valid, no need to refresh
+    // }
 
     public function isTokenExpired(string $jwtToken): bool
     {

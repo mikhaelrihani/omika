@@ -126,8 +126,7 @@ class JwtAuthenticator extends AbstractAuthenticator
                 $newJwtToken = $this->refreshJWTToken($refreshToken);
 
                 //!cas ou le refreshtoken est expired 
-                //! supprimer de la bbdd
-                //! pourquoi le stocker dans la bdd
+                
                
 
                 if ($newJwtToken) {
