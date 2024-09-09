@@ -4,8 +4,6 @@ namespace App\Service;
 use App\Entity\user\UserLogin;
 use Gesdinet\JWTRefreshTokenBundle\Model\RefreshTokenManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTManager;
-use Symfony\Component\HttpFoundation\Cookie;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,14 +25,14 @@ class TokenService
         $this->userProvider = $userProvider;
     }
 
-    public function validateAndRefreshToken(Request $request): ?Response
+    public function validateAndRefreshToken(Request $request): ?Response //! validate?
     {
         $authorizationHeader = $request->headers->get('Authorization');
 
         if ($authorizationHeader && strpos($authorizationHeader, 'Bearer ') === 0) {
             $jwtToken = substr($authorizationHeader, 7);
 
-            if ($this->isTokenExpired($jwtToken)) {
+            if ($this->isTokenExpired($jwtToken)) {//! pourquoi revéirfier si le token est expirer
                 $refreshToken = $request->cookies->get('refresh_token');
 
                 if ($refreshToken) {
@@ -91,27 +89,5 @@ class TokenService
         return $this->jwtManager->create($user);
     }
 
-    private function createJwtCookieResponse(string $jwtToken): JsonResponse
-    {
-        // Creating a JsonResponse that contains a secure HttpOnly cookie with the JWT token
-        $response = new JsonResponse(['message' => 'Token refreshed successfully']);
-
-        // Set the JWT token as an HttpOnly, Secure cookie
-        $cookie = new Cookie(
-            'jwt_token', // Cookie name
-            $jwtToken, // JWT token
-            time() + 3600, // Expiration time (1 hour for example)
-            '/', // Path
-            null, // Domain (null for any domain)
-            true, // Secure flag (only send cookie over HTTPS)
-            true, // HttpOnly flag (only accessible via HTTP, not JS)
-            false, // Raw flag (whether the value is raw or URL encoded)
-            Cookie::SAMESITE_STRICT // SameSite option to prevent CSRF
-        );
-
-        // Add cookie to the response
-        $response->headers->setCookie($cookie);
-
-        return $response;
-    }
+   
 }

@@ -74,9 +74,12 @@ class UserFixtures extends BaseFixtures
             ->setRoles(["ROLE_SUPER_ADMIN"])
             ->setPassword($this->userPasswordHasher->hashPassword($userLogin, "Password29!"))
             ->setEmail("mikabernikdev@gmail.com")
+            ->setEnabled(true)
             ->setCreatedAt($timestamps[ 'createdAt' ])
             ->setUpdatedAt($timestamps[ 'updatedAt' ]);
+            
         $this->em->persist($userLogin);
+        
         return $userLogin;
     }
 
@@ -93,6 +96,7 @@ class UserFixtures extends BaseFixtures
             ->setRoles($this->faker->role())
             ->setPassword($this->userPasswordHasher->hashPassword($userLogin, "Password29!"))
             ->setEmail($this->faker->unique()->email())
+            ->setEnabled($this->faker->boolean(90))
             ->setCreatedAt($timestamps[ 'createdAt' ])
             ->setUpdatedAt($timestamps[ 'updatedAt' ]);
         $this->em->persist($userLogin);

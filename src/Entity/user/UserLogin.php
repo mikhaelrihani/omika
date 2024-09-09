@@ -40,8 +40,9 @@ class UserLogin extends BaseEntity implements UserInterface, PasswordAuthenticat
     )]
     private ?string $password = null;
 
-    #[ORM\Column]
-    private ?bool $isEnabled = null;
+    #[ORM\Column(type: 'boolean')]
+    private bool $isEnabled;
+    
 
    
 

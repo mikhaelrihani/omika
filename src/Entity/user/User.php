@@ -291,17 +291,5 @@ class User extends BaseEntity implements RecipientInterface
         return $this;
     }
 
- #[ORM\Column(type: 'boolean')]
-    private bool $enabled;
-
-    public function isEnabled(): bool
-    {
-        return $this->enabled;
-    }
-
-    public function setEnabled(bool $enabled): self
-    {
-        $this->enabled = $enabled;
-        return $this;
-    }
+ 
 }
