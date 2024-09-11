@@ -1,7 +1,7 @@
 <?php
 
 
-namespace App\Message;
+namespace App\Scheduler\Message;
 
 class CleanupTokensMessage
 {

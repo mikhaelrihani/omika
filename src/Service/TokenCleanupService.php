@@ -33,6 +33,7 @@ class TokenCleanupService
 
             // Créez une instance de Process avec les chemins complets et les arguments
             $process = new Process([$phpBinaryPath, $consolePath, 'gesdinet:jwt:clear']);
+            //C:\wamp64\bin\php\php8.2.18\php.exe C:\wamp64\www\omika\bin\console gesdinet:jwt:clear
 
             $process->run();
 

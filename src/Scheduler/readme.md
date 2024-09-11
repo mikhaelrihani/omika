@@ -5,7 +5,7 @@
      * tu dois lancer le consommateur de messages pour que le scheduler fonctionne.
      * Utilise la commande suivante pour démarrer le consommateur de messages :
      *
-     *     php bin/console messenger:consume async
+     *     php bin/console messenger:consume scheduler_CleanupTokensSchedule -vv
      *
      * Cette commande va écouter et consommer les messages asynchrones, y compris ceux 
      * envoyés par le scheduler toutes les minutes.
