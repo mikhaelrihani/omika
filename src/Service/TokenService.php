@@ -4,9 +4,6 @@ namespace App\Service;
 use App\Entity\user\UserLogin;
 use Gesdinet\JWTRefreshTokenBundle\Model\RefreshTokenManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTManager;
-use Symfony\Component\Security\Core\Exception\AuthenticationException;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
 
 class TokenService
