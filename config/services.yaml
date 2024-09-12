@@ -45,8 +45,14 @@ services:
 
     App\Service\TokenCleanupService:
         arguments:
+            $phpBinaryPath: '%env(string:phpBinaryPath)%'
+            $consolePath: '%env(string:consolePath)%'
             $entityManager: '@doctrine.orm.entity_manager'
-            $logger: '@logger'
+     # Configuration du service pour CleanupTokensMessageHandler
+    App\Scheduler\MessageHandler\CleanupTokensMessageHandler:
+        arguments:
+            $phpBinaryPath: '%env(string:phpBinaryPath)%'
+            $consolePath: '%env(string:consolePath)%'       
     
     
 

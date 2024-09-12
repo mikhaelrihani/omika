@@ -34,7 +34,7 @@ class CleanupTokensCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
-            $this->tokenCleanupService->performCleanup();
+            $this->tokenCleanupService->performCleanup($output);
             $output->writeln('Token cleanup executed successfully.');
             return Command::SUCCESS;
         } catch (\Exception $e) {
