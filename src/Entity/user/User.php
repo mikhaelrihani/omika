@@ -15,7 +15,7 @@ use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 #[UniqueEntity(fields: ['avatar'], message: 'This picture is already used as an avatar by another user.')]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-class User extends BaseEntity implements RecipientInterface
+class User extends BaseEntity implements RecipientInterface 
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]

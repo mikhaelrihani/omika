@@ -28,10 +28,24 @@ class RefreshTokenRepository extends ServiceEntityRepository implements RefreshT
             $datetime = new \DateTime();
         }
         return $this->createQueryBuilder('r')
-        ->andWhere('r.valid <= :now')
-        ->setParameter('now', $datetime)
-        ->getQuery()
-        ->getResult();
+            ->andWhere('r.valid <= :now')
+            ->setParameter('now', $datetime)
+            ->getQuery()
+            ->getResult();
     }
-   
+    
+    /**
+     * Find a refresh token by its token string.
+     *
+     * @param string $refreshToken
+     * @return RefreshToken|null
+     */
+    public function findOneByRefreshToken(string $refreshToken): ?RefreshToken
+    {
+        return $this->createQueryBuilder('r')
+            ->andWhere('r.refreshToken = :refreshToken')
+            ->setParameter('refreshToken', $refreshToken)
+            ->getQuery()
+            ->getOneOrNullResult();  // Returns either the entity or null
+    }
 }

@@ -7,5 +7,18 @@ use Gesdinet\JWTRefreshTokenBundle\Entity\RefreshToken as BaseRefreshToken;
 #[ORM\Table(name: 'refresh_tokens')]
 class RefreshToken extends BaseRefreshToken
 {
-    
+    #[ORM\Column]
+    private ?bool $revoked = false;
+
+    public function isRevoked(): ?bool
+    {
+        return $this->revoked;
+    }
+
+    public function setRevoked(bool $revoked): static
+    {
+        $this->revoked = $revoked;
+
+        return $this;
+    }
 }

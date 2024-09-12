@@ -4,6 +4,7 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    api_url: '%env(API_URL)%'
 
 services:
     # default configuration for services in *this* file
@@ -24,9 +25,8 @@ services:
         arguments:
             $apiKey: '%env(string:unsplash_KEY)%'
 
-    App\Service\TokenService:
+    App\Service\JwtTokenService:
         arguments:
-            $refreshTokenManager: '@gesdinet.jwtrefreshtoken.refresh_token_manager'
             $jwtManager: '@lexik_jwt_authentication.jwt_manager'
             
     # Assurez-vous que le service JWTManager est correctement configuré
@@ -34,8 +34,6 @@ services:
         alias: lexik_jwt_authentication.jwt_manager
 
     App\Security\JwtAuthenticator:
-        arguments:
-            $tokenService: '@App\Service\TokenService'
         tags:
             - { name: 'security.authenticator' }
 

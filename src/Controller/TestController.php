@@ -2,21 +2,26 @@
 // src/Controller/TestController.php
 namespace App\Controller;
 
-use App\Scheduler\Message\CleanupTokensMessage;
-use Symfony\Component\Messenger\MessageBusInterface;
+use App\Service\JwtTokenService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
 
 class TestController extends AbstractController
 {
-    #[Route('/test')]
-    public function test(MessageBusInterface $bus): Response
+    private JwtTokenService $jwtTokenService;
+    public function __construct(JwtTokenService $jwtTokenService)
     {
-        // Envoi manuel du message CleanupTokensMessage
-        $bus->dispatch(new CleanupTokensMessage());
+        $this->jwtTokenService = $jwtTokenService;
 
-        return new Response('Message CleanupTokensMessage envoyé.');
+    }
+    #[Route('/api/test', methods: ['POST'])]
+    public function test(Request $request): Response
+    {
+        $refreshToken=$request->cookies->get('REFRESH_TOKEN');
+        $this->jwtTokenService->revokeUserTokenAccess($refreshToken);
+        return new Response('Hello Omika');
     }
 }
