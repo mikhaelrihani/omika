@@ -48,8 +48,11 @@ services:
     App\Scheduler\MessageHandler\CleanupTokensMessageHandler:
         arguments:
             $phpBinaryPath: '%env(string:phpBinaryPath)%'
-            $consolePath: '%env(string:consolePath)%'       
-    
+            $consolePath: '%env(string:consolePath)%'  
+                 
+    App\EventSubscriber\ApiExceptionSubscriber:
+        tags:
+            - { name: 'kernel.event_subscriber' }
    
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
