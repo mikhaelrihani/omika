@@ -17,6 +17,10 @@ class AuthenticationSuccessListener
      */
     public function setRefreshTokenCookie(ResponseEvent $event)
     {
-       $this->jwtTokenService->setRefreshTokenCookie($event);
+        $route = $event->getRequest()->attributes->get('_route');
+        if ($route === 'api_login_check') {
+            $this->jwtTokenService->setRefreshTokenCookie($event);
+        }
+      
     }
 }

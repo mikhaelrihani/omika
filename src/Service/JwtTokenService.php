@@ -96,20 +96,28 @@ class JwtTokenService
      * @return string|null The new JWT token or null if the refresh token is invalid.
      */
     public function refreshJWTToken(string $refreshToken): ?string
-    {
-        $httpClient = HttpClient::create();
+{
+    $httpClient = HttpClient::create();
 
+    try {
         $response = $httpClient->request('POST', $this->apiUrl . '/token/refresh', [
             'headers' => ['Content-Type' => 'application/json'],
             'json'    => ['refresh_token' => $refreshToken],
         ]);
 
+        // Check for 200 OK status
         if ($response->getStatusCode() === 200) {
-            return $response->toArray()[ 'token' ] ?? null;
+            $responseData = $response->toArray();
+            // Make sure the 'token' exists in the response
+            return $responseData['token'] ?? null;
+        } else {
+            return null;
         }
-
+    } catch (\Exception $e) {
         return null;
     }
+}
+
 
     /**
      * Extracts the refresh token from the request, either from cookies or headers.
@@ -127,43 +135,39 @@ class JwtTokenService
      * Sets the refresh token as an HttpOnly cookie in the response.
      * Use the expiration date of the refresh token as the cookie expiration date, to avoid missing the refresh token cookie.
      *
-     * @param ResponseEvent $event The response event.
+     * @param ResponseEvent  $event The response event.
      */
     public function setRefreshTokenCookie(ResponseEvent $event)
     {
-        $request = $event->getRequest();
         $response = $event->getResponse();
-        $route = $request->attributes->get('_route');
+        $data = json_decode($response->getContent(), true);
+        $refreshToken = $data[ 'refresh_token' ];
 
-        if ($route === "api_login_check") {
-            $data = json_decode($response->getContent(), true);
-            $refreshToken = $data[ 'refresh_token' ];
+        $refreshTokenEntity = $this->refreshTokenRepository->findOneByRefreshToken($refreshToken);
+        $expirationDate = $refreshTokenEntity->getValid();
+        if (!$expirationDate) {
+            throw new \Exception('No expiration date for the refresh token');
+        }
 
-            $refreshTokenEntity = $this->refreshTokenRepository->findOneByRefreshToken($refreshToken);
-            $expirationDate = $refreshTokenEntity->getValid();
-            if (!$expirationDate) {
-                throw new \Exception('No expiration date for the refresh token');
-            }
+        if (isset($data[ 'refresh_token' ])) {
+            // Add the refresh token to a secure HttpOnly cookie
+            $cookie = new Cookie(
+                'REFRESH_TOKEN',
+                $refreshToken,
+                $expirationDate->getTimestamp(), // Utiliser la date d'expiration du refresh token
+                '/',
+                null,
+                true,
+                true,
+                false,
+                Cookie::SAMESITE_STRICT
+            );
+            $response->headers->setCookie($cookie);
 
-            if (isset($data[ 'refresh_token' ])) {
-                // Add the refresh token to a secure HttpOnly cookie
-                $cookie = new Cookie(
-                    'REFRESH_TOKEN',
-                    $refreshToken,
-                    $expirationDate->getTimestamp(), // Utiliser la date d'expiration du refresh token
-                    '/',
-                    null,
-                    true,
-                    true,
-                    false,
-                    Cookie::SAMESITE_STRICT
-                );
-                $response->headers->setCookie($cookie);
+        } else {
+            $response->setContent(json_encode(['error' => 'Refresh token not found']));
+            $response->setStatusCode(Response::HTTP_INTERNAL_SERVER_ERROR);
 
-            } else {
-                $response->setContent(json_encode(['error' => 'Refresh token not found']));
-                $response->setStatusCode(Response::HTTP_INTERNAL_SERVER_ERROR);
-            }
         }
     }
 

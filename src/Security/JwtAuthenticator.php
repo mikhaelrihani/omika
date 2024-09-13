@@ -69,6 +69,9 @@ class JwtAuthenticator extends AbstractAuthenticator
         // Extract the JWT credentials from the request
         $jwtCredentials = $this->JwtTokenService->getJwtCredential($request);
         $jwtToken = $jwtCredentials[ 'jwtToken' ];
+        if (!$jwtToken) {
+            throw new AuthenticationException('JWT token is missing from the request.');
+        }
 
         try {
             // Decode and validate the token
@@ -90,13 +93,12 @@ class JwtAuthenticator extends AbstractAuthenticator
         } catch (JWTDecodeFailureException $e) {
             // Handle token expiration or other JWT errors
             if ($e->getReason() === JWTDecodeFailureException::EXPIRED_TOKEN) {
-
                 // Extract refresh token
                 $refreshToken = $this->JwtTokenService->getRefreshTokenFromRequest($request);
                 if (!$refreshToken) {
                     throw new AuthenticationException('No refresh token found. Please log in again.');
                 }
-                
+
                 // Get the refresh token entity
                 $refreshTokenEntity = $this->JwtTokenService->getRefreshTokenEntity($refreshToken);
 
@@ -104,22 +106,28 @@ class JwtAuthenticator extends AbstractAuthenticator
                     throw new AuthenticationException('Refresh token has been revoked. User access is blocked.');
                 }
 
-                // Refresh the JWT token
-                $newJwtToken = $this->JwtTokenService->refreshJWTToken($refreshToken);
-
-                if ($newJwtToken) {
-                    // Retry with the new JWT token
-                    $request->headers->set('Authorization', "Bearer $newJwtToken");
-                    return $this->authenticate($request); // Retry authentication with the new token
+                // Check if the refresh token is expired
+                if ($refreshTokenEntity && $refreshTokenEntity->isValid()) {
+                    throw new AuthenticationException('Refresh token is expired. Please log in again.');
                 }
 
-                throw new AuthenticationException('Refresh token expired or invalid. Please log in again.');
+                // Refresh the JWT token
+                $newJwtToken = $this->JwtTokenService->refreshJWTToken($refreshToken);
+                if (!$newJwtToken) {
+                    throw new AuthenticationException('Failed to refresh JWT token.');
+                }
+
+                // Retry with the new JWT token
+                $request->headers->set('Authorization', "Bearer $newJwtToken");
+                return $this->authenticate($request); // Retry authentication with the new token
             }
 
             // For other JWTDecodeFailureExceptions, rethrow the exception
             throw new AuthenticationException('Invalid JWT Token: ' . $e->getMessage());
         }
+
     }
+
 
     /**
      * Handles authentication failure.
