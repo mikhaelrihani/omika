@@ -25,10 +25,8 @@ services:
         arguments:
             $apiKey: '%env(string:unsplash_KEY)%'
 
-    App\Service\JwtTokenService:
-        arguments:
-            $jwtManager: '@lexik_jwt_authentication.jwt_manager'
-            
+    App\Service\JwtTokenService: ~
+
     # Assurez-vous que le service JWTManager est correctement configuré
     Lexik\Bundle\JWTAuthenticationBundle\Services\JWTManager:
         alias: lexik_jwt_authentication.jwt_manager

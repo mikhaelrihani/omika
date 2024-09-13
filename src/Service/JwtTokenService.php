@@ -6,7 +6,6 @@ use App\Entity\user\UserLogin;
 use App\Repository\RefreshTokenRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Encoder\JWTEncoderInterface;
-use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTManager;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -19,7 +18,7 @@ use Symfony\Component\Security\Core\User\UserProviderInterface;
 
 class JwtTokenService
 {
-    private JWTManager $jwtManager;
+  
     private UserProviderInterface $userProvider;
     private JWTEncoderInterface $jwtEncoder;
     private $apiUrl;
@@ -27,14 +26,12 @@ class JwtTokenService
     private EntityManagerInterface $em;
 
     public function __construct(
-        JWTManager $jwtManager,
         UserProviderInterface $userProvider,
         JWTEncoderInterface $jwtEncoder,
         ParameterBagInterface $params,
         RefreshTokenRepository $refreshTokenRepository,
         EntityManagerInterface $em
     ) {
-        $this->jwtManager = $jwtManager;
         $this->userProvider = $userProvider;
         $this->jwtEncoder = $jwtEncoder;
         $this->apiUrl = $params->get('api_url');
