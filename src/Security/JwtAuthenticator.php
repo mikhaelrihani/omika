@@ -49,6 +49,7 @@ class JwtAuthenticator extends AbstractAuthenticator
      * Called on every request to decide if this authenticator should be
      * used for the request. Returning `false` will cause this authenticator
      * to be skipped.
+     * and will return a 401 Unauthorized response.jwt token not found
      */
     public function supports(Request $request): ?bool
     {
@@ -92,7 +93,10 @@ class JwtAuthenticator extends AbstractAuthenticator
 
                 // Extract refresh token
                 $refreshToken = $this->JwtTokenService->getRefreshTokenFromRequest($request);
-
+                if (!$refreshToken) {
+                    throw new AuthenticationException('No refresh token found. Please log in again.');
+                }
+                
                 // Get the refresh token entity
                 $refreshTokenEntity = $this->JwtTokenService->getRefreshTokenEntity($refreshToken);
 

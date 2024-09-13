@@ -18,7 +18,7 @@ use Symfony\Component\Security\Core\User\UserProviderInterface;
 
 class JwtTokenService
 {
-  
+
     private UserProviderInterface $userProvider;
     private JWTEncoderInterface $jwtEncoder;
     private $apiUrl;
@@ -87,7 +87,7 @@ class JwtTokenService
         }
     }
 
-   
+
     /**
      * Calls the refresh token endpoint to get a new JWT.
      *
@@ -125,6 +125,7 @@ class JwtTokenService
 
     /**
      * Sets the refresh token as an HttpOnly cookie in the response.
+     * Use the expiration date of the refresh token as the cookie expiration date, to avoid missing the refresh token cookie.
      *
      * @param ResponseEvent $event The response event.
      */
@@ -138,21 +139,27 @@ class JwtTokenService
             $data = json_decode($response->getContent(), true);
             $refreshToken = $data[ 'refresh_token' ];
 
+            $refreshTokenEntity = $this->refreshTokenRepository->findOneByRefreshToken($refreshToken);
+            $expirationDate = $refreshTokenEntity->getValid();
+            if (!$expirationDate) {
+                throw new \Exception('No expiration date for the refresh token');
+            }
+
             if (isset($data[ 'refresh_token' ])) {
                 // Add the refresh token to a secure HttpOnly cookie
-                $response->headers->setCookie(
-                    new Cookie(
-                        'REFRESH_TOKEN',
-                        $refreshToken,
-                        time() + 3600,
-                        '/',
-                        null,
-                        true,
-                        true,
-                        false,
-                        Cookie::SAMESITE_STRICT
-                    )
+                $cookie = new Cookie(
+                    'REFRESH_TOKEN',
+                    $refreshToken,
+                    $expirationDate->getTimestamp(), // Utiliser la date d'expiration du refresh token
+                    '/',
+                    null,
+                    true,
+                    true,
+                    false,
+                    Cookie::SAMESITE_STRICT
                 );
+                $response->headers->setCookie($cookie);
+
             } else {
                 $response->setContent(json_encode(['error' => 'Refresh token not found']));
                 $response->setStatusCode(Response::HTTP_INTERNAL_SERVER_ERROR);

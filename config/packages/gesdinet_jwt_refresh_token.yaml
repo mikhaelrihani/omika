@@ -1,5 +1,5 @@
 gesdinet_jwt_refresh_token:
-    ttl: 3600 # 1 hour
+    ttl: 86400  # 24 hours (in seconds)
     ttl_update: true
     user_provider: app_user_provider
     refresh_token_entity: App\Entity\RefreshToken
