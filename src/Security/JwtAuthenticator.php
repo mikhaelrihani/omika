@@ -16,6 +16,9 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
 use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
 
+/**
+ * JwtAuthenticator is responsible for authenticating users based on JWT tokens.
+ */
 class JwtAuthenticator extends AbstractAuthenticator
 {
     private JWTManager $jwtManager;
@@ -23,7 +26,13 @@ class JwtAuthenticator extends AbstractAuthenticator
     private JwtTokenService $JwtTokenService;
 
 
-
+    /**
+     * JwtAuthenticator constructor.
+     *
+     * @param JWTManager $jwtManager
+     * @param UserProviderInterface $userProvider
+     * @param JwtTokenService $JwtTokenService
+     */
     public function __construct(JWTManager $jwtManager, UserProviderInterface $userProvider, JwtTokenService $JwtTokenService)
     {
         $this->jwtManager = $jwtManager;
@@ -32,6 +41,11 @@ class JwtAuthenticator extends AbstractAuthenticator
     }
 
     /**
+     * Checks whether the current request contains an Authorization header with a Bearer token.
+     *
+     * @param Request $request
+     * @return bool|null
+     * 
      * Called on every request to decide if this authenticator should be
      * used for the request. Returning `false` will cause this authenticator
      * to be skipped.
@@ -41,71 +55,89 @@ class JwtAuthenticator extends AbstractAuthenticator
         return $request->headers->has('Authorization') && strpos($request->headers->get('Authorization'), 'Bearer ') === 0;
     }
 
-
+    /**
+     * Authenticates the user using the JWT token provided in the Authorization header.
+     *
+     * @param Request $request
+     * @return Passport
+     *
+     * @throws AuthenticationException
+     */
     public function authenticate(Request $request): Passport
     {
         // Extract the JWT credentials from the request
         $jwtCredentials = $this->JwtTokenService->getJwtCredential($request);
-        $jwtToken = $jwtCredentials['jwtToken'];
-    
+        $jwtToken = $jwtCredentials[ 'jwtToken' ];
+
         try {
             // Decode and validate the token
             $decodedPayload = $this->jwtManager->decode(new JwtUserToken($jwtToken));
-            $userIdentifier = $decodedPayload['username'];
-            
+            $userIdentifier = $decodedPayload[ 'username' ];
+
             // Load the user from the identifier
             $user = $this->userProvider->loadUserByIdentifier($userIdentifier);
-    
+
             if (!$user->isEnabled()) {
                 throw new AuthenticationException('User is disabled.');
             }
-    
+
             // Return a SelfValidatingPassport with the user badge
             return new SelfValidatingPassport(new UserBadge($userIdentifier, function ($userIdentifier) {
                 return $this->userProvider->loadUserByIdentifier($userIdentifier);
             }));
-            
+
         } catch (JWTDecodeFailureException $e) {
             // Handle token expiration or other JWT errors
             if ($e->getReason() === JWTDecodeFailureException::EXPIRED_TOKEN) {
-               
+
                 // Extract refresh token
                 $refreshToken = $this->JwtTokenService->getRefreshTokenFromRequest($request);
-                
+
                 // Get the refresh token entity
                 $refreshTokenEntity = $this->JwtTokenService->getRefreshTokenEntity($refreshToken);
-    
+
                 if ($refreshTokenEntity && $refreshTokenEntity->isRevoked()) {
                     throw new AuthenticationException('Refresh token has been revoked. User access is blocked.');
                 }
-    
+
                 // Refresh the JWT token
                 $newJwtToken = $this->JwtTokenService->refreshJWTToken($refreshToken);
-    
+
                 if ($newJwtToken) {
                     // Retry with the new JWT token
                     $request->headers->set('Authorization', "Bearer $newJwtToken");
                     return $this->authenticate($request); // Retry authentication with the new token
                 }
-    
+
                 throw new AuthenticationException('Refresh token expired or invalid. Please log in again.');
             }
-    
+
             // For other JWTDecodeFailureExceptions, rethrow the exception
             throw new AuthenticationException('Invalid JWT Token: ' . $e->getMessage());
         }
     }
-    
 
+    /**
+     * Handles authentication failure.
+     *
+     * @param Request $request
+     * @param AuthenticationException $exception
+     * @return Response
+     */
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
     {
         return new JsonResponse(['error' => $exception->getMessage()], Response::HTTP_UNAUTHORIZED);
     }
 
     /*
-        * This method is called when authentication executed and was successful.
-
-        */
+     * This method is automatically called when authentication was successful, right after the jwtManager of lexikBundle used the method decode. 
+     * 
+     * Handles successful authentication.
+     * @param Request $request
+     * @param TokenInterface $token
+     * @param string $firewallName
+     * @return Response|null
+     */
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
     {
         return null;
