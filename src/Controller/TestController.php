@@ -17,11 +17,17 @@ class TestController extends AbstractController
         $this->jwtTokenService = $jwtTokenService;
 
     }
+   
     #[Route('/api/test', methods: ['POST'])]
     public function test(Request $request): Response
     {
         $refreshToken=$request->cookies->get('REFRESH_TOKEN');
         $this->jwtTokenService->revokeUserTokenAccess($refreshToken);
+        return new Response('token access revoked');
+    }
+    #[Route('/api/testHello', methods: ['POST'])]
+    public function testHello(): Response
+    {
         return new Response('Hello Omika');
     }
 }

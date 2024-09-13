@@ -90,26 +90,7 @@ class JwtTokenService
         }
     }
 
-    /**
-     * Checks if the given JWT token is expired.
-     *
-     * @param string $jwtToken The JWT token string.
-     *
-     * @return bool True if the token is expired, false otherwise.
-     */
-    public function isTokenExpired(string $jwtToken): bool
-    {
-        $decodedToken = $this->jwtManager->parse($jwtToken);
-        $expiration = $decodedToken[ 'exp' ] ?? null;
-
-        if (!$expiration) {
-            return true;
-        }
-
-        $expiryDate = \DateTime::createFromFormat('U', $expiration);
-        return $expiryDate <= new \DateTime();
-    }
-
+   
     /**
      * Calls the refresh token endpoint to get a new JWT.
      *
@@ -218,5 +199,16 @@ class JwtTokenService
     {
         $refreshTokenEntity->setRevoked(true);
         $this->em->flush();
+    }
+    /**
+     * Retrieves a refresh token entity by its token string.
+     *
+     * @param string $refreshToken The refresh token string.
+     *
+     * @return object|null The refresh token entity or null if not found.
+     */
+    public function getRefreshTokenEntity(string $refreshToken): ?object
+    {
+        return $this->refreshTokenRepository->findOneByRefreshToken($refreshToken);
     }
 }

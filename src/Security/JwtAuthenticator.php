@@ -46,49 +46,56 @@ class JwtAuthenticator extends AbstractAuthenticator
     {
         // Extract the JWT credentials from the request
         $jwtCredentials = $this->JwtTokenService->getJwtCredential($request);
-        $jwtToken = $jwtCredentials[ 'jwtToken' ];
-
-        // Check if the token is expired
-        if ($this->JwtTokenService->isTokenExpired($jwtToken)) {
-            // Handle token expiration
-            $refreshToken = $this->JwtTokenService->getRefreshTokenFromRequest($request);
-            $newJwtToken = $this->JwtTokenService->refreshJWTToken($refreshToken);
-
-            if ($newJwtToken) {
-                // Retry with new JWT
-                $request->headers->set('Authorization', "Bearer $newJwtToken");
-                return $this->authenticate($request);
-            }
-
-            throw new AuthenticationException('Refresh token expired or invalid. Please log in again.');
-        }
-
+        $jwtToken = $jwtCredentials['jwtToken'];
+    
         try {
             // Decode and validate the token
             $decodedPayload = $this->jwtManager->decode(new JwtUserToken($jwtToken));
-
-            // Extract the user identifier from the decoded payload
-            $userIdentifier = $decodedPayload[ 'username' ];
-
-            // Check if user is enabled
+            $userIdentifier = $decodedPayload['username'];
+            
+            // Load the user from the identifier
             $user = $this->userProvider->loadUserByIdentifier($userIdentifier);
+    
             if (!$user->isEnabled()) {
                 throw new AuthenticationException('User is disabled.');
             }
-
-            // Create UserBadge 
-            $userBadge = new UserBadge($userIdentifier, function ($userIdentifier) {
+    
+            // Return a SelfValidatingPassport with the user badge
+            return new SelfValidatingPassport(new UserBadge($userIdentifier, function ($userIdentifier) {
                 return $this->userProvider->loadUserByIdentifier($userIdentifier);
-            });
-
-            // Return SelfValidatingPassport with the user badge
-            return new SelfValidatingPassport($userBadge);
-
+            }));
+            
         } catch (JWTDecodeFailureException $e) {
+            // Handle token expiration or other JWT errors
+            if ($e->getReason() === JWTDecodeFailureException::EXPIRED_TOKEN) {
+               
+                // Extract refresh token
+                $refreshToken = $this->JwtTokenService->getRefreshTokenFromRequest($request);
+                
+                // Get the refresh token entity
+                $refreshTokenEntity = $this->JwtTokenService->getRefreshTokenEntity($refreshToken);
+    
+                if ($refreshTokenEntity && $refreshTokenEntity->isRevoked()) {
+                    throw new AuthenticationException('Refresh token has been revoked. User access is blocked.');
+                }
+    
+                // Refresh the JWT token
+                $newJwtToken = $this->JwtTokenService->refreshJWTToken($refreshToken);
+    
+                if ($newJwtToken) {
+                    // Retry with the new JWT token
+                    $request->headers->set('Authorization', "Bearer $newJwtToken");
+                    return $this->authenticate($request); // Retry authentication with the new token
+                }
+    
+                throw new AuthenticationException('Refresh token expired or invalid. Please log in again.');
+            }
+    
+            // For other JWTDecodeFailureExceptions, rethrow the exception
             throw new AuthenticationException('Invalid JWT Token: ' . $e->getMessage());
         }
     }
-
+    
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
     {
