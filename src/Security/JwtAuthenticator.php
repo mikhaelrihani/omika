@@ -107,7 +107,7 @@ class JwtAuthenticator extends AbstractAuthenticator
                 }
 
                 // Check if the refresh token is expired
-                if ($refreshTokenEntity && $refreshTokenEntity->isValid()) {
+                if ($refreshTokenEntity && !$refreshTokenEntity->isValid()) {
                     throw new AuthenticationException('Refresh token is expired. Please log in again.');
                 }
 
