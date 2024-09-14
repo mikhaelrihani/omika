@@ -20,11 +20,10 @@ class TokenCleanupService
         $this->consolePath = $consolePath;
     }
 
-    public function performCleanup(OutputInterface $output)
+    public function performCleanup(OutputInterface $output, $count)
     {
-        // Compter le nombre de refresh tokens dans la base de données
-        $count = $this->entityManager->getRepository(RefreshToken::class)->count([]);
-
+        
+        $output->writeln('Token count before cleanup: ' . $count);
         while ($count > 5) {
             $process = new Process([$this->phpBinaryPath, $this->consolePath, 'gesdinet:jwt:clear']);
             $process->run();
@@ -39,7 +38,7 @@ class TokenCleanupService
                 $output->writeln('Error output: ' . $process->getErrorOutput());
                 return; // Sortir de la fonction en cas d'échec
             }
-            $count = $this->entityManager->getRepository(RefreshToken::class)->count([]);
+            $count--; //
         }
     }
 

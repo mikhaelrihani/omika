@@ -21,6 +21,8 @@ final class CleanupTokensMessageHandler
     public function __invoke(CleanupTokensMessage $message): void
     {
         $process = new Process([$this->phpBinaryPath, $this->consolePath, 'app:cleanup-tokens']);
+        $process->setTimeout(60); 
         $process->run();
+        
     }
 }
