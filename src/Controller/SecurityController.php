@@ -49,38 +49,61 @@ class SecurityController extends AbstractController
     }
 
     /**
+     * Valide le nouveau mot de passe fourni et vérifie qu'il correspond à la confirmation.
+     * 
+     * @param Request $request La requête contenant le nouveau mot de passe et sa confirmation.
+     * 
+     * @return JsonResponse|bool Retourne le mot de passe validé ou une réponse d'erreur si la validation échoue.
+     */
+    public function checkNewPassword(Request $request): JsonResponse|bool
+    {
+        $data = json_decode($request->getContent(), true);
+
+        if (!isset($data[ 'newPassword' ], $data[ 'confirmPassword' ])) {
+            return new JsonResponse(['message' => 'Missing required fields (newPassword or confirmPassword)'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if (empty($data[ 'newPassword' ]) || empty($data[ 'confirmPassword' ])) {
+            return new JsonResponse(['message' => 'Password cannot be empty'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if ($data[ 'newPassword' ] !== $data[ 'confirmPassword' ]) {
+            return new JsonResponse(['message' => 'Passwords do not match'], Response::HTTP_BAD_REQUEST);
+        }
+
+        return $data[ 'newPassword' ]; // Retourne le mot de passe validé
+    }
+
+    /**
      * Définit un nouveau mot de passe pour l'utilisateur.
      * 
      * @Route("/newPassword", name="newPassword", methods={"POST"})
      *
-     * @param Request $request La requête HTTP contenant le nouveau mot de passe et sa confirmation.
+     * @param Request $request La requête contenant le nouveau mot de passe.
      * 
      * @return JsonResponse Réponse indiquant le succès ou l'échec de l'opération.
      */
     public function setNewPassword(Request $request): JsonResponse
     {
         try {
-            $data = json_decode($request->getContent(), true);
-
-            if (!isset($data['newPassword'], $data['confirmPassword'])) {
-                return new JsonResponse(['message' => 'Missing required fields (newPassword or confirmPassword)'], Response::HTTP_BAD_REQUEST);
+            // Valide le nouveau mot de passe
+            $newPassword = $this->checkNewPassword($request);
+            if ($newPassword instanceof JsonResponse) {
+                return $newPassword; // En cas d'erreur dans la validation, retourne la réponse d'erreur
             }
 
-            if (empty($data['newPassword']) || empty($data['confirmPassword'])) {
-                return new JsonResponse(['message' => 'Password cannot be empty'], Response::HTTP_BAD_REQUEST);
-            }
-
-            if ($data['newPassword'] !== $data['confirmPassword']) {
-                return new JsonResponse(['message' => 'Passwords do not match'], Response::HTTP_BAD_REQUEST);
+            // Récupère l'email
+            $email = $this->getEmail($request);
+            if ($email instanceof JsonResponse) {
+                return $email; // En cas d'erreur, retourne la réponse d'erreur
             }
 
             // Met à jour le mot de passe via le service de sécurité
-            $this->securityService->refreshPassword($data['newPassword']);
+            $this->securityService->refreshPassword($email, $newPassword);
 
             return new JsonResponse(['message' => 'Password updated successfully'], Response::HTTP_OK);
 
         } catch (\Throwable $th) {
-            // Gestion des erreurs et retour d'une réponse en cas d'échec
             return new JsonResponse(['message' => 'An error occurred while updating the password'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -99,18 +122,40 @@ class SecurityController extends AbstractController
         try {
             $data = json_decode($request->getContent(), true);
 
-            if (empty($data['email']) || empty($data['link'])) {
-                return new JsonResponse(['message' => 'Email or link cannot be empty'], Response::HTTP_BAD_REQUEST);
+            if (!isset($data[ 'link' ]) || empty($data[ 'link' ])) {
+                return new JsonResponse(['message' => 'Link cannot be empty'], Response::HTTP_BAD_REQUEST);
+            }
+
+            $email = $this->getEmail($request);
+            if ($email instanceof JsonResponse) {
+                return $email; // Retourne la réponse d'erreur en cas de problème avec l'email
             }
 
             // Envoie le lien de réinitialisation de mot de passe via le service de sécurité
-            $this->securityService->sendPasswordLink($data['email'], $data['link']);
+            $this->securityService->sendPasswordLink($email, $data[ 'link' ]);
 
             return new JsonResponse(['message' => 'Password reset link sent successfully'], Response::HTTP_OK);
 
         } catch (\Throwable $th) {
-            // Gestion des erreurs et retour d'une réponse en cas d'échec
             return new JsonResponse(['message' => 'An error occurred while sending the password reset link'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * Récupère l'email à partir de la requête.
+     * 
+     * @param Request $request La requête contenant l'email.
+     * 
+     * @return string|JsonResponse Retourne l'email ou une réponse d'erreur si l'email est manquant ou invalide.
+     */
+    public function getEmail(Request $request): string|JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data[ 'email' ]) || !isset($data[ 'email' ])) {
+            return new JsonResponse(['message' => 'Missing field email or email value is empty'], Response::HTTP_BAD_REQUEST);
+        }
+
+        return $data[ 'email' ];
     }
 }
