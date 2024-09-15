@@ -24,12 +24,14 @@ class SecurityService
         // flush the password
     }
 
-    public function sendPasswordResetLink(string $email, string $link)
+    public function sendPasswordLink(string $email, string $link)
     {
+        
         // verifier si l email existe et match avec un user
         // recuperer le user provider/userlogin entity grace a l email 
         // vérifier si le user est enabled ou autre security ou block user request
         // envoyer un email avec le lien(link recu par le frontend) du form de renouvellement de password 
+        // utiliser un service email avec le lien
     }
 }
 
