@@ -32,14 +32,11 @@ class SecurityController extends AbstractController
 
     /**
      * Déconnecte l'utilisateur en révoquant son token JWT.
-     * 
-     * @Route("/logout", name="logout", methods={"POST"})
-     *
      * @param Request $request La requête HTTP.
      * @param JwtTokenService $jwtTokenService Service pour manipuler les tokens JWT.
-     * 
      * @return JsonResponse Réponse indiquant le succès de l'opération.
      */
+    #[Route('/logout', name: "logout", methods: ["POST"])]
     public function logout(Request $request, JwtTokenService $jwtTokenService): JsonResponse
     {
         $refreshTokenToRevoke = $jwtTokenService->getRefreshTokenFromRequest($request);
@@ -58,7 +55,7 @@ class SecurityController extends AbstractController
     public function checkNewPassword(Request $request): JsonResponse|bool
     {
         $data = json_decode($request->getContent(), true);
-
+;
         if (!isset($data[ 'newPassword' ], $data[ 'confirmPassword' ])) {
             return new JsonResponse(['message' => 'Missing required fields (newPassword or confirmPassword)'], Response::HTTP_BAD_REQUEST);
         }
@@ -83,6 +80,8 @@ class SecurityController extends AbstractController
      * 
      * @return JsonResponse Réponse indiquant le succès ou l'échec de l'opération.
      */
+
+    #[Route('/setNewPassword', name: "setNewPassword", methods: ["POST"])]
     public function setNewPassword(Request $request): JsonResponse
     {
         try {
@@ -117,6 +116,7 @@ class SecurityController extends AbstractController
      * 
      * @return JsonResponse Réponse indiquant le succès ou l'échec de l'envoi du lien.
      */
+    #[Route('/sendPasswordLink', name: "sendPasswordLink", methods: ["POST"])]
     public function sendPasswordLink(Request $request): JsonResponse
     {
         try {
@@ -130,7 +130,7 @@ class SecurityController extends AbstractController
             if ($email instanceof JsonResponse) {
                 return $email; // Retourne la réponse d'erreur en cas de problème avec l'email
             }
-
+            
             // Envoie le lien de réinitialisation de mot de passe via le service de sécurité
             $this->securityService->sendPasswordLink($email, $data[ 'link' ]);
 

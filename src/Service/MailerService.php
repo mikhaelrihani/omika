@@ -44,7 +44,7 @@ class MailerService
      */
     public function getEmailData(): array
     {
-        $request = $this->requestStack->getCurrentRequest();
+        $request = $this->getRequest();
 
         if (!$request) {
             throw new \RuntimeException('No current request available');
@@ -63,10 +63,10 @@ class MailerService
         $file = $request->files->get('file');
 
         return [
-            "to" => $to,
+            "to"      => $to,
             "subject" => $subject,
-            "body" => $body,
-            "file" => $file
+            "body"    => $body,
+            "file"    => $file
         ];
     }
 
@@ -89,13 +89,13 @@ class MailerService
         try {
             $email = (new Email())
                 ->from($this->from)
-                ->to($emailData["to"])
-                ->subject($emailData["subject"])
-                ->html($emailData["body"]);
+                ->to($emailData[ "to" ])
+                ->subject($emailData[ "subject" ])
+                ->html($emailData[ "body" ]);
 
             // Si un fichier a été envoyé, on l'attache à l'email
-            if ($emailData["file"] instanceof UploadedFile) {
-                $file = $emailData["file"];
+            if ($emailData[ "file" ] instanceof UploadedFile) {
+                $file = $emailData[ "file" ];
 
                 // Attacher le fichier avec le bon nom et type MIME
                 $email->attach(
@@ -142,18 +142,15 @@ class MailerService
     }
 
     /**
-     * Récupère le request bag de la requête actuelle.
-     *
-     * @return \Symfony\Component\HttpFoundation\ParameterBag|null Bag des paramètres de la requête.
+     * Récupère la requête actuelle.
      * @throws \RuntimeException Si aucune requête n'est disponible.
      */
-    public function getRequestBag()
+    public function getRequest()
     {
         $request = $this->requestStack->getCurrentRequest();
         if (!$request) {
             throw new \RuntimeException('No current request available.');
         }
-
-        return $request->request;
+        return $request;
     }
 }

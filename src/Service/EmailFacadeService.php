@@ -33,14 +33,14 @@ class EmailFacadeService
     {
         try {
             // Récupération des données nécessaires depuis la requête
-            $requestBag = $this->mailerService->getRequestBag();
+            $requestBag = $this->mailerService->getRequest();
 
             $to = $requestBag->get('to');
             $username = $requestBag->get('username');
 
             // Validation des données
             if (null === $to) {
-                throw new \RuntimeException('No email provided.');
+                throw new \RuntimeException('No receiver $to provided.');
             }
             if (null === $username) {
                 throw new \RuntimeException('No username provided.');
@@ -50,6 +50,38 @@ class EmailFacadeService
             $body = 'Thank you for registering, ' . htmlspecialchars($username) . '!';
 
             $this->mailerService->sendEmailFacade($to, $subject, $body);
+
+        } catch (\RuntimeException $e) {
+            // Gestion d'erreurs spécifiques liées aux données manquantes
+            throw new \RuntimeException('Request error: ' . $e->getMessage());
+        } catch (Exception $e) {
+            // Gestion d'erreurs lors de l'envoi de l'email
+            throw new Exception('Failed to send welcome email: ' . $e->getMessage());
+        }
+    }
+    public function sendPasswordLink(): void
+    {
+        //! mettre un time out sur la validitée du lien
+        try {
+            // Récupération des données nécessaires depuis la requête
+            $request = $this->mailerService->getRequest();
+            $jsonContent = $request->getContent();
+            $data = json_decode($jsonContent, true);
+            $link = $data[ "link" ];
+            $email = $data[ "email" ];
+
+            // Validation des données
+            if (null ===  $email) {
+                throw new \RuntimeException('No email provided.');
+            }
+            if (null === $link) {
+                throw new \RuntimeException('No link provided.');
+            }
+
+            $subject = 'Renew your password';
+            $body = 'Please click on this link to renew your password: <a href="' . htmlspecialchars($link) . '">Reset Password</a>';
+            
+            $this->mailerService->sendEmailFacade( $email, $subject, $body);
 
         } catch (\RuntimeException $e) {
             // Gestion d'erreurs spécifiques liées aux données manquantes
