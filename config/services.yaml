@@ -57,6 +57,9 @@ services:
     App\Serializer\EntityDenormalizer:
         tags: 
             - { name: 'serializer.normalizer', priority: 10 }  # Priorité facultative, mais utile pour définir l'ordre de dénormalisation
-   
+    App\Service\MailerService:
+        arguments:
+            $from: '%env(string:SENDER)%'
+            $requestStack: '@request_stack'
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
