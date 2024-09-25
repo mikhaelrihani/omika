@@ -56,6 +56,10 @@ security:
     access_control:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/token/refresh, roles: PUBLIC_ACCESS  }
+         # Autoriser l'accès aux routes de réinitialisation de mot de passe sans authentification
+        - { path: ^/api/security/sendPasswordLink, roles: PUBLIC_ACCESS }
+        - { path: ^/api/security/reset-password, roles: PUBLIC_ACCESS }
+        
         - { path: ^/api/admin, roles: ROLE_ADMIN }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 

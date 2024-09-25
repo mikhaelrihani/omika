@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\PasswordResetRequest;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -19,7 +20,6 @@ class SecurityService
 {
     private EntityManagerInterface $em;
     private UserProviderInterface $userProvider;
-    private EmailFacadeService $emailFacadeService;
     protected UserPasswordHasherInterface $userPasswordHasher;
     protected RequestStack $requestStack;
 
@@ -33,15 +33,13 @@ class SecurityService
      * @param EmailFacadeService $emailFacadeService
      */
     public function __construct(
-        RequestStack $requestStack, 
-        UserPasswordHasherInterface $userPasswordHasher, 
-        EntityManagerInterface $em, 
-        UserProviderInterface $userProvider, 
-        EmailFacadeService $emailFacadeService
+        RequestStack $requestStack,
+        UserPasswordHasherInterface $userPasswordHasher,
+        EntityManagerInterface $em,
+        UserProviderInterface $userProvider,
     ) {
         $this->em = $em;
         $this->userProvider = $userProvider;
-        $this->emailFacadeService = $emailFacadeService;
         $this->userPasswordHasher = $userPasswordHasher;
         $this->requestStack = $requestStack;
     }
@@ -70,12 +68,26 @@ class SecurityService
     }
 
     /**
+     * Loads a user by email from the user provider.
+     * 
+     * @return UserInterface The user object corresponding to the email.
+     */
+    public function getUserNotConnected()
+    {
+        $email = $this->getEmail();
+        $user = $this->userProvider->loadUserByIdentifier($email);
+        return $user;
+    }
+
+    /**
      * Refreshes the user's password after validating the user and hashing the new password.
      * 
      * @param string $email The user's email.
      * @param string $newPassword The new password to be set.
      * 
      * @throws Exception If the user is not found, inactive, or doesn't implement PasswordAuthenticatedUserInterface.
+     * 
+     * @return bool True if the password was successfully updated.
      */
     public function refreshPassword(string $email, string $newPassword): bool
     {
@@ -101,29 +113,6 @@ class SecurityService
         $this->em->flush();
 
         return true;
-    }
-
-    /**
-     * Sends a password reset link to the user if they are found and enabled.
-     * 
-     * @param string $email The user's email.
-     * @param string $link The password reset link.
-     * 
-     * @throws Exception If the user is not found or is not enabled.
-     */
-    public function sendPasswordLink(string $email, string $link): void
-    {
-        $user = $this->userProvider->loadUserByIdentifier($email);
-        if (!$user) {
-            throw new Exception('User not found, check the email value');
-        }
-
-        // Check if the user is enabled before sending the password reset link
-        if ($user->isEnabled()) {
-            $this->emailFacadeService->sendPasswordLink();
-        } else {
-            throw new Exception('User is not enabled, so we cannot renew the password');
-        }
     }
 
     /**
@@ -172,5 +161,68 @@ class SecurityService
         }
 
         return $newPassword; // Returns the validated new password
+    }
+
+    /**
+     * Generates a random token for password reset.
+     * 
+     * @return string A randomly generated token.
+     */
+    public function generateToken(): string
+    {
+        return bin2hex(random_bytes(16)); // Generate a random token
+    }
+
+    /**
+     * Generates an expiration date for the password reset link.
+     * 
+     * @return \DateTimeImmutable The expiration date (valid for 1 hour).
+     */
+    public function getExpirationDate(): \DateTimeImmutable
+    {
+        $expirationDate = new \DateTimeImmutable();
+        $expirationDate = $expirationDate->modify('+1 hour'); // Link valid for 1 hour
+        return $expirationDate;
+    }
+
+    /**
+     * Saves a password reset request to the database.
+     * 
+     * @param string $email The user's email.
+     * @param string $token The reset token.
+     * @param \DateTimeImmutable $expiresAt The expiration date for the reset token.
+     */
+    public function savePasswordResetRequest(string $email, string $token, \DateTimeImmutable $expiresAt): void
+    {
+        $resetRequest = new PasswordResetRequest();
+        $resetRequest->setEmail($email);
+        $resetRequest->setToken($token);
+        $resetRequest->setExpiresAt($expiresAt);
+
+        $this->em->persist($resetRequest);
+        $this->em->flush();
+    }
+
+    /**
+     * Validates a password reset token.
+     * 
+     * @param string $token The reset token.
+     * 
+     * @return bool True if the token is valid and not expired, false otherwise.
+     */
+    public function validateToken(string $token): bool
+    {
+        $resetRequest = $this->em->getRepository(PasswordResetRequest::class)->findOneBy(['token' => $token]);
+
+        if (!$resetRequest) {
+            return false; // Token does not exist
+        }
+
+        // Check if the token has expired
+        if ($resetRequest->getExpiresAt() < new \DateTimeImmutable()) {
+            return false; // Token has expired
+        }
+
+        return true; // Token is valid
     }
 }
