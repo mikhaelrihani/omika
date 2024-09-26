@@ -45,6 +45,9 @@ class Recipe extends BaseEntity
     #[ORM\Column(length: 255)]
     private ?string $name = null;
 
+    #[ORM\Column(length: 255)]
+    private ?string $path = null;
+
     public function __construct()
     {
         $this->recipeSteps = new ArrayCollection();
@@ -174,6 +177,18 @@ class Recipe extends BaseEntity
     public function setName(string $name): static
     {
         $this->name = $name;
+
+        return $this;
+    }
+
+    public function getPath(): ?string
+    {
+        return $this->path;
+    }
+
+    public function setPath(string $path): static
+    {
+        $this->path = $path;
 
         return $this;
     }

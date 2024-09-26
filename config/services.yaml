@@ -4,7 +4,9 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
-    api_url: '%env(API_URL)%'
+    app_url: '%env(APP_URL)%'
+    server_files_path: '%env(SERVER_FILES_PATH)%'
+    server_private_files_path: '%env(SERVER_PRIVATE_FILES_PATH)%'
 
 services:
     # default configuration for services in *this* file
@@ -57,9 +59,17 @@ services:
     App\Serializer\EntityDenormalizer:
         tags: 
             - { name: 'serializer.normalizer', priority: 10 }  # Priorité facultative, mais utile pour définir l'ordre de dénormalisation
+
     App\Service\MailerService:
         arguments:
             $from: '%env(string:SENDER)%'
             $requestStack: '@request_stack'
+
+    App\Service\PhpseclibService:
+        arguments:
+            $host: '%env(SFTP_HOST)%'
+            $username: '%env(SFTP_USERNAME)%'
+            $password: '%env(SFTP_PASSWORD)%'
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
