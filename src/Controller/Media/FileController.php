@@ -90,7 +90,7 @@ class FileController extends BaseController
         if (!in_array($category, $validCategories)) {
             return new JsonResponse(['error' => 'Catégorie invalide'], Response::HTTP_BAD_REQUEST);
         }
-    
+
         // Sélection du bon repository en fonction de la catégorie
         switch ($category) {
             case 'recipe':
@@ -105,48 +105,32 @@ class FileController extends BaseController
             default:
                 return new JsonResponse(['error' => 'Catégorie non gérée'], Response::HTTP_BAD_REQUEST);
         }
-    
+
         // Vérifier si l'entité existe
         if (!$entity) {
             return new JsonResponse(['error' => ucfirst($category) . ' non trouvé(e)'], Response::HTTP_NOT_FOUND);
         }
-    
+
         // Récupérer le chemin du fichier dans la base de données
         $filePath = $entity->getPath();
         if (!$filePath) {
             return new JsonResponse(['error' => 'Fichier non trouvé'], Response::HTTP_NOT_FOUND);
         }
-    
+
         // Chemin complet vers le fichier sur le serveur distant
         $serverPrivateFilesPath = $this->params->get('server_private_files_path');
         $fullFilePath = $serverPrivateFilesPath . '/' . $category . '/' . $filePath;
-    
+
         // Vérifier si le fichier existe sur le serveur distant
         if (!$this->phpseclibService->fileExists($fullFilePath)) {
             return new JsonResponse(['error' => 'Fichier introuvable sur le serveur distant: ' . $fullFilePath], Response::HTTP_NOT_FOUND);
         }
-    
-        // Télécharger le fichier temporairement pour le renvoyer à l'utilisateur
-        $tempFilePath = tempnam(sys_get_temp_dir(), 'file_');
-        $this->phpseclibService->downloadFile($fullFilePath, $tempFilePath);
-    
-        // Créer la réponse pour le téléchargement
-        $response = new BinaryFileResponse($tempFilePath);
-        
-        // Set content disposition to download the file
-        $response->setContentDisposition(
-            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-            basename($fullFilePath) // Provide the filename to the user
-        );
-    
-        // Use register_shutdown_function to clean up the temp file after the response is sent
-        register_shutdown_function(function() use ($tempFilePath) {
-            @unlink($tempFilePath); // Delete the temporary file
-        });
-    
-        return $response; // Return the response for download
+
+        // Utiliser la méthode de téléchargement qui gère la réponse
+        return $this->phpseclibService->downloadFile($fullFilePath);
     }
-    
+
+
 
     //! Delete
     #[Route('/delete', name: 'delete', methods: ['POST'])]
