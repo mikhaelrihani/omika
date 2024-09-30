@@ -146,6 +146,7 @@ class MessageController extends BaseController
             $file->move($this->uploadDirectory, $fileName);
             // Generate the public URL for the uploaded file
             $mediaUrl = $this->getParameter('twillio_file_upload_public') . urlencode($fileName);
+        
         } else {
             // If no file is uploaded, check if a media URL is provided
             $mediaUrl = $request->request->get('mediaUrl');

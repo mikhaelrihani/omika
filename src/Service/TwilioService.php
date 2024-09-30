@@ -39,6 +39,7 @@ class TwilioService
     /**
      * Sends a message (SMS, MMS, or WhatsApp) using Twilio.
      *
+     * @param string $type The type of message ('sms', 'mms', or 'whatsapp').
      * @param string $from The sender's number or ID.
      * @param string $to The recipient's phone number.
      * @param string $body The message content.
@@ -46,7 +47,7 @@ class TwilioService
      * 
      * @throws \Exception If there is an error during message sending.
      */
-    private function sendMessage(string $from, string $to, string $body, ?string $mediaUrl = null): void
+    private function sendMessage(string $type, string $from, string $to, string $body, ?string $mediaUrl = null): void
     {
         $options = [
             'from' => $from,
@@ -60,7 +61,7 @@ class TwilioService
         try {
             $this->client->messages->create($to, $options);
         } catch (RestException $e) {
-            throw new \Exception("Error sending message: " . $e->getMessage());
+            throw new \Exception("Error sending {$type} message: " . $e->getMessage());
         }
     }
 
@@ -74,7 +75,7 @@ class TwilioService
      */
     public function sendSms(string $to, string $body): void
     {
-        $this->sendMessage($this->from, $to, $body);
+        $this->sendMessage('sms', $this->from, $to, $body);
     }
 
     /**
@@ -88,7 +89,7 @@ class TwilioService
      */
     public function sendMms(string $to, string $body, ?string $mediaUrl = null): void
     {
-        $this->sendMessage($this->from, $to, $body, $mediaUrl);
+        $this->sendMessage('mms', $this->from, $to, $body, $mediaUrl);
     }
 
     /**
@@ -104,6 +105,6 @@ class TwilioService
     {
         $whatsappFrom = "whatsapp:" . $this->from;
         $whatsappTo = "whatsapp:" . $to;
-        $this->sendMessage($whatsappFrom, $whatsappTo, $body, $mediaUrl);
+        $this->sendMessage('whatsapp', $whatsappFrom, $whatsappTo, $body, $mediaUrl);
     }
 }
