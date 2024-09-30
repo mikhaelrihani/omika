@@ -81,13 +81,13 @@ class MessageController extends BaseController
         try {
             $this->twilioService->sendMms($parameters[ 'to' ], $parameters[ 'body' ], $parameters[ 'mediaUrl' ]);
 
-            // // Remove temporary file if uploaded
-            // if ($parameters[ 'fileName' ]) {
-            //     $fileTempPath = $this->uploadDirectory . '/' . $parameters[ 'fileName' ];
-            //     if (file_exists($fileTempPath)) {
-            //         unlink($fileTempPath);
-            //     }
-            // }
+            // Remove temporary file if uploaded
+            if ($parameters[ 'fileName' ]) {
+                $fileTempPath = $this->uploadDirectory . '/' . $parameters[ 'fileName' ];
+                if (file_exists($fileTempPath)) {
+                    unlink($fileTempPath);
+                }
+            }
 
             return $this->json(['message' => 'MMS sent successfully.'], Response::HTTP_OK);
         } catch (\Exception $e) {
