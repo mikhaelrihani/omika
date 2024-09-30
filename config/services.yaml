@@ -8,6 +8,7 @@ parameters:
     server_files_path: '%env(SERVER_FILES_PATH)%'
     server_private_files_path: '%env(SERVER_PRIVATE_FILES_PATH)%'
     upload_directory: '%kernel.project_dir%/public/upload'
+    twillio_file_upload_public: '%env(resolve:TWILIO_FILE_UPLOAD_PUBLIC)%'
 
 services:
     # default configuration for services in *this* file
