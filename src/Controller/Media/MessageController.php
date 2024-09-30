@@ -55,7 +55,7 @@ class MessageController extends BaseController
         $parameters = $this->getTwilioParameters($request);
 
         try {
-            $this->twilioService->sendsms($parameters['to'], $parameters['body']);
+            $this->twilioService->sendsms($parameters[ 'to' ], $parameters[ 'body' ]);
             return $this->json(['message' => 'SMS sent successfully.'], Response::HTTP_OK);
         } catch (\Exception $e) {
             return $this->json(['error' => 'Failed to send SMS: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
@@ -79,11 +79,11 @@ class MessageController extends BaseController
         }
 
         try {
-            $this->twilioService->sendMms($parameters['to'], $parameters['body'], $parameters['mediaUrl']);
-            
+            $this->twilioService->sendMms($parameters[ 'to' ], $parameters[ 'body' ], $parameters[ 'mediaUrl' ]);
+
             // Remove temporary file if uploaded
-            if ($parameters['fileName']) {
-                $fileTempPath = $this->uploadDirectory . '/' . $parameters['fileName'];
+            if ($parameters[ 'fileName' ]) {
+                $fileTempPath = $this->uploadDirectory . '/' . $parameters[ 'fileName' ];
                 if (file_exists($fileTempPath)) {
                     unlink($fileTempPath);
                 }
@@ -109,7 +109,7 @@ class MessageController extends BaseController
         $parameters = $this->getTwilioParameters($request);
 
         try {
-            $this->twilioService->sendWhatsapp($parameters['to'], $parameters['body'], $parameters['mediaUrl']);
+            $this->twilioService->sendWhatsapp($parameters[ 'to' ], $parameters[ 'body' ], $parameters[ 'mediaUrl' ]);
             return $this->json(['message' => 'WhatsApp sent successfully.'], Response::HTTP_OK);
         } catch (\Exception $e) {
             return $this->json(['error' => 'Failed to send WhatsApp: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
@@ -132,8 +132,8 @@ class MessageController extends BaseController
         }
 
         $parameters = [
-            'to' => $to,
-            'body' => $body,
+            'to'       => $to,
+            'body'     => $body,
             'fileName' => null,
             'mediaUrl' => null,
         ];
@@ -142,10 +142,10 @@ class MessageController extends BaseController
         $file = $request->files->get('file');
         if ($file) {
             $fileName = $file->getClientOriginalName();
-            $parameters['fileName'] = $fileName;
+            $parameters[ 'fileName' ] = $fileName;
             $file->move($this->uploadDirectory, $fileName);
             // Generate the public URL for the uploaded file
-            $mediaUrl = $this->getParameter('twillio_file_upload_public') . "/upload/" . urlencode($fileName);
+            $mediaUrl = $this->getParameter('twillio_file_upload_public') . urlencode($fileName);
         } else {
             // If no file is uploaded, check if a media URL is provided
             $mediaUrl = $request->request->get('mediaUrl');
@@ -154,7 +154,7 @@ class MessageController extends BaseController
             }
         }
 
-        $parameters['mediaUrl'] = $mediaUrl;
+        $parameters[ 'mediaUrl' ] = $mediaUrl;
 
         return $parameters;
     }
