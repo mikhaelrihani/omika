@@ -8,7 +8,6 @@ use App\Repository\inventory\InventoryRepository;
 use App\Repository\recipe\RecipeRepository;
 use App\Service\PhpseclibService;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;

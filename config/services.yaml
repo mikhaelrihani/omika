@@ -7,6 +7,7 @@ parameters:
     app_url: '%env(APP_URL)%'
     server_files_path: '%env(SERVER_FILES_PATH)%'
     server_private_files_path: '%env(SERVER_PRIVATE_FILES_PATH)%'
+    upload_directory: '%kernel.project_dir%/public/upload'
 
 services:
     # default configuration for services in *this* file
@@ -70,6 +71,12 @@ services:
             $host: '%env(SFTP_HOST)%'
             $username: '%env(SFTP_USERNAME)%'
             $password: '%env(SFTP_PASSWORD)%'
+
+    App\Service\TwilioService:
+        arguments:
+            $accountSid: '%env(TWILIO_ACCOUNT_SID)%'
+            $authToken: '%env(TWILIO_AUTH_TOKEN)%'
+            $from: '%env(TWILIO_FROM_NUMBER)%' 
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
