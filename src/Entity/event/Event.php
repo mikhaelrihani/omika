@@ -18,19 +18,19 @@ class Event extends BaseEntity
 
     #[ORM\Column(length: 255, nullable:false)]
     #[Assert\NotBlank(message: "Side should not be blank.")]
-    private ?string $side = null;
+    private ?string $side = null;// kitchen or office
 
     #[ORM\Column(nullable:false)]
     #[Assert\NotBlank(message: "Visible should not be blank.")]
-    private ?bool $visible = null;
+    private ?bool $visible = null; // everybody or only me
 
     #[ORM\Column(length: 255, nullable:false)]
     #[Assert\NotBlank(message: "Status should not be blank.")]
-    private ?string $status = null;
+    private ?string $status = null; // created by app or user
 
     #[ORM\Column(length: 255, nullable:false)]
     #[Assert\NotBlank(message: "Text should not be blank.")]
-    private ?string $text = null;
+    private ?string $text = null;// description of the event
 
     #[ORM\Column(length: 255, nullable:false)]
     #[Assert\NotBlank(message: "Author should not be blank.")]
@@ -38,7 +38,7 @@ class Event extends BaseEntity
 
     #[ORM\Column(length: 255, nullable:false)]
     #[Assert\NotBlank]
-    private ?string $type = null;
+    private ?string $type = null;// info or task
 
     #[ORM\Column(type: Types::DATE_MUTABLE, nullable:false)]
     #[Assert\NotBlank]
@@ -53,7 +53,7 @@ class Event extends BaseEntity
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?EventSection $eventSection = null;
+    private ?EventSection $eventSection = null;// carte, recette, menu, planning....
 
     #[ORM\OneToOne]
     #[ORM\JoinColumn(nullable: false)]
