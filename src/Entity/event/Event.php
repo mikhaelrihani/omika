@@ -57,6 +57,27 @@ class Event extends BaseEntity
     #[ORM\OneToOne(targetEntity: EventInfo::class, mappedBy: 'event', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private ?EventInfo $eventInfo = null; // Related Event Info
 
+    #[ORM\Column(length: 255, nullable: false)]
+    #[Assert\NotBlank(message: "Author should not be blank.")]
+    private ?string $author = null; // Author of the event
+
+    #[ORM\Column(length: 255, nullable: false)]
+    #[Assert\NotBlank(message: "Side should not be blank.")]
+    private ?string $side = null; // Side of the event
+
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
+    #[Assert\NotBlank]
+    private ?\DateTimeInterface $periode_start = null; // Start date of the event period
+
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $periode_end = null; // End date of the event period
+
+    #[ORM\Column(nullable: false)]
+    #[Assert\NotBlank]
+    private ?bool $periode_unlimited = null; // Indicates if the period is unlimited
+
+    // Getters and Setters
+
     public function getId(): ?int
     {
         return $this->id;
@@ -192,6 +213,61 @@ class Event extends BaseEntity
             $eventInfo->setEvent($this);
         }
 
+        return $this;
+    }
+
+    public function getAuthor(): ?string
+    {
+        return $this->author;
+    }
+
+    public function setAuthor(string $author): static
+    {
+        $this->author = $author;
+        return $this;
+    }
+
+    public function getSide(): ?string
+    {
+        return $this->side;
+    }
+
+    public function setSide(string $side): static
+    {
+        $this->side = $side;
+        return $this;
+    }
+
+    public function getPeriodeStart(): ?\DateTimeInterface
+    {
+        return $this->periode_start;
+    }
+
+    public function setPeriodeStart(\DateTimeInterface $periode_start): static
+    {
+        $this->periode_start = $periode_start;
+        return $this;
+    }
+
+    public function getPeriodeEnd(): ?\DateTimeInterface
+    {
+        return $this->periode_end;
+    }
+
+    public function setPeriodeEnd(?\DateTimeInterface $periode_end): static
+    {
+        $this->periode_end = $periode_end;
+        return $this;
+    }
+
+    public function isPeriodeUnlimited(): ?bool
+    {
+        return $this->periode_unlimited;
+    }
+
+    public function setPeriodeUnlimited(bool $periode_unlimited): static
+    {
+        $this->periode_unlimited = $periode_unlimited;
         return $this;
     }
 }
