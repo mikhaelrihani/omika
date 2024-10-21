@@ -15,7 +15,15 @@ class EventRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Event::class);
     }
-
+    // Méthode pour supprimer un événement
+    public function remove(Event $event, bool $flush = true): void
+    {
+        $this->getEntityManager()->remove($event);
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+    
     //    /**
     //     * @return Event[] Returns an array of Event objects
     //     */

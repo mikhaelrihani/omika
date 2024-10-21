@@ -7,6 +7,7 @@ use App\Repository\event\EventSectionRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
+//! event section existe pour centraliser le nom des sections , donc il faudrait repenser cette entite a section et non event section 
 #[ORM\Entity(repositoryClass: EventSectionRepository::class)]
 class EventSection extends BaseEntity
 {

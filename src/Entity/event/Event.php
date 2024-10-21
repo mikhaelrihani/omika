@@ -1,10 +1,9 @@
 <?php
 
-namespace App\Entity\event;
+namespace App\Entity\Event;
 
 use App\Entity\BaseEntity;
-use App\Repository\event\EventRepository;
-use Doctrine\DBAL\Types\Types;
+use App\Repository\Event\EventRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -16,75 +15,103 @@ class Event extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255, nullable:false)]
-    #[Assert\NotBlank(message: "Side should not be blank.")]
-    private ?string $side = null;// kitchen or office
+    #[ORM\Column(length: 255, nullable: false)]
+    #[Assert\NotBlank(message: "Type should not be blank.")]
+    private ?string $type = null; // Type d'événement (task ou info)
 
-    #[ORM\Column(nullable:false)]
-    #[Assert\NotBlank(message: "Visible should not be blank.")]
-    private ?bool $visible = null; // everybody or only me
+    #[ORM\Column(nullable: false)]
+    #[Assert\NotBlank(message: "Importance should not be blank.")]
+    private ?bool $importance = null; // Indique si l'événement est important
 
-    #[ORM\Column(length: 255, nullable:false)]
+    #[ORM\Column(type: 'json')]
+    private array $shared_with = []; // Tableau JSON des utilisateurs
+
+    #[ORM\Column(type: 'datetime')]
+    #[Assert\NotBlank]
+    private ?\DateTimeInterface $date_created = null;
+
+    #[ORM\Column(type: 'datetime')]
+    #[Assert\NotBlank]
+    private ?\DateTimeInterface $date_limit = null; // Date limite pour la visibilité
+
+    #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Status should not be blank.")]
-    private ?string $status = null; // created by app or user
+    private ?string $status = null; // Statut de l'événement
 
-    #[ORM\Column(length: 255, nullable:false)]
-    #[Assert\NotBlank(message: "Text should not be blank.")]
-    private ?string $text = null;// description of the event
+    #[ORM\Column(nullable: false)]
+    #[Assert\NotBlank(message: "Active day range should not be blank.")]
+    private ?int $active_day_range = null; // Plage de jours actifs
 
-    #[ORM\Column(length: 255, nullable:false)]
-    #[Assert\NotBlank(message: "Author should not be blank.")]
-    private ?string $author = null;
+    #[ORM\Column(type: 'text', nullable: false)]
+    #[Assert\NotBlank(message: "Description should not be blank.")]
+    private ?string $description = null; // Détails de l'événement
 
-    #[ORM\Column(length: 255, nullable:false)]
-    #[Assert\NotBlank]
-    private ?string $type = null;// info or task
+    // Relation One-to-One avec EventTask
+    #[ORM\OneToOne(mappedBy: "event", cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private ?EventTask $eventTask = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE, nullable:false)]
-    #[Assert\NotBlank]
-    private ?\DateTimeInterface $periodeStart = null;
+    // Relation One-to-One avec EventInfo
+    #[ORM\OneToOne(mappedBy: "event", cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private ?EventInfo $eventInfo = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE, nullable:true)]
-    #[Assert\NotBlank]
-    private ?\DateTimeInterface $periodeEnd = null;
-
-    #[ORM\Column(nullable:true) ]
-    private ?bool $periodeUnlimited = null;
-
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?EventSection $eventSection = null;// carte, recette, menu, planning....
-
-    #[ORM\OneToOne]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?EventFrequence $eventFrequence = null;
-
+    // Getters et setters...
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getSide(): ?string
+    public function getType(): ?string
     {
-        return $this->side;
+        return $this->type;
     }
 
-    public function setSide(string $side): static
+    public function setType(string $type): static
     {
-        $this->side = $side;
-
+        $this->type = $type;
         return $this;
     }
 
-    public function isVisible(): ?bool
+    public function isImportance(): ?bool
     {
-        return $this->visible;
+        return $this->importance;
     }
 
-    public function setVisible(bool $visible): static
+    public function setImportance(bool $importance): static
     {
-        $this->visible = $visible;
+        $this->importance = $importance;
+        return $this;
+    }
 
+    public function getSharedWith(): array
+    {
+        return $this->shared_with;
+    }
+
+    public function setSharedWith(array $shared_with): static
+    {
+        $this->shared_with = $shared_with;
+        return $this;
+    }
+
+    public function getDateCreated(): ?\DateTimeInterface
+    {
+        return $this->date_created;
+    }
+
+    public function setDateCreated(\DateTimeInterface $date_created): static
+    {
+        $this->date_created = $date_created;
+        return $this;
+    }
+
+    public function getDateLimit(): ?\DateTimeInterface
+    {
+        return $this->date_limit;
+    }
+
+    public function setDateLimit(\DateTimeInterface $date_limit): static
+    {
+        $this->date_limit = $date_limit;
         return $this;
     }
 
@@ -96,105 +123,66 @@ class Event extends BaseEntity
     public function setStatus(string $status): static
     {
         $this->status = $status;
-
         return $this;
     }
 
-    public function getText(): ?string
+    public function getActiveDayRange(): ?int
     {
-        return $this->text;
+        return $this->active_day_range;
     }
 
-    public function setText(string $text): static
+    public function setActiveDayRange(int $active_day_range): static
     {
-        $this->text = $text;
-
+        $this->active_day_range = $active_day_range;
         return $this;
     }
 
-    public function getAuthor(): ?string
+    public function getDescription(): ?string
     {
-        return $this->author;
+        return $this->description;
     }
 
-    public function setAuthor(string $author): static
+    public function setDescription(string $description): static
     {
-        $this->author = $author;
-
+        $this->description = $description;
         return $this;
     }
 
-    public function getType(): ?string
+    public function getEventTask(): ?EventTask
     {
-        return $this->type;
+        return $this->eventTask;
     }
 
-    public function setType(string $type): static
+    public function setEventTask(?EventTask $eventTask): static
     {
-        $this->type = $type;
-
+        // Associer l'EventTask à l'Event
+        $this->eventTask = $eventTask;
+    
+        // Si une tâche est associée, configurez l'EventTask pour référencer cet Event
+        if ($eventTask !== null) {
+            $eventTask->setEvent($this);
+        }
+    
         return $this;
     }
+    
 
-    public function getPeriodeStart(): ?\DateTimeInterface
+    public function getEventInfo(): ?EventInfo
     {
-        return $this->periodeStart;
+        return $this->eventInfo;
     }
 
-    public function setPeriodeStart(\DateTimeInterface $periodeStart): static
+    public function setEventInfo(?EventInfo $eventInfo): static
     {
-        $this->periodeStart = $periodeStart;
-
+        // Associer l'EventInfo à l'Event
+        $this->eventInfo = $eventInfo;
+    
+        // Si une info est associée, configurez l'EventInfo pour référencer cet Event
+        if ($eventInfo !== null) {
+            $eventInfo->setEvent($this);
+        }
+    
         return $this;
     }
-
-    public function getPeriodeEnd(): ?\DateTimeInterface
-    {
-        return $this->periodeEnd;
-    }
-
-    public function setPeriodeEnd(?\DateTimeInterface $periodeEnd): static
-    {
-        $this->periodeEnd = $periodeEnd;
-
-        return $this;
-    }
-
-    public function isPeriodeUnlimited(): ?bool
-    {
-        return $this->periodeUnlimited;
-    }
-
-    public function setPeriodeUnlimited(?bool $periodeUnlimited): static
-    {
-        $this->periodeUnlimited = $periodeUnlimited;
-
-        return $this;
-    }
-
-    public function getEventSection(): ?EventSection
-    {
-        return $this->eventSection;
-    }
-
-    public function setEventSection(?EventSection $eventSection): static
-    {
-        $this->eventSection = $eventSection;
-
-        return $this;
-    }
-
-    public function getEventFrequence(): ?EventFrequence
-    {
-        return $this->eventFrequence;
-    }
-
-    public function setEventFrequence(?EventFrequence $eventFrequence): static
-    {
-        $this->eventFrequence = $eventFrequence;
-
-        return $this;
-    }
-
     
 }
