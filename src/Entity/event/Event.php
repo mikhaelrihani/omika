@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Entity\Event;
+namespace App\Entity\event;
 
 use App\Entity\BaseEntity;
-use App\Repository\Event\EventRepository;
+use App\Repository\event\EventRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -17,44 +17,46 @@ class Event extends BaseEntity
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Type should not be blank.")]
-    private ?string $type = null; // Type d'événement (task ou info)
+    private ?string $type = null; // info or task
 
     #[ORM\Column(nullable: false)]
     #[Assert\NotBlank(message: "Importance should not be blank.")]
-    private ?bool $importance = null; // Indique si l'événement est important
+    private ?bool $importance = null; // Indicates if the event is important
 
-    #[ORM\Column(type: 'json')]
-    private array $shared_with = []; // Tableau JSON des utilisateurs
+    #[ORM\Column(nullable: false)]
+    #[Assert\NotBlank(message: "Visibility should not be blank.")]
+    private ?bool $shared_with = null; // Shared visibility
 
-    #[ORM\Column(type: 'datetime')]
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     #[Assert\NotBlank]
-    private ?\DateTimeInterface $date_created = null;
+    private ?\DateTimeInterface $date_created = null; // Date of event creation
 
-    #[ORM\Column(type: 'datetime')]
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     #[Assert\NotBlank]
-    private ?\DateTimeInterface $date_limit = null; // Date limite pour la visibilité
+    private ?\DateTimeInterface $date_limit = null; // Date limit for visibility
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Status should not be blank.")]
-    private ?string $status = null; // Statut de l'événement
+    private ?string $status = null; // Status of the event
 
-    #[ORM\Column(nullable: false)]
-    #[Assert\NotBlank(message: "Active day range should not be blank.")]
-    private ?int $active_day_range = null; // Plage de jours actifs
-
-    #[ORM\Column(type: 'text', nullable: false)]
+    #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Description should not be blank.")]
-    private ?string $description = null; // Détails de l'événement
+    private ?string $description = null; // Description of the event
 
-    // Relation One-to-One avec EventTask
-    #[ORM\OneToOne(mappedBy: "event", cascade: ['persist', 'remove'], orphanRemoval: true)]
-    private ?EventTask $eventTask = null;
+    #[ORM\ManyToOne(targetEntity: EventSection::class, inversedBy: 'events')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?EventSection $eventSection = null; // Related Event Section
 
-    // Relation One-to-One avec EventInfo
-    #[ORM\OneToOne(mappedBy: "event", cascade: ['persist', 'remove'], orphanRemoval: true)]
-    private ?EventInfo $eventInfo = null;
+    #[ORM\ManyToOne(targetEntity: EventFrequence::class, inversedBy: 'events')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?EventFrequence $eventFrequence = null; // Related Event Frequency
 
-    // Getters et setters...
+    #[ORM\OneToOne(targetEntity: EventTask::class, mappedBy: 'event', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private ?EventTask $eventTask = null; // Related Event Task
+
+    #[ORM\OneToOne(targetEntity: EventInfo::class, mappedBy: 'event', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private ?EventInfo $eventInfo = null; // Related Event Info
+
     public function getId(): ?int
     {
         return $this->id;
@@ -82,12 +84,12 @@ class Event extends BaseEntity
         return $this;
     }
 
-    public function getSharedWith(): array
+    public function isSharedWith(): ?bool
     {
         return $this->shared_with;
     }
 
-    public function setSharedWith(array $shared_with): static
+    public function setSharedWith(bool $shared_with): static
     {
         $this->shared_with = $shared_with;
         return $this;
@@ -126,17 +128,6 @@ class Event extends BaseEntity
         return $this;
     }
 
-    public function getActiveDayRange(): ?int
-    {
-        return $this->active_day_range;
-    }
-
-    public function setActiveDayRange(int $active_day_range): static
-    {
-        $this->active_day_range = $active_day_range;
-        return $this;
-    }
-
     public function getDescription(): ?string
     {
         return $this->description;
@@ -148,6 +139,28 @@ class Event extends BaseEntity
         return $this;
     }
 
+    public function getEventSection(): ?EventSection
+    {
+        return $this->eventSection;
+    }
+
+    public function setEventSection(EventSection $eventSection): static
+    {
+        $this->eventSection = $eventSection;
+        return $this;
+    }
+
+    public function getEventFrequence(): ?EventFrequence
+    {
+        return $this->eventFrequence;
+    }
+
+    public function setEventFrequence(EventFrequence $eventFrequence): static
+    {
+        $this->eventFrequence = $eventFrequence;
+        return $this;
+    }
+
     public function getEventTask(): ?EventTask
     {
         return $this->eventTask;
@@ -155,17 +168,15 @@ class Event extends BaseEntity
 
     public function setEventTask(?EventTask $eventTask): static
     {
-        // Associer l'EventTask à l'Event
         $this->eventTask = $eventTask;
-    
-        // Si une tâche est associée, configurez l'EventTask pour référencer cet Event
-        if ($eventTask !== null) {
+
+        // If $eventTask is not null, set the owning side
+        if ($eventTask !== null && $eventTask->getEvent() !== $this) {
             $eventTask->setEvent($this);
         }
-    
+
         return $this;
     }
-    
 
     public function getEventInfo(): ?EventInfo
     {
@@ -174,15 +185,13 @@ class Event extends BaseEntity
 
     public function setEventInfo(?EventInfo $eventInfo): static
     {
-        // Associer l'EventInfo à l'Event
         $this->eventInfo = $eventInfo;
-    
-        // Si une info est associée, configurez l'EventInfo pour référencer cet Event
-        if ($eventInfo !== null) {
+
+        // If $eventInfo is not null, set the owning side
+        if ($eventInfo !== null && $eventInfo->getEvent() !== $this) {
             $eventInfo->setEvent($this);
         }
-    
+
         return $this;
     }
-    
 }
