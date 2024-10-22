@@ -1,5 +1,5 @@
 
-L'application permet à l'utilisateur de consulter rapidement tous les événements (tasks ou infos) d'une journée donnée. L'objectif est d'optimiser les requêtes pour un affichage rapide, tout en automatisant la gestion des statuts des tâches (selon qu'elles soient réalisées en interne ou en externe) et en optimisant les requêtes liées à l'affichage des tags.
+<!-- L'application permet à l'utilisateur de consulter rapidement tous les événements (tasks ou infos) d'une journée donnée. L'objectif est d'optimiser les requêtes pour un affichage rapide, tout en automatisant la gestion des statuts des tâches (selon qu'elles soient réalisées en interne ou en externe) et en optimisant les requêtes liées à l'affichage des tags.
 
 Les événements peuvent être signalés comme importants grâce au champ "importance". Ils peuvent être visibles uniquement pour l'utilisateur lui-même ou partagés grâce au champ `shared_with`, qui est un tableau JSON.
 
@@ -94,7 +94,7 @@ un champ date_limit est ici pour ecrire la date correspondant a 30 jour  des lor
 
 
 lorsqu un event n est pas inscrit en bdd dans le futur alors son statut est todo, par contre des lors qu un event dans le futur(encore non inscrit) est realise ou en cours par l user alors 
-l event est inscrit en bdd et son status ajusté a sa valeur soumise par l user(par ex passer le balai -->dans un mois, l user glise la task de gauche(todo) a droite (done) la tache passer le balais dans un mois et desormais inscrite)
+l event est inscrit en bdd et son status ajusté a sa valeur soumise par l user(par ex passer le balai dans un mois, l user glise la task de gauche(todo) a droite (done) la tache passer le balais dans un mois et desormais inscrite)
 
 
 les taches en cours ou late aujourdhui seront represente a demain et ainsi de suite meme si elles sortent de leur periode active/existance de un jour , cela se traduira par un non mouvement de leur etat dans le active day range a la date de aujourdhui.
@@ -143,3 +143,141 @@ l entité event section a les champs :
     "id": "string",                   // ID de la section liée à l'événement
     "name": "string"                  // Nom de la section
   },
+
+
+
+ -->
+
+
+version plus claire :
+
+# Gestion des événements et optimisation des requêtes
+
+Cette application permet à l'utilisateur de consulter rapidement tous les événements (tâches ou informations) d'une journée donnée. L'objectif est d'optimiser les requêtes pour un affichage rapide, d'automatiser la gestion des statuts des tâches (internes à l'application ou externes) et d'améliorer la gestion des tags.
+
+Les événements peuvent être signalés comme importants grâce au champ **`importance`** et peuvent être partagés avec d'autres utilisateurs à l'aide du champ **`shared_with`**, un tableau JSON.
+
+## 1. Optimisation des requêtes
+
+### 1.1 Plage de jours actifs
+- **Champ `active_day_range`** : Limite les recherches aux événements actifs dans une plage de jours définie (par exemple, de -3 à +7 jours autour de la date actuelle).
+  - Cela permet de réduire le volume de données à traiter et d'optimiser les performances.
+  - Mise à jour quotidienne via un **cron job**, qui ajuste la plage active des événements.
+  - Si l'utilisateur demande des événements en dehors de cette plage, des requêtes plus complexes sont effectuées.
+
+### 1.2 Gestion du `date_status`
+- **Champ `date_status`** : Classifie les événements selon leur statut temporel :
+  - `past` : événements passés.
+  - `activedayrange` : événements dans la plage active.
+  - `future` : événements futurs en dehors de la plage active.
+
+La recherche utilise ce champ pour filtrer les événements et récupérer les détails nécessaires.
+
+### 1.3 Cache des sessions
+- Les événements sont stockés en cache pour la session de l'utilisateur, ce qui permet de réduire les appels à la base de données lorsque l'utilisateur navigue sur plusieurs jours.
+
+## 2. Gestion des tâches et événements d'information
+
+### 2.1 Gestion des tâches
+- **Statuts des tâches** :
+  - `todo`, `done`, `late`, `pending`, `unrealised`.
+- Les tâches sont visibles uniquement si elles se situent entre **`periode_start`** et **`periode_end`**, sauf si elles sont en retard (`late`) ou en attente (`pending`).
+- Chaque tâche créée par un utilisateur est inscrite en base de données avec un statut `todo` par défaut, sauf si elle est récurrente, auquel cas d'autres règles s'appliquent (voir section récurrence).
+
+### 2.2 Gestion des événements d'information
+- Les événements de type **`Info`** sont visibles pendant un mois après leur lecture par tous les utilisateurs répertoriés dans **`shared_with`**.
+- **Champ `unreadUsers`** : Tableau contenant les utilisateurs n'ayant pas encore lu l'information.
+- Un événement de type "Info" est supprimé automatiquement après 30 jours via un **cron job**.
+- L'utilisateur peut également supprimer manuellement un événement de type "Info", sous réserve que tous les utilisateurs l'aient lu.
+
+## 3. Gestion des événements récurrents
+
+### 3.1 Structure des événements récurrents
+- Les événements récurrents ne sont inscrits en base de données que lorsqu'ils entrent dans l'**`active_day_range`** ou lorsqu'un utilisateur les modifie. Cela permet d'éviter de surcharger la base de données.
+
+#### Champs spécifiques :
+- **`isRecurring`** : Boolean indiquant si un événement est récurrent.
+- **`ispseudo_recurring`** : Boolean (`false` par défaut) pour les événements pseudo-récurrents.
+- **`event_frequence`** : Relation One-to-One avec l'entité `Event_Frequence` pour gérer les informations de récurrence (jours de la semaine, jour du mois, etc.).
+
+Les événements récurrents non encore inscrits en base de données peuvent être affichés en fonction de la date recherchée par l'utilisateur, sans pour autant être inscrits dans la base.
+
+#### Recherche d'événements récurrents :
+- Lorsqu'un utilisateur crée un événement récurrent, les paramètres de l'événement sont stockés en base de données :
+  - `periode_start` (sans `periode_end`),
+  - Une valeur dans le champ **`event_frequence`** (par exemple, `day` ou `monthDay`),
+  - `isRecurring = true` pour optimiser les recherches.
+
+Cette structure permet de retrouver facilement un événement récurrent ou de modifier tous les événements associés à une récurrence (par exemple, changer la fréquence de lavage des réfrigérateurs de jeudi à vendredi).
+
+### 3.2 Modification des événements récurrents
+- Lorsqu'un utilisateur modifie un événement récurrent, l'application modifie les futurs événements liés, sans recréer tous les événements passés.
+
+### 3.3 Gestion des événements automatiques
+- **Entité `supplier`** : Associe des événements récurrents à des fournisseurs grâce au champ **`recuring_events`**, qui liste les IDs des événements récurrents liés aux habitudes de commandes ou d'opérations du fournisseur.
+
+## 4. Suppression et mise à jour des événements
+
+### 4.1 Suppression automatique
+- **Champ `date_limit`** : Enregistre la date limite pour la suppression automatique d'un événement, 30 jours après son passage à `done` ou `unrealised`.
+- Les événements passés sont supprimés automatiquement après cette période via un **cron job**.
+
+## 5. Gestion des tags et comptage
+
+### 5.1 Comptage des tâches par section
+- **Champ `tag_task_active`** : Compte le nombre de tâches par section pour chaque jour de l'`active_day_range`.
+- Mis à jour automatiquement via un **cron job** ou manuellement lors de chaque modification effectuée par l'utilisateur (par exemple, passer une tâche de `todo` à `done`).
+
+### 5.2 Comptage des informations non lues par section
+- **Champ `tag_info_active`** : Compte les informations non lues, en fonction du champ **`unreadUsers`** et de la section associée.
+
+## 6. Gestion des modifications utilisateur
+
+### 6.1 Auteur et modifications
+- **Champ `updatedBy`** : Identifie l'auteur de la modification (application ou utilisateur).
+- **Champ `task_details`** : Permet de lier la tâche à une action spécifique (par exemple, passer une commande chez un fournisseur).
+
+## 7. Schéma des entités et relations
+
+### 7.1 Entité `Event`
+
+#### Champs principaux :
+- `id` : Identifiant unique de l'événement.
+- `type` : Type d'événement (`task` ou `info`).
+- `importance` : Boolean indiquant si l'événement est important.
+- `description` : Détails de l'événement.
+- `shared_with` : Tableau JSON des utilisateurs avec qui l'événement est partagé.
+- `createdBy` : Indique l'utilisateur qui a créé l'événement.
+- `updatedBy` : Dernière personne ayant modifié l'événement.
+- `periode_start` : Date de début de la période de l'événement.
+- `periode_end` : Date de fin de la période.
+- `date_status` : Statut temporel de l'événement (`past`, `activedayrange`, `future`).
+- `isRecurring` : Indique si l'événement est récurrent.
+- `ispseudo_recurring` : Indique si l'événement est pseudo-récurrent.
+- **`active_day_range`** : Période d'activation de l'événement.
+- `event_frequence` : Relation One-to-One avec `Event_Frequence`.
+- `task_details` : Détails supplémentaires pour une tâche.
+- `task_status` : Statut de la tâche (`todo`, `pending`, `done`, etc.).
+- `unreadUsers` : Utilisateurs n'ayant pas encore lu l'information.
+- `side` : Côté de l'événement (ex. "kitchen", "office").
+- `date_limit` : Date limite de suppression de l'événement.
+
+#### Relations :
+- **`event_section`** : Relation One-to-One avec une section spécifique via son `id`.
+- **`event_frequence`** : Relation One-to-One pour gérer la récurrence.
+- **`supplier`** : Associe un fournisseur à des événements récurrents.
+
+### 7.2 Entité `Event_Section`
+- `id` : Identifiant de la section liée à l'événement.
+- `name` : Nom de la section.
+
+### 7.3 Entité `Event_Frequence`
+- `day` : Jour de la semaine pour les événements récurrents hebdomadaires (1-7, 8 = illimité).
+- `monthDay` : Jour du mois pour les événements récurrents mensuels.
+
+### 7.4 Entité `User_Info`
+- **Champ `userrecurringEvents`** : Tableau contenant les IDs des événements récurrents créés par l'utilisateur.
+
+### 7.5 Entité `Supplier`
+- `id` : Identifiant du fournisseur.
+- `recuring_events` : Tableau des IDs des événements récurrents associés au fournisseur.
