@@ -7,76 +7,37 @@ use App\DataFixtures\AppFixtures\BaseFixtures;
 use App\Entity\event\Event;
 use App\Entity\event\EventFrequence;
 use App\Entity\event\EventSection;
+use App\Entity\event\EventTask;
+use App\Entity\event\EventInfo;
 use App\Entity\event\Issue;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 
-/**
- * Class EventFixtures
- *
- * Fixture class responsible for loading event-related data into the database.
- */
 class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 {
-
-    /**
-     * Load the event fixtures into the database.
-     */
     public function load(ObjectManager $manager): void
     {
         $this->faker->addProvider(new AppProvider($this->faker));
 
+        // Créer les sections d'événements
         $this->createEventSections();
         $this->em->flush();
-        $this->createEventAndEventFrequences(30);
-        $this->createIssues();
+
+        // Créer les événements
+        $this->createEvents(30);
+
+        // Créer des Issues (ici en tant qu'exemple)
+        $this->createIssues(10);
+
         $this->em->flush();
-
     }
 
-    public function createEventFrequences(Event $event): EventFrequence
-    {
-        $weekDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-        $selectedWeekDays = [];
-
-        $eventFrequence = new EventFrequence();
-
-        $everyday = $this->faker->boolean;
-
-        $selectedWeekDays = $this->faker->randomElements($weekDays, rand(1, 7));
-        $monthDay = $this->faker->numberBetween(1, 31);
-
-        // Choix aléatoire parmi les fréquences
-        $frequencesChoice = [$everyday, $monthDay, $selectedWeekDays];
-        $randomChoice = $this->faker->randomElement($frequencesChoice);
-
-        // Attribution des valeurs à l'entité en fonction du choix
-        if ($randomChoice == $everyday) {
-            $eventFrequence->setEveryday(true);
-            $eventFrequence->setWeekDays(null);
-            $eventFrequence->setMonthDay(null);
-        }
-        if ($randomChoice == $selectedWeekDays) {
-            $eventFrequence->setEveryday(null);
-            $eventFrequence->setWeekDays($selectedWeekDays);
-            $eventFrequence->setMonthDay(null);
-        }
-        if ($randomChoice == $monthDay) {
-            $eventFrequence->setEveryday(null);
-            $eventFrequence->setWeekDays(null);
-            $eventFrequence->setMonthDay($monthDay);
-        }
-
-        $eventFrequence->setCreatedAt($event->getCreatedAt());
-        $eventFrequence->setUpdatedAt($event->getUpdatedAt());
-
-        return $eventFrequence;
-    }
     public function createEventSections(): void
     {
         $timestamps = $this->faker->createTimeStamps();
-        $s = 0;
         $eventSections = $this->faker->getEventSectionList();
+        $s = 0;
+
         foreach ($eventSections as $section) {
             $eventSection = new EventSection();
             $eventSection->setName($section);
@@ -88,9 +49,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         }
     }
 
-    public function createEventAndEventFrequences($numEvents): void
+    public function createEvents($numEvents): void
     {
-
         $eventSections = $this->retrieveEntities("eventSection", $this);
         $users = $this->retrieveEntities("user", $this);
 
@@ -99,40 +59,111 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $createdAt = $timestamps[ 'createdAt' ];
             $updatedAt = $timestamps[ 'updatedAt' ];
             $unlimited = $this->faker->boolean(20);
+            $daysToAdd = $this->faker->numberBetween(1, 7); // Générer un nombre aléatoire de jours entre 1 et 7
+            $dateLimit = $createdAt->modify('+1 month')->modify("+$daysToAdd days"); // Ajouter ces jours à la date d'un mois
+            $activeDayRange = $this->faker->randomElements(range(-3, 7), rand(3, 11));
             $author = $this->faker->randomElement($users);
 
+
+            // Créer un nouvel Event
             $event = new Event();
             $event
-                ->setSide($this->faker->randomElement(['kitchen', 'office']))
-                ->setVisible($this->faker->boolean(80))
-                ->setEventSection($this->faker->randomElement($eventSections))
+                ->setType($this->faker->randomElement(['info', 'task']))
+                ->setImportance($this->faker->boolean)
+                ->setSharedWith($this->faker->randomElements($users, rand(1, 3))) // Ajoute un tableau de 1 à 3 utilisateurs unique 
+                ->setDateCreated($createdAt)
+                ->setDateLimit($dateLimit)
                 ->setStatus($this->faker->randomElement(['published', 'draft']))
-                ->setText($this->faker->text(200))
+                ->setDescription($this->faker->sentence)
+                ->setEventSection($this->faker->randomElement($eventSections))
                 ->setAuthor($author->getFullName())
-                ->setType($this->faker->randomElement(["taches", "info"]))
-                ->setPeriodeStart($updatedAt);
-            if ($unlimited) {
-                $event
-                    ->setPeriodeUnlimited($unlimited)
-                    ->setPeriodeEnd(null);
-            } else {
-                $event
-                    ->setPeriodeUnlimited(null)
-                    ->setPeriodeEnd((clone $updatedAt)->modify('+' . $this->faker->numberBetween(0, 7) . ' days'));
-            }
-            $event
+                ->setSide($this->faker->randomElement(['kitchen', 'office']))
+                ->setPeriodeStart($updatedAt)
                 ->setCreatedAt($createdAt)
-                ->setUpdatedAt($updatedAt);
+                ->setUpdatedAt($updatedAt)
+                ->setPeriodeUnlimited($unlimited);
+            $event->setActiveDayRange($activeDayRange);
 
-            $eventFrequence = $this->createEventFrequences($event);
+
+            if (!$unlimited) {
+                $event->setPeriodeEnd((clone $updatedAt)->modify('+' . $this->faker->numberBetween(1, 7) . ' days'));
+            }
+
+            // Création et association de la fréquence
+            $eventFrequence = $this->createEventFrequence($event);
             $event->setEventFrequence($eventFrequence);
 
-            // Persistance de l'événement et de sa fréquence associée
+            // Gestion de la création d'EventTask ou EventInfo en fonction du type
+            if ($event->getType() === 'task') {
+                // Récupérer le nom de la section liée à l'événement
+                $sectionName = $event->getEventSection()->getName();
 
+                // Créer un nouvel EventTask
+                $taskStatusActiveRange = [];
+                $taskStatusOffRange = [];
+                foreach ($activeDayRange as $activeDay) {
+                    $status = $this->faker->randomElement(['done', 'todo', 'pending', 'late']);
+                    $taskStatusActiveRange[$activeDay] = $status;
+                    $taskStatusOffRange[] = $status;
+                }
+                ;
+
+                $eventTask = new EventTask();
+                $eventTask->setTaskDetails($sectionName . ': ' . $this->faker->word()) // Ajout du nom de la section devant le texte aléatoire
+                    ->setTaskStatusActiveRange($taskStatusActiveRange)
+                    ->setTaskStatusOffRange($taskStatusOffRange)
+                    ->setEvent($event);
+
+                $this->em->persist($eventTask);
+                $event->setEventTask($eventTask);
+            } else {
+                $eventInfo = new EventInfo();
+                $tagInfoActiveRange = [];
+                foreach ($activeDayRange as $activeDay) {
+                    $status = $this->faker->randomElement(['unread', 'read']);
+                    $tagInfoActiveRange[$activeDay] = $status;
+                }
+                ;
+                $eventInfo
+                    ->setTagInfoActiveRange($tagInfoActiveRange)
+                    ->setTagInfoOffRange([$this->faker->randomElement(['read', 'archived'])])
+                    ->setReadUsers([$author->getFullName()])
+                    ->setEvent($event);
+                $this->em->persist($eventInfo);
+                $event->setEventInfo($eventInfo);
+            }
+
+            // Persister l'événement et sa fréquence
             $this->em->persist($eventFrequence);
             $this->em->persist($event);
-
         }
+    }
+
+    public function createEventFrequence(Event $event): EventFrequence
+    {
+        $weekDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+        $eventFrequence = new EventFrequence();
+
+        $everyday = $this->faker->boolean;
+        $selectedWeekDays = $this->faker->randomElements($weekDays, rand(1, 7));
+        $monthDay = $this->faker->numberBetween(1, 31);
+
+        // Choix aléatoire de la fréquence
+        $frequencesChoice = [$everyday, $monthDay, $selectedWeekDays];
+        $randomChoice = $this->faker->randomElement($frequencesChoice);
+
+        if ($randomChoice == $everyday) {
+            $eventFrequence->setEveryday(true);
+        } elseif ($randomChoice == $selectedWeekDays) {
+            $eventFrequence->setWeekDays($selectedWeekDays);
+        } else {
+            $eventFrequence->setMonthDay($monthDay);
+        }
+
+        $eventFrequence->setCreatedAt($event->getCreatedAt());
+        $eventFrequence->setUpdatedAt($event->getUpdatedAt());
+
+        return $eventFrequence;
     }
 
     public function createIssues()
@@ -147,7 +178,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $technicienContacts[] = $contact;
             }
         }
-    
+
         $countNumber = 0;
         $timeStamps = $this->faker->createTimeStamps();
         $createdAt = $timeStamps[ 'createdAt' ];
@@ -191,10 +222,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     /**
      * Get the dependencies for this fixture.
-     *
-     * @return array The array of fixture classes that this fixture depends on.
      */
-    public function getDependencies()
+    public function getDependencies(): array
     {
         return [
             CarteFixtures::class,
@@ -202,5 +231,3 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         ];
     }
 }
-
-

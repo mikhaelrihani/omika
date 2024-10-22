@@ -2,17 +2,34 @@
 
 ## 1. Entité `Event`
 ```json
-{
-  "id": "string",                // Identifiant unique de l'événement
-  "type": "string",              // Type d'événement (task ou info)
-  "importance": "boolean",       // Indique si l'événement est important
-  "shared_with": ["string"],     // Tableau JSON des utilisateurs avec qui l'événement est partagé
-  "date_created": "datetime",    // Date de création de l'événement
-  "date_limit": "datetime",      // Date limite pour la visibilité (un mois après "done" ou lecture par tous)
-  "status": "string",            // Statut de l'événement (par exemple, "done", "pending", "not_view")
-  "active_day_range": "integer", // Plage de jours actifs (par exemple, de -3 à +7 jours)
-  "description": "string"        // Détails de l'événement
-}
+  "id": "string",                     // Identifiant unique de l'événement
+  "type": "string",                   // Type d'événement (task ou info)
+  "importance": "boolean",            // Indique si l'événement est important
+  "shared_with": ["string"],          // Tableau JSON des utilisateurs avec qui l'événement est partagé
+  "date_created": "datetime",         // Date de création de l'événement
+  "date_status": "string", ///past/activedayrange/future  pour optimiser les requetes 
+  "date_limit": "datetime",           // Date limite pour la visibilité passé et aider le cron job
+  "status": "string",                 // Statut de l'événement (par exemple, "done", "pending", "not_view")
+  "active_day_range": "integer",      // Plage de jours actifs (par exemple, de -3 à +7 jours)
+  "description": "string",            // Détails de l'événement
+  "createdBy": "string",                 // Auteur de l'événement
+  "updatedBy": "string",                 // Auteur qui modiife de l'événement
+  "periode_start": "datetime",        // Date de début de la période de l'événement
+  "periode_end": "datetime",          // Date de fin de la période de l'événement
+  "side": "string",                   // Côté ou section associée à l'événement
+
+  "event_section": {
+    "id": "string",                   // ID de la section liée à l'événement
+    "name": "string"                  // Nom de la section
+  },
+  "event_frequence": {
+    "id": "string",                   // ID de la fréquence liée à l'événement
+    "details": {
+      
+      "month_day": "integer",         // Jour du mois auquel l'événement a lieu
+      "week_days": "integer",        // Jours de la semaine pour l'événement 
+    }
+  }
 ```
 
 ## 2. Entité `Event_Task` (hérite de Event)

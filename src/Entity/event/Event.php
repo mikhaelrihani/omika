@@ -23,9 +23,8 @@ class Event extends BaseEntity
     #[Assert\NotBlank(message: "Importance should not be blank.")]
     private ?bool $importance = null; // Indicates if the event is important
 
-    #[ORM\Column(nullable: false)]
-    #[Assert\NotBlank(message: "Visibility should not be blank.")]
-    private ?bool $shared_with = null; // Shared visibility
+    #[ORM\Column(type: 'json', nullable: true)]
+    private array $shared_with = []; // Shared visibility as array of user IDs
 
     #[ORM\Column(type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     #[Assert\NotBlank]
@@ -76,6 +75,11 @@ class Event extends BaseEntity
     #[Assert\NotBlank]
     private ?bool $periode_unlimited = null; // Indicates if the period is unlimited
 
+    #[ORM\Column(type: 'json', nullable: true)]
+    private array $active_day_range = []; // Plage de jours actifs (par exemple, [-3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7])
+    
+
+
     // Getters and Setters
 
     public function getId(): ?int
@@ -105,12 +109,12 @@ class Event extends BaseEntity
         return $this;
     }
 
-    public function isSharedWith(): ?bool
+    public function getSharedWith(): array
     {
         return $this->shared_with;
     }
 
-    public function setSharedWith(bool $shared_with): static
+    public function setSharedWith(array $shared_with): static
     {
         $this->shared_with = $shared_with;
         return $this;
@@ -191,7 +195,6 @@ class Event extends BaseEntity
     {
         $this->eventTask = $eventTask;
 
-        // If $eventTask is not null, set the owning side
         if ($eventTask !== null && $eventTask->getEvent() !== $this) {
             $eventTask->setEvent($this);
         }
@@ -208,7 +211,6 @@ class Event extends BaseEntity
     {
         $this->eventInfo = $eventInfo;
 
-        // If $eventInfo is not null, set the owning side
         if ($eventInfo !== null && $eventInfo->getEvent() !== $this) {
             $eventInfo->setEvent($this);
         }
@@ -270,4 +272,17 @@ class Event extends BaseEntity
         $this->periode_unlimited = $periode_unlimited;
         return $this;
     }
+
+    public function getActiveDayRange(): array
+{
+    return $this->active_day_range;
+}
+
+public function setActiveDayRange(array $active_day_range): static
+{
+    $this->active_day_range = $active_day_range;
+    return $this;
+}
+
+
 }
