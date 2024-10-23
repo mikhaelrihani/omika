@@ -2,18 +2,18 @@
 
 namespace App\Repository\event;
 
-use App\Entity\event\EventSection;
+use App\Entity\event\Section;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @extends ServiceEntityRepository<EventSection>
+ * @extends ServiceEntityRepository<Section>
  */
-class EventSectionRepository extends ServiceEntityRepository
+class SectionRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
-        parent::__construct($registry, EventSection::class);
+        parent::__construct($registry, Section::class);
     }
 
     //    /**

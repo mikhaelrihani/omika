@@ -1,70 +1,93 @@
-# Schéma des Entités Liées aux Événements
+#### Entité `Event`
+Représente l'entité de base commune aux événements, que ce soit des tâches ou des informations.
 
-## 1. Entité `Event`
-| Champ               | Type        | Description                                                      |
-|---------------------|-------------|------------------------------------------------------------------|
-| `id`                | `string`    | Identifiant unique de l'événement                                |
-| `type`              | `string`    | Type d'événement (task ou info)                                  |
-| `importance`        | `boolean`   | Indique si l'événement est important                             |
-| `description`       | `string`    | Détails de l'événement                                           |
-| `shared_with`       | `json`      | Liste des utilisateurs avec qui l'événement est partagé          |
-| `createdBy`         | `string`    | Auteur de l'événement                                            |
-| `updatedBy`         | `string`    | Dernier auteur ayant modifié l'événement                         |
-| `periode_start`     | `date`      | Date de début de la période                                      |
-| `periode_end`       | `date`      | Date de fin de la période                                        |
-| `date_status`       | `string`    | Statut de la date (past, activedayrange, future)                 |
-| `isRecurring`       | `boolean`   | Indique si l'événement est récurrent                             |
-| `ispseudo_recurring`| `boolean`   | Indique si l'événement est pseudo-récurrent                      |
-| `event_frequence`   | `relation`  | Relation One-to-One avec `Event_Frequence` pour gérer la récurrence |
-| `task_details`      | `json`      | Détails de la tâche associée (si type = task)                    |
-| `task_status`       | `string`    | Statut de la tâche (ex. todo, pending, done, late)               |
-| `unreadUsers`       | `json`      | Liste des utilisateurs n'ayant pas lu l'événement (si type = info)|
-| `side`              | `string`    | Côté de l'événement (ex. "kitchen", "office")                    |
-| `date_limit`        | `date`      | Date limite pour la visibilité (pour tâches automatisées)        |
-| `active_day_range`  | `integer`   | Plage de jours actifs (ex. -3 à +7 jours)                        |
-| `event_section`     | `relation`  | Relation One-to-One avec `Event_Section`                         |
+| Champ              | Type            | Description                                                                                       |
+|--------------------|-----------------|---------------------------------------------------------------------------------------------------|
+| `id`               | `Integer`       | Identifiant unique de l'événement.                                                                |
+| `type`             | `String`        | Type d'événement (`task` ou `info`).                                                              |
+| `importance`       | `Boolean`       | Indique si l'événement est important (`true` ou `false`).                                          |
+| `description`      | `Text`          | Détails de l'événement.                                                                           |
+| `shared_with`      | `Array`         | Tableau listant les identifiants des utilisateurs avec qui l'événement est partagé.                |
+| `createdBy`        | `Integer`       | Identifiant de l'utilisateur ayant créé l'événement.                                               |
+| `updatedBy`        | `Integer`       | Identifiant de l'utilisateur ayant modifié l'événement.                                            |
+| `periode_start`    | `Date`          | Date de début de la période de l'événement.                                                       |
+| `periode_end`      | `Date`          | Date de fin de la période de l'événement (peut être `null` pour un événement d'une seule journée).  |
+| `date_status`      | `String`        | Statut temporel de l'événement (`past`, `activedayrange`, `future`).                               |
+| `isRecurring`      | `Boolean`       | Indique si l'événement est récurrent (`true` ou `false`).                                          |
+| `ispseudo_recurring` | `Boolean`     | Indique si l'événement est pseudo-récurrent.                                                      |
+| `active_day_range` | `Integer`       | Plage de jours durant laquelle l'événement est actif (ex. de -3 à +7 jours autour de la date courante). |
+| `event_frequence`  | `Integer`       | Référence vers l'entité `Event_Frequence` (clé étrangère).                                         |
+| `side`             | `String`        | Côté ou contexte de l'événement (ex. "kitchen", "office").                                         |
+| `date_limit`       | `Date`          | Date limite de suppression automatique de l'événement.                                             |
+| `section`          | `Integer`       | Référence vers l'entité `Section` (clé étrangère).                                                 |
 
----
+#### Relations :
+- `event_frequence` : Relation One-to-One avec une fréquence d'événement.
+- `section` : Relation One-to-One avec une section spécifique.
 
-## 2. Entité `Event_Section`
-| Champ      | Type     | Description                             |
-|------------|----------|-----------------------------------------|
-| `id`       | `string` | Identifiant unique de la section         |
-| `name`     | `string` | Nom de la section associée à l'événement |
+#### Entité `Event_Task`
+Représente un événement spécifique de type tâche, héritant des propriétés de `Event`.
 
----
+| Champ             | Type            | Description                                                                                       |
+|-------------------|-----------------|---------------------------------------------------------------------------------------------------|
+| `id`              | `Integer`       | Identifiant unique de la tâche (hérité de `Event`).                                                |
+| `task_details`     | `Text`          | Détails supplémentaires concernant la tâche.                                                      |
+| `task_status`      | `String`        | Statut de la tâche (`todo`, `pending`, `done`, `late`, `unrealised`).                              |
+| `tag_task_active`  | `JSON`          | Structure de données JSON comptabilisant les tâches actives pour chaque section par jour. Exemple : `{ "sectionId": { "active_day_integer": count } }`. |
 
-## 3. Entité `Event_Frequence`
-| Champ       | Type     | Description                           |
-|-------------|----------|---------------------------------------|
-| `id`        | `string` | Identifiant unique de la fréquence    |
-| `day`       | `integer`| Jour associé à la fréquence (1 = lundi, 7 = dimanche, 8 = illimité) |
-| `monthDay`  | `integer`| Jour du mois associé à la fréquence (1 à 31)   |
+#### Relations :
+- Inhérente à `Event`.
 
----
+#### Entité `Event_Info`
+Représente un événement spécifique de type information, héritant des propriétés de `Event`.
 
-## 4. Entité `User_Info`
-| Champ              | Type     | Description                              |
-|--------------------|----------|------------------------------------------|
-| `id`               | `string` | Identifiant unique de l'utilisateur      |
-| `name`             | `string` | Nom de l'utilisateur                     |
-| `recurring_events` | `json`   | Liste des événements récurrents de l'utilisateur |
+| Champ             | Type            | Description                                                                                       |
+|-------------------|-----------------|---------------------------------------------------------------------------------------------------|
+| `id`              | `Integer`       | Identifiant unique de l'information (hérité de `Event`).                                           |
+| `unreadUsers`      | `Array`         | Liste des identifiants des utilisateurs n'ayant pas encore lu l'information.                       |
+| `tag_info_active`  | `JSON`          | Structure de données JSON comptabilisant les informations non lues pour chaque section et utilisateur par jour. Exemple : `{ "sectionId": { "userId": { "active_day_integer": count } } }`. |
 
----
+#### Relations :
+- Inhérente à `Event`.
 
-## 5. Entité `Supplier`
-| Champ              | Type     | Description                              |
-|--------------------|----------|------------------------------------------|
-| `id`               | `string` | Identifiant unique du fournisseur        |
-| `recuring_events`  | `json`   | Liste des événements récurrents générés  |
+#### Entité `Event_Frequence`
+Représente les détails de fréquence pour les événements récurrents.
 
----
+| Champ       | Type     | Description                                                                                      |
+|-------------|----------|--------------------------------------------------------------------------------------------------|
+| `day`       | `Integer`| Jour de la semaine pour les événements récurrents hebdomadaires (1-7, 8 = illimité).           |
+| `monthDay`  | `Integer`| Jour du mois pour les événements récurrents mensuels.                                          |
 
-### Relations entre Entités
+#### Relations :
+- Aucun.
 
-- Un **`Event`** est associé à une **`Event_Section`** via une relation One-to-One.
-- Un **`Event`** est associé à une **`Event_Frequence`** via une relation One-to-One pour gérer la récurrence.
-- Un **`User_Info`** peut contenir plusieurs **`recurring_events`** dans un tableau JSON pour suivre les événements récurrents.
-- Un **`Supplier`** peut générer plusieurs **`Event`** récurrents (relation 1-N).
+#### Entité `User_Events`
+Représente les événements auxquels l'utilisateur a participé, classés par section et chronologie.
 
----
+| Champ              | Type     | Description                                                                                     |
+|--------------------|----------|-------------------------------------------------------------------------------------------------|
+| `recurringEvents`  | `Array`  | Tableau associatif contenant les IDs des événements récurrents créés/modifiés par l'utilisateur et leur section. |
+| `infoEvents`       | `Array`  | Tableau associatif contenant les IDs des événements info créés/modifiés par l'utilisateur et leur section.  |
+| `taskEvents`       | `Array`  | Tableau associatif contenant les IDs des événements task créés/modifiés par l'utilisateur et leur section. |
+
+#### Relations :
+- User.
+
+#### Entité `Supplier`
+Représente les fournisseurs d'événements.
+
+| Champ             | Type     | Description                                                                                     |
+|-------------------|----------|-------------------------------------------------------------------------------------------------|
+| `id`              | `Integer`| Identifiant du fournisseur.                                                                     |
+| `recuring_events` | `Array`  | Tableau des IDs des événements récurrents associés au fournisseur.                              |
+
+#### Entité `Section`
+Représente une section dans laquelle les événements peuvent être organisés.
+
+| Champ              | Type            | Description                                                                                       |
+|--------------------|-----------------|---------------------------------------------------------------------------------------------------|
+| `id`               | `Integer`       | Identifiant unique de la section.                                                                  |
+| `name`             | `String`        | Nom de la section.                                                                                |                                                   |
+                                        |
+                                       |
+
