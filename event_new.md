@@ -1,36 +1,35 @@
 
-des lors que l event parent  a ete crée par user avec une periode pseudo recurring alors tous les events enfants inscrit en bdd doivent faire partie du meme id de group .
-de ce fait l user lorsqu'il souhaite modifier un eventparent , cela va modifier tous les events enfants en bdd.
-on doit donc penser a avoir sur chaque event en plus de isrecurring ou is pseudo recuring un champs isAlone
-je vais avoir une entité event_group qui va avoir comme champs eventChildren qui sera un aray avec tous les id des events enfants.
-dans event on a un champs qui etablit la relation many to one avec eventgroup .
-de cette maniere un user qui veut modifier un event parent , il va chercher soit l onglet mes events qui lui liste en plus des eventAlone ses eventparent comme un seul event , ou directement sur un event depuis leur affichage  par jour.
-lorsque l user clique sur un event depuis l interface pour le modifier alors il ne fait plus partie du group car il n est lus identique aux autres et peut etre que l user veut le garder telquel mais modifier tous les autres du groupe!!!
-si l'user souhaite modifier/supprimer un event depuis l interface qui est periodique allors l faut demander si il veut le faire sur cette date en particulier ou si il veut modifier les autres dates aussi .
+des lors que l event recurrent parent  a ete crée par user  alors tous les events enfants inscrit en bdd doivent faire partie du meme id de group .
+de ce fait l user lorsqu'il souhaite modifier un event recurrent parent , cela va modifier tous les events enfants en bdd.
+
+lorsque l user clique sur un event depuis l interface pour le modifier alors il ne fait plus partie du group car il n est plus identique aux autres et peut etre que l user veut le garder telquel mais modifier tous les autres du groupe!!!
+si l'user souhaite modifier/supprimer un event depuis l interface qui est periodique allors l faut demander si il veut le faire sur cette date en particulier ou si il veut modifier les autres dates deja inscrite en bdd et avecun statut todo ou unread  .
 events avec lesquel il a interagit 
 
-
+RECHERCHE D EVENT :
 l user veut pouvoir modifier les events alone et periodique et les retrouver facilement.
 il faut donc acceder a une liste des events par ordre de dernier créé ou modifié
+on pourrait diferencier les events d un jour de ceux périodique sur l'interface avec un tag et un filtre
+
+situation un :
+l user clic sur l interface et interagit avec l event enfant.
+il doit pouvoir le supprimer ou le modifier 
+sur l interface il ne peut pas supprimer l'event parent periodique car il ne le voit pas.
+situation 2 :
+l user est dans l'historique
+il va donc voir deux type d'event periodique ou daily.
+il doit pouvoir supprimer ou modifier l event enfant qui est un event daily et qui n affecte pas les autres de son groupe periodique.
+il doit pouvoir supprimer ou modifier l event parent;
+dans ce cas on se demande que faire avec les events enfant deja inscrit dans le futur et qui ont un status autre que done et read.
+pour les infos on les modifie toute selon les dernieres modifs de event parent(on va donc les supprimer sans trace garde en bdd et les recreer comme si de rien n 'etait)
+pour les task hors statut done on fait la meme chose que info.
+pour les tasks deja faites/done on pourrait les marquer avec un tag "warning" et sur l interface ecrire une note a l user pour lui expliquer que la tache est obsolete et de faire avec les consequeneces.
+
 ici on ne tient pas compte de leur date active 
 
-deja un event du past a today est pas modifiable, mais suprimable.
-si un event periodique est modifie alors on modifie simplement tous les events enfants futures inscrit en bdd qui ont un status todo or unread;
-pour ceux qui ont un status different alors on modifie la date active uniquement;
+un event du past a today est pas modifiable, mais suprimable.
 
 
-prenons le cas d'un event parent/ repetitif: "passer une cde tres importante a 8h a supplier b du 8 nov au 25 nov",
-nous sommes le 10 nov.
-les events du 8 et 9 sont inscrit en bdd dans le passé avec un status done, les events du 10 au 15 ont un status todo et sont inscrit en bdd, les events du 16 au 24 ont un statut todo,
-l'event du 25 est inscrit en bdd car son statut est done.
-
-
-
-
-
-
-
-tous les events alone sont inscrit en bdd;
 les events periodique sont inscrit en bdd sur une plage de 7 jours(activedayrange) a compter de leur periode_start, puis un cron job continue a les inscrire quotidiennment a minuit tant que le dernier event enfant correspondant a période end n'a pas été inscrit.
 les events récurrent eux suivent le meme process que les périodique mais sont unlimited/ pas de periode end.
 

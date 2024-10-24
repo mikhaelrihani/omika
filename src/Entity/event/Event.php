@@ -48,12 +48,12 @@ class Event extends BaseEntity
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $updatedBy = null;
 
-
     #[ORM\Column(length: 50, nullable: false)]
     #[Assert\NotBlank(message: "Date status should not be blank.")]
     private ?string $date_status = null;
-
-
+    
+    #[ORM\Column(nullable: true)]
+    private ?array $active_day_range = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Side should not be blank.")]
@@ -72,6 +72,8 @@ class Event extends BaseEntity
 
     #[ORM\ManyToOne(inversedBy: 'events')]
     private ?EventRecurring $eventRecurring = null;
+
+   
 
 
 
@@ -246,6 +248,18 @@ class Event extends BaseEntity
     public function setEventRecurring(?EventRecurring $eventRecurring): static
     {
         $this->eventRecurring = $eventRecurring;
+
+        return $this;
+    }
+
+    public function getActiveDayRange(): ?array
+    {
+        return $this->active_day_range;
+    }
+
+    public function setActiveDayRange(?array $active_day_range): static
+    {
+        $this->active_day_range = $active_day_range;
 
         return $this;
     }

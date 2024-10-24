@@ -22,16 +22,19 @@ class Tag extends BaseEntity
     private \DateTimeImmutable $day; // Jour concerné
 
     #[ORM\Column(length: 255)]
-    private string $date_status; // Statut de la date (ex. "past", "active", "future")
+    private string $date_status; // Statut de la date (ex. "past", "active_day_range", "future")
 
     #[ORM\Column(type: Types::INTEGER)]
     private int $task_count = 0; // Compte des tâches actives
 
     #[ORM\Column(type: Types::JSON)]
-    private array $info_count = []; // JSON des comptes d'infos non lues pour chaque utilisateur
+    private ?array $info_count = null; // JSON des comptes d'infos non lues pour chaque utilisateur
 
     #[ORM\Column(type: Types::BOOLEAN)]
-    private bool $allUserRead = false; // Indique si tous les utilisateurs ont lu les informations
+    private bool $allUserRead = false;
+
+    #[ORM\Column(nullable: true)]
+    private ?array $active_day_range = null; // Indique si tous les utilisateurs ont lu les informations
 
  
     public function getId(): ?int
@@ -102,6 +105,18 @@ class Tag extends BaseEntity
     public function setAllUserRead(bool $allUserRead): static
     {
         $this->allUserRead = $allUserRead;
+        return $this;
+    }
+
+    public function getActiveDayRange(): ?array
+    {
+        return $this->active_day_range;
+    }
+
+    public function setActiveDayRange(?array $active_day_range): static
+    {
+        $this->active_day_range = $active_day_range;
+
         return $this;
     }
 
