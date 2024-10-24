@@ -39,7 +39,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $s = 0;
 
         foreach ($eventSections as $section) {
-            $eventSection = new EventSection();
+            $eventSection = new Section();
             $eventSection->setName($section);
             $eventSection->setCreatedAt($timestamps[ 'createdAt' ]);
             $eventSection->setUpdatedAt($timestamps[ 'updatedAt' ]);

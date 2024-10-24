@@ -25,7 +25,7 @@ Représente l'entité de base commune aux événements, que ce soit des tâches 
 - `event_frequence` : Relation One-to-One avec une fréquence d'événement.
 - `section` : Relation One-to-One avec une section spécifique.
 
-#### Entité `Event_Task`
+#### Entité `EventTask`
 Représente un événement spécifique de type tâche, héritant des propriétés de `Event`.
 
 | Champ             | Type            | Description                                                                                       |
@@ -38,7 +38,7 @@ Représente un événement spécifique de type tâche, héritant des propriété
 #### Relations :
 - Inhérente à `Event`.
 
-#### Entité `Event_Info`
+#### Entité `EventInfo`
 Représente un événement spécifique de type information, héritant des propriétés de `Event`.
 
 | Champ             | Type            | Description                                                                                       |
@@ -61,7 +61,7 @@ Représente les détails de fréquence pour les événements récurrents.
 #### Relations :
 - Aucun.
 
-#### Entité `User_Events`
+#### Entité `UserEvents`
 Représente les événements auxquels l'utilisateur a participé, classés par section et chronologie.
 
 | Champ              | Type     | Description                                                                                     |

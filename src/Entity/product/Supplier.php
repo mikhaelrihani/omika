@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Entity\product;
+namespace App\Entity\Product;
 
 use App\Entity\BaseEntity;
 use App\Entity\user\Business;
@@ -45,7 +45,7 @@ class Supplier extends BaseEntity
     /**
      * @ORM\OneToMany(targetEntity="App\Entity\product\Product", mappedBy="supplier")
      */
-    #[ORM\OneToMany(targetEntity: Product::class,mappedBy: 'supplier', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: Product::class, mappedBy: 'supplier', orphanRemoval: true)]
     private Collection $products;
 
     /**
@@ -56,6 +56,9 @@ class Supplier extends BaseEntity
 
     #[ORM\Column]
     private array $deliveryDays = [];
+
+    #[ORM\Column(nullable: true, type: 'json')]
+    private ?array $recuring_events = null;
 
 
     public function __construct()
@@ -195,6 +198,18 @@ class Supplier extends BaseEntity
     public function setDeliveryDays(array $deliveryDays): static
     {
         $this->deliveryDays = $deliveryDays;
+
+        return $this;
+    }
+
+    public function getRecuringEvents(): ?array
+    {
+        return $this->recuring_events;
+    }
+
+    public function setRecuringEvents(?array $recuring_events): static
+    {
+        $this->recuring_events = $recuring_events;
 
         return $this;
     }

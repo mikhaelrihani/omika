@@ -1,40 +1,40 @@
 <?php
 
-namespace App\Repository\Product;
+namespace App\Repository\Event;
 
-use App\Entity\Product\Rupture;
+use App\Entity\Event\UserEvents;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @extends ServiceEntityRepository<Rupture>
+ * @extends ServiceEntityRepository<UserEvents>
  */
-class RuptureRepository extends ServiceEntityRepository
+class UserEventsRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
-        parent::__construct($registry, Rupture::class);
+        parent::__construct($registry, UserEvents::class);
     }
 
     //    /**
-    //     * @return Rupture[] Returns an array of Rupture objects
+    //     * @return UserEvents[] Returns an array of UserEvents objects
     //     */
     //    public function findByExampleField($value): array
     //    {
-    //        return $this->createQueryBuilder('r')
-    //            ->andWhere('r.exampleField = :val')
+    //        return $this->createQueryBuilder('u')
+    //            ->andWhere('u.exampleField = :val')
     //            ->setParameter('val', $value)
-    //            ->orderBy('r.id', 'ASC')
+    //            ->orderBy('u.id', 'ASC')
     //            ->setMaxResults(10)
     //            ->getQuery()
     //            ->getResult()
     //        ;
     //    }
 
-    //    public function findOneBySomeField($value): ?Rupture
+    //    public function findOneBySomeField($value): ?UserEvents
     //    {
-    //        return $this->createQueryBuilder('r')
-    //            ->andWhere('r.exampleField = :val')
+    //        return $this->createQueryBuilder('u')
+    //            ->andWhere('u.exampleField = :val')
     //            ->setParameter('val', $value)
     //            ->getQuery()
     //            ->getOneOrNullResult()

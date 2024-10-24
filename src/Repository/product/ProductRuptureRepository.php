@@ -1,19 +1,19 @@
 <?php
 
-namespace App\Repository\product;
+namespace App\Repository\Product;
 
-use App\Entity\product\ProductRupture;
+use App\Entity\Product\Rupture;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @extends ServiceEntityRepository<ProductRupture>
+ * @extends ServiceEntityRepository<Rupture>
  */
 class ProductRuptureRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
-        parent::__construct($registry, ProductRupture::class);
+        parent::__construct($registry, Rupture::class);
     }
 
     //    /**

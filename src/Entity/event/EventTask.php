@@ -15,15 +15,13 @@ class EventTask extends BaseEntity
     #[ORM\Column(type: 'integer')]
     private ?int $id = null; // Identifiant unique de la tâche (hérité de Event)
 
-    #[ORM\Column(type: 'text', nullable: true)]
+    #[ORM\Column(length: 100,type: 'string', nullable: true)]
     private ?string $task_details = null; // Détails supplémentaires concernant la tâche
 
     #[ORM\Column(length: 50, nullable: false)]
     #[Assert\NotBlank(message: "Task status should not be blank.")]
     private ?string $task_status = null; // Statut de la tâche (todo, pending, done, late, unrealised)
 
-    #[ORM\Column(type: 'json', nullable: true)]
-    private array $tag_task_active = []; // Comptabilisation des tâches actives pour chaque section par jour
 
     // Getters and Setters
 
@@ -54,14 +52,5 @@ class EventTask extends BaseEntity
         return $this;
     }
 
-    public function getTagTaskActive(): array
-    {
-        return $this->tag_task_active;
-    }
-
-    public function setTagTaskActive(array $tag_task_active): static
-    {
-        $this->tag_task_active = $tag_task_active;
-        return $this;
-    }
+  
 }

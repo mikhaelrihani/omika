@@ -1,19 +1,19 @@
 <?php
 
-namespace App\Repository\event;
+namespace App\Repository\Event;
 
-use App\Entity\event\EventFrequence;
+use App\Entity\event\EventRecurring;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @extends ServiceEntityRepository<EventFrequence>
+ * @extends ServiceEntityRepository<EventRecurring>
  */
-class EventFrequenceRepository extends ServiceEntityRepository
+class EventRecurringRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
-        parent::__construct($registry, EventFrequence::class);
+        parent::__construct($registry, EventRecurring::class);
     }
 
     //    /**

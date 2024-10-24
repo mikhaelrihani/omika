@@ -18,15 +18,27 @@ Un événement correspond a un seul jour demandé de réalisation, si l'événem
 ### 1.2 Gestion du `date_status`
 - **Champ `date_status`** : Classifie les événements selon leur statut temporel :
   - `past` : événements passés.
-  - `activedayrange` : événements dans la plage active.
-  - `future` : événements futurs en dehors de la plage active.
+  - `before_yesterday` : événements d'avant hier.
+  - `yesterday` : événements d'hier.
+  - `today` : événements aujourd'hui.
+  - `tomorrow` : événements demain.
+  - `after_tomorrow` : événements après-demain.
+  - `after_after_tomorrow` : événements après_après-demain.
+  - `future` : événements futurs.
 
 La recherche utilise ce champ pour filtrer les événements et récupérer les détails nécessaires.
-Exemple de requete: Pour une recherche rapide , on récupére d'abord tous les événements avec date_status = activedayrange car ces événements sont dans la plage active.
-Ensuite, parmi ces événements, on affine la recherche pour trouver ceux qui correspondent exactement au jour demandé.
+Exemple de requete: Pour une recherche dans le futur , on récupére d'abord tous les événements avec date_status = future,
+puis on affine la recherche pour trouver ceux qui correspondent exactement au jour demandé.
 
 ### 1.3 Cache des sessions
 - Les événements sont stockés en cache pour la session de l'utilisateur, ce qui permet de réduire les appels à la base de données lorsque l'utilisateur navigue sur plusieurs jours.
+
+### 1.4 Index composite
+
+- Un index composite sur date_status et active_day_range : Cet index permet d'optimiser les requêtes filtrant d'abord par date_status (par exemple, "activedayrange") puis en affinant par la valeur de active_day_range (par exemple, pour "today" ou un autre jour précis dans la plage active).
+
+- Un index composite sur date_status, periode_start, et periode_end : Cet index permet de filtrer efficacement les événements en fonction de leur date_status (futur ou passé), puis de restreindre la sélection en fonction des plages de dates periode_start et periode_end pour identifier les événements pertinents à une date donnée.
+
 
 ## 2. Gestion des événements tâches et information
 - Les événements sont visibles uniquement s'ils se trouvent entre periode_start et periode_end, à l'exception des événements de type tâche qui sont marqués comme en retard (late) ou en attente (pending).

@@ -9,7 +9,7 @@ use App\Entity\order\ProductOrder;
 use App\Entity\product\Product;
 use App\Entity\product\ProductType;
 use App\Entity\product\Rupture;
-use App\Entity\product\Supplier;
+use App\Entity\Product\Supplier;
 use App\Entity\recipe\Unit;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;

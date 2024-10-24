@@ -3,7 +3,6 @@
 namespace App\Entity\media;
 
 use App\Entity\BaseEntity;
-use App\Entity\RecipientInterface;
 use App\Entity\user\Contact;
 use App\Repository\media\MessageRepository;
 use Doctrine\ORM\Mapping as ORM;
