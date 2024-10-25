@@ -11,6 +11,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: EventRecurringRepository::class)]
+#[ORM\Index(name: "eventRecurring_period_idx", columns: [ "periodeStart", "periodeEnd"])]
+
 class EventRecurring extends BaseEntity
 {
     #[ORM\Id]
@@ -19,17 +21,18 @@ class EventRecurring extends BaseEntity
     #[Assert\Uuid(message: "L'identifiant doit être un UUID valide.")]
     private string $id;
 
+    #[ORM\Column(name: "periodeStart", type: 'datetime_immutable', nullable: false)]
     #[Assert\NotBlank(message: "La date de début est requise.")]
     #[Assert\Type("\DateTimeImmutable", message: "La date de début doit être de type DateTimeImmutable.")]
-    private ?\DateTimeImmutable $periode_start = null;
+    private ?\DateTimeImmutable $periodeStart = null;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    #[ORM\Column(name: "periodeEnd", type: 'datetime_immutable', nullable: true)]
     #[Assert\Type("\DateTimeImmutable", message: "La date de fin doit être de type DateTimeImmutable.")]
     #[Assert\Expression(
         "this.getPeriodeEnd() === null || this.getPeriodeEnd() >= this.getPeriodeStart()",
         message: "La date de fin doit être postérieure ou égale à la date de début."
     )]
-    private ?\DateTimeImmutable $periode_end = null;
+    private ?\DateTimeImmutable $periodeEnd = null;
 
     /**
      * @var Collection<int, Event>
@@ -86,23 +89,23 @@ class EventRecurring extends BaseEntity
 
     public function getPeriodeStart(): ?\DateTimeInterface
     {
-        return $this->periode_start;
+        return $this->periodeStart;
     }
 
-    public function setPeriodeStart(\DateTimeInterface $periode_start): static
+    public function setPeriodeStart(\DateTimeInterface $periodeStart): static
     {
-        $this->periode_start = $periode_start;
+        $this->periodeStart = $periodeStart;
         return $this;
     }
 
     public function getPeriodeEnd(): ?\DateTimeInterface
     {
-        return $this->periode_end;
+        return $this->periodeEnd;
     }
 
-    public function setPeriodeEnd(?\DateTimeInterface $periode_end): static
+    public function setPeriodeEnd(?\DateTimeInterface $periodeEnd): static
     {
-        $this->periode_end = $periode_end;
+        $this->periodeEnd = $periodeEnd;
         return $this;
     }
 

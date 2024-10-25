@@ -12,6 +12,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: EventRepository::class)]
+#[ORM\Index(name: "event_date_status_active_day_idx", columns: ["date_status", "active_day"])]
+#[ORM\Index(name: "event_date_status_due_date_idx", columns: ["date_status", "due_date"])]
 class Event extends BaseEntity
 {
     #[ORM\Id]
@@ -44,8 +46,10 @@ class Event extends BaseEntity
     #[Assert\NotBlank(message: "Description should not be blank.")]
     private ?string $description = null;
 
-    #[ORM\Column(type: 'json', nullable: true)]
-    private ?array $shared_with = null;
+    #[ORM\ManyToMany(targetEntity: User::class, inversedBy: 'sharedEvents')]
+    #[ORM\JoinTable(name: 'event_user_share')]
+    private Collection $sharedWith;
+
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "CreatedBy should not be blank.")]
@@ -88,10 +92,13 @@ class Event extends BaseEntity
     #[ORM\Column]
     private ?int $userReadInfoCount = null;
 
+
+
     public function __construct()
     {
         parent::__construct();
         $this->favoritedBy = new ArrayCollection();
+        $this->sharedWith = new ArrayCollection();
     }
 
 
@@ -106,13 +113,13 @@ class Event extends BaseEntity
     {
         return $this->dueDate;
     }
-    
+
     public function setDueDate(\DateTimeImmutable $dueDate): static
     {
         $this->dueDate = $dueDate;
         return $this;
     }
-    
+
     public function isRecurring(): ?bool
     {
         return $this->isRecurring;
@@ -166,14 +173,17 @@ class Event extends BaseEntity
         return $this;
     }
 
-    public function getSharedWith(): array
+    public function addSharedWith(User $user): self
     {
-        return $this->shared_with;
+        if (!$this->sharedWith->contains($user)) {
+            $this->sharedWith->add($user);
+        }
+        return $this;
     }
 
-    public function setSharedWith(array $shared_with): static
+    public function removeSharedWith(User $user): self
     {
-        $this->shared_with = $shared_with;
+        $this->sharedWith->removeElement($user);
         return $this;
     }
 
@@ -327,5 +337,7 @@ class Event extends BaseEntity
 
         return $this;
     }
+
+
 
 }

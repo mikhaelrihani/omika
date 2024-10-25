@@ -32,7 +32,7 @@ Un événement correspond a un seul jour demandé de réalisation ou d'informati
 - `index composite`sur date_status et due_date(dans le cas ou l event futur a été inscrit en bdd) dans la table Event: permet de gérer efficacement les événements futurs et passé  en fonction de leur date de réalisation souhaitée originellement.(necessaire pour afficher le bon status de la tache/info)
 
 - `index composite` pour les Événements Récurrents
-Index sur date_status, periode_start, et periode_end dans la table EventRecurring
+Index sur periode_start, et periode_end dans la table EventRecurring
 Utilisation : Filtrer les événements récurrents selon leur date_status (futur/passé) et vérifier si la date souhaitée tombe entre periode_start et periode_end.
 Avantages : Optimise les requêtes pour identifier les événements à afficher ou enregistrer en base sans surcharger la base de données avec tous les événements récurrents.
 

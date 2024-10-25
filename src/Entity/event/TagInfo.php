@@ -7,6 +7,8 @@ use App\Repository\Event\TagInfoRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: TagInfoRepository::class)]
+#[ORM\Index(name: "taginfo_user_tag_idx", columns: ["user_id", "tag_id"])]
+
 class TagInfo
 {
     #[ORM\Id]

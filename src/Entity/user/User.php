@@ -16,7 +16,7 @@ use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 #[UniqueEntity(fields: ['avatar'], message: 'This picture is already used as an avatar by another user.')]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-class User extends BaseEntity implements RecipientInterface 
+class User extends BaseEntity implements RecipientInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -103,11 +103,15 @@ class User extends BaseEntity implements RecipientInterface
     #[ORM\ManyToMany(targetEntity: Event::class, mappedBy: 'favoritedBy')]
     private Collection $favoriteEvents;
 
+    #[ORM\ManyToMany(targetEntity: Event::class, mappedBy: 'sharedWith')]
+    private Collection $sharedEvents;
+
     public function __construct()
     {
         parent::__construct();
         $this->absence = new ArrayCollection();
         $this->favoriteEvents = new ArrayCollection();
+        $this->sharedEvents = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -325,6 +329,21 @@ class User extends BaseEntity implements RecipientInterface
 
         return $this;
     }
+    public function addSharedEvent(Event $event): self
+    {
+        if (!$this->sharedEvents->contains($event)) {
+            $this->sharedEvents->add($event);
+            $event->addSharedWith($this);  // Mise à jour dans Event
+        }
+        return $this;
+    }
 
- 
+    public function removeSharedEvent(Event $event): self
+    {
+        if ($this->sharedEvents->removeElement($event)) {
+            $event->removeSharedWith($this);  // Mise à jour dans Event
+        }
+        return $this;
+    }
+
 }
