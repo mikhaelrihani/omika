@@ -82,14 +82,14 @@ class Event extends BaseEntity
     #[ORM\ManyToMany(targetEntity: user::class, inversedBy: 'favoriteEvents')]
     private Collection $favoritedBy;
 
+    #[ORM\Column]
+    private ?int $userReadInfoCount = null;
+
     public function __construct()
     {
         parent::__construct();
         $this->favoritedBy = new ArrayCollection();
     }
-
-   
-
 
 
     // Getters and Setters 
@@ -299,6 +299,18 @@ class Event extends BaseEntity
     public function removeFavoritedBy(user $favoritedBy): static
     {
         $this->favoritedBy->removeElement($favoritedBy);
+
+        return $this;
+    }
+
+    public function getUserReadInfoCount(): ?int
+    {
+        return $this->userReadInfoCount;
+    }
+
+    public function setUserReadInfoCount(int $userReadInfoCount): static
+    {
+        $this->userReadInfoCount = $userReadInfoCount;
 
         return $this;
     }

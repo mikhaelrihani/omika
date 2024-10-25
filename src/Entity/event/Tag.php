@@ -29,9 +29,6 @@ class Tag extends BaseEntity
     #[ORM\Column(type: Types::INTEGER)]
     private int $task_count = 0; // Compte des tâches actives
 
-    #[ORM\Column(type: Types::BOOLEAN)]
-    private bool $allUserRead = false;
-
     #[ORM\Column(nullable: true)]
     private ?array $active_day_range = null;
 
@@ -47,7 +44,7 @@ class Tag extends BaseEntity
         $this->tagInfos = new ArrayCollection();
     }
 
-   
+
     public function getId(): ?int
     {
         return $this->id;
@@ -97,17 +94,7 @@ class Tag extends BaseEntity
         return $this;
     }
 
-    public function isAllUserRead(): bool
-    {
-        return $this->allUserRead;
-    }
-
-    public function setAllUserRead(bool $allUserRead): static
-    {
-        $this->allUserRead = $allUserRead;
-        return $this;
-    }
-
+   
     public function getActiveDayRange(): ?array
     {
         return $this->active_day_range;
