@@ -15,73 +15,73 @@ class EventRecurring extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\Column(type: Types::STRING)]
-    private string $id; // Identifiant unique de la fréquence
+    #[Assert\NotBlank(message: "L'identifiant est requis.")]
+    #[Assert\Uuid(message: "L'identifiant doit être un UUID valide.")]
+    private string $id;
 
+    #[Assert\NotBlank(message: "La date de début est requise.")]
+    #[Assert\Type("\DateTimeImmutable", message: "La date de début doit être de type DateTimeImmutable.")]
     private ?\DateTimeImmutable $periode_start = null;
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    #[Assert\Type("\DateTimeImmutable", message: "La date de fin doit être de type DateTimeImmutable.")]
+    #[Assert\Expression(
+        "this.getPeriodeEnd() === null || this.getPeriodeEnd() >= this.getPeriodeStart()",
+        message: "La date de fin doit être postérieure ou égale à la date de début."
+    )]
     private ?\DateTimeImmutable $periode_end = null;
-
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $dates = null; // Jours du mois associé à la fréquence (1 à 31)
-
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    #[Assert\Range(
-        min: 1,
-        max: 8,
-        notInRangeMessage: 'Day must be between {{ min }} and {{ max }}. Use 8 for unlimited.'
-    )]
-    private ?array $weekDays = null; // Jours associé à la fréquence (1 = lundi, 7 = dimanche, 8 = illimité)
-
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    #[Assert\Range(
-        min: 1,
-        max: 31,
-        notInRangeMessage: 'Month day must be between {{ min }} and {{ max }}.'
-    )]
-    private ?array $monthDays = null;
 
     /**
      * @var Collection<int, Event>
      */
     #[ORM\OneToMany(targetEntity: Event::class, mappedBy: 'eventRecurring')]
+    #[Assert\Valid]
     private Collection $events;
+
+    /**
+     * @var Collection<int, PeriodDate>
+     */
+    #[ORM\ManyToMany(targetEntity: PeriodDate::class, mappedBy: 'periodDates')]
+    #[Assert\Valid]
+    private Collection $periodDates;
+
+    /**
+     * @var Collection<int, WeekDay>
+     */
+    #[ORM\ManyToMany(targetEntity: WeekDay::class, mappedBy: 'weekDays')]
+    #[Assert\Valid]
+    #[Assert\All([
+        new Assert\Range(min: 1, max: 7, notInRangeMessage: "Les jours de la semaine doivent être entre 1 (lundi) et 7 (dimanche)")
+    ])]
+    private Collection $weekDays;
+
+    /**
+     * @var Collection<int, MonthDay>
+     */
+    #[ORM\ManyToMany(targetEntity: MonthDay::class, mappedBy: 'monthDays')]
+    #[Assert\Valid]
+    #[Assert\All([
+        new Assert\Range(min: 1, max: 31, notInRangeMessage: "Les jours du mois doivent être entre 1 et 31.")
+    ])]
+    private Collection $monthDays;
+
+    #[ORM\Column]
+    private ?bool $isEveryday = null;
 
     public function __construct()
     {
         parent::__construct();
         $this->events = new ArrayCollection();
+        $this->periodDates = new ArrayCollection();
+        $this->weekDays = new ArrayCollection();
+        $this->monthDays = new ArrayCollection();
     }
-
-
 
     // Getters and Setters
 
     public function getId(): string
     {
         return $this->id;
-    }
-
-    public function getWeekDays(): ?array
-    {
-        return $this->weekDays;
-    }
-
-    public function setWeekDays(?array $weekDays): static
-    {
-        $this->weekDays = $weekDays;
-        return $this;
-    }
-
-    public function getMonthDays(): ?array
-    {
-        return $this->monthDays;
-    }
-
-    public function setMonthDays(?array $monthDay): static
-    {
-        $this->monthDays = $monthDay;
-        return $this;
     }
 
     public function getPeriodeStart(): ?\DateTimeInterface
@@ -106,18 +106,6 @@ class EventRecurring extends BaseEntity
         return $this;
     }
 
-    public function getDates(): ?array
-    {
-        return $this->dates;
-    }
-
-    public function setDates(?array $dates): static
-    {
-        $this->dates = $dates;
-
-        return $this;
-    }
-
     /**
      * @return Collection<int, Event>
      */
@@ -139,7 +127,6 @@ class EventRecurring extends BaseEntity
     public function removeEvent(Event $event): static
     {
         if ($this->events->removeElement($event)) {
-            // set the owning side to null (unless already changed)
             if ($event->getEventRecurring() === $this) {
                 $event->setEventRecurring(null);
             }
@@ -148,4 +135,97 @@ class EventRecurring extends BaseEntity
         return $this;
     }
 
+    /**
+     * @return Collection<int, PeriodDate>
+     */
+    public function getPeriodDates(): Collection
+    {
+        return $this->periodDates;
+    }
+
+    /**
+     * @return Collection<int, WeekDay>
+     */
+    public function getWeekDays(): Collection
+    {
+        return $this->weekDays;
+    }
+
+    public function addWeekDay(WeekDay $weekDay): static
+    {
+        if (!$this->weekDays->contains($weekDay)) {
+            $this->weekDays->add($weekDay);
+            $weekDay->addEventRecurring($this);  // Mise à jour de l'autre côté
+        }
+    
+        return $this;
+    }
+    
+    public function removeWeekDay(WeekDay $weekDay): static
+    {
+        if ($this->weekDays->removeElement($weekDay)) {
+            $weekDay->removeEventRecurring($this);  // Mise à jour de l'autre côté
+        }
+    
+        return $this;
+    }
+    
+
+    /**
+     * @return Collection<int, MonthDay>
+     */
+    public function getMonthDays(): Collection
+    {
+        return $this->monthDays;
+    }
+
+    public function addMonthDay(MonthDay $monthDay): static
+    {
+        if (!$this->monthDays->contains($monthDay)) {
+            $this->monthDays->add($monthDay);
+            $monthDay->addEventRecurring($this);  // Mise à jour de l'autre côté de la relation
+        }
+
+        return $this;
+    }
+
+    public function removeMonthDay(MonthDay $monthDay): static
+    {
+        if ($this->monthDays->removeElement($monthDay)) {
+            $monthDay->removeEventRecurring($this);  // Mise à jour de l'autre côté de la relation
+        }
+
+        return $this;
+    }
+
+    public function addPeriodDate(PeriodDate $periodDate): static
+    {
+        if (!$this->periodDates->contains($periodDate)) {
+            $this->periodDates->add($periodDate);
+            $periodDate->addEventRecurring($this);  // Mise à jour de l'autre côté
+        }
+
+        return $this;
+    }
+
+    public function removePeriodDate(PeriodDate $periodDate): static
+    {
+        if ($this->periodDates->removeElement($periodDate)) {
+            $periodDate->removeEventRecurring($this);  // Mise à jour de l'autre côté
+        }
+
+        return $this;
+    }
+
+    public function isEveryday(): ?bool
+    {
+        return $this->isEveryday;
+    }
+
+    public function setEveryday(bool $isEveryday): static
+    {
+        $this->isEveryday = $isEveryday;
+
+        return $this;
+    }
 }

@@ -3,7 +3,10 @@
 namespace App\Entity\Event;
 
 use App\Entity\BaseEntity;
+use App\Entity\User\user;
 use App\Repository\Event\EventRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -73,11 +76,23 @@ class Event extends BaseEntity
     #[ORM\ManyToOne(inversedBy: 'events')]
     private ?EventRecurring $eventRecurring = null;
 
+    /**
+     * @var Collection<int, user>
+     */
+    #[ORM\ManyToMany(targetEntity: user::class, inversedBy: 'favoriteEvents')]
+    private Collection $favoritedBy;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->favoritedBy = new ArrayCollection();
+    }
+
    
 
 
 
-    // Getters and Setters
+    // Getters and Setters 
 
     public function getId(): ?int
     {
@@ -260,6 +275,30 @@ class Event extends BaseEntity
     public function setActiveDayRange(?array $active_day_range): static
     {
         $this->active_day_range = $active_day_range;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, user>
+     */
+    public function getFavoritedBy(): Collection
+    {
+        return $this->favoritedBy;
+    }
+
+    public function addFavoritedBy(user $favoritedBy): static
+    {
+        if (!$this->favoritedBy->contains($favoritedBy)) {
+            $this->favoritedBy->add($favoritedBy);
+        }
+
+        return $this;
+    }
+
+    public function removeFavoritedBy(user $favoritedBy): static
+    {
+        $this->favoritedBy->removeElement($favoritedBy);
 
         return $this;
     }

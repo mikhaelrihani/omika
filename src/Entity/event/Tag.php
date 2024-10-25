@@ -4,6 +4,8 @@ namespace App\Entity\Event;
 
 use App\Entity\BaseEntity;
 use App\Repository\Event\TagRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -27,16 +29,25 @@ class Tag extends BaseEntity
     #[ORM\Column(type: Types::INTEGER)]
     private int $task_count = 0; // Compte des tâches actives
 
-    #[ORM\Column(type: Types::JSON)]
-    private ?array $info_count = null; // JSON des comptes d'infos non lues pour chaque utilisateur
-
     #[ORM\Column(type: Types::BOOLEAN)]
     private bool $allUserRead = false;
 
     #[ORM\Column(nullable: true)]
-    private ?array $active_day_range = null; // Indique si tous les utilisateurs ont lu les informations
+    private ?array $active_day_range = null;
 
- 
+    /**
+     * @var Collection<int, TagInfo>
+     */
+    #[ORM\OneToMany(targetEntity: TagInfo::class, mappedBy: 'tag', orphanRemoval: true)]
+    private Collection $tagInfos;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->tagInfos = new ArrayCollection();
+    }
+
+   
     public function getId(): ?int
     {
         return $this->id;
@@ -86,17 +97,6 @@ class Tag extends BaseEntity
         return $this;
     }
 
-    public function getInfoCount(): array
-    {
-        return $this->info_count;
-    }
-
-    public function setInfoCount(array $info_count): static
-    {
-        $this->info_count = $info_count;
-        return $this;
-    }
-
     public function isAllUserRead(): bool
     {
         return $this->allUserRead;
@@ -120,5 +120,36 @@ class Tag extends BaseEntity
         return $this;
     }
 
+    /**
+     * @return Collection<int, TagInfo>
+     */
+    public function getTagInfos(): Collection
+    {
+        return $this->tagInfos;
+    }
+
+    public function addTagInfo(TagInfo $tagInfo): static
+    {
+        if (!$this->tagInfos->contains($tagInfo)) {
+            $this->tagInfos->add($tagInfo);
+            $tagInfo->setTag($this);
+        }
+
+        return $this;
+    }
+
+    public function removeTagInfo(TagInfo $tagInfo): static
+    {
+        if ($this->tagInfos->removeElement($tagInfo)) {
+            // set the owning side to null (unless already changed)
+            if ($tagInfo->getTag() === $this) {
+                $tagInfo->setTag(null);
+            }
+        }
+
+        return $this;
+    }
+
+   
    
 }
