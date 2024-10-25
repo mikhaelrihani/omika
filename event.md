@@ -4,9 +4,10 @@
 
 Cette application permet à l'utilisateur de consulter rapidement tous les événements (tâches ou informations) d'une journée donnée. L'objectif est d'optimiser les requêtes pour un affichage rapide, d'automatiser la gestion des statuts des tâches (internes à l'application ou externes) et d'améliorer la gestion des tags.
 
-Les événements peuvent être signalés comme importants grâce au champ **`importance`** et peuvent être partagés avec d'autres utilisateurs à l'aide du champ **`shared_with`**, un tableau JSON.
+Les événements peuvent être signalés comme importants grâce au champ **`importance`** 
+
 Les événements sont supprimés automatiquement après 30 jours suivant leur date de presentation "today" via un **cron job**.
-Un événement correspond a un seul jour demandé de réalisation, si l'événement a une période plus longue ce sont alors des duplications signifiant que l'événement est pseudo_récurrent sur une période donnée.
+Un événement correspond a un seul jour demandé de réalisation ou d'information
 ## 1. Optimisation des requêtes
 
 ### 1.1 Plage de jours actifs
@@ -18,26 +19,36 @@ Un événement correspond a un seul jour demandé de réalisation, si l'événem
 ### 1.2 Gestion du `date_status`
 - **Champ `date_status`** : Classifie les événements selon leur statut temporel :
   - `past` : événements passés.
-  - `before_yesterday` : événements d'avant hier.
-  - `yesterday` : événements d'hier.
-  - `today` : événements aujourd'hui.
-  - `tomorrow` : événements demain.
-  - `after_tomorrow` : événements après-demain.
-  - `after_after_tomorrow` : événements après_après-demain.
+  - `active_day_range` : événements autours de today sur un range de  10 jours
   - `future` : événements futurs.
-
-La recherche utilise ce champ pour filtrer les événements et récupérer les détails nécessaires.
-Exemple de requete: Pour une recherche dans le futur , on récupére d'abord tous les événements avec date_status = future,
-puis on affine la recherche pour trouver ceux qui correspondent exactement au jour demandé.
 
 ### 1.3 Cache des sessions
 - Les événements sont stockés en cache pour la session de l'utilisateur, ce qui permet de réduire les appels à la base de données lorsque l'utilisateur navigue sur plusieurs jours.
 
 ### 1.4 Index composite
 
-- Un index composite sur date_status et active_day_range : Cet index permet d'optimiser les requêtes filtrant d'abord par date_status (par exemple, "activedayrange") puis en affinant par la valeur de active_day_range (par exemple, pour "today" ou un autre jour précis dans la plage active).
+- `index composite` sur date_status et active_day dans la table Event: utile pour sélectionner directement les événements actifs dans la plage active_day_range et afficher rapidement les événements/tags pour une date précise.
 
-- Un index composite sur date_status, periode_start, et periode_end : Cet index permet de filtrer efficacement les événements en fonction de leur date_status (futur ou passé), puis de restreindre la sélection en fonction des plages de dates periode_start et periode_end pour identifier les événements pertinents à une date donnée.
+- `index composite`sur date_status et due_date(dans le cas ou l event futur a été inscrit en bdd) dans la table Event: permet de gérer efficacement les événements futurs et passé  en fonction de leur date de réalisation souhaitée originellement.(necessaire pour afficher le bon status de la tache/info)
+
+- `index composite` pour les Événements Récurrents
+Index sur date_status, periode_start, et periode_end dans la table EventRecurring
+Utilisation : Filtrer les événements récurrents selon leur date_status (futur/passé) et vérifier si la date souhaitée tombe entre periode_start et periode_end.
+Avantages : Optimise les requêtes pour identifier les événements à afficher ou enregistrer en base sans surcharger la base de données avec tous les événements récurrents.
+
+Processus d’Utilisation
+Recherche des Tags et Événements :
+
+Utilisez l’`index composite` (date_status, active_day) pour récupérer les tags et événements qui sont actifs à une date donnée .
+
+Cela vous donne une liste de tags pertinents.
+Affiner la recherche avec les TagInfos :
+
+Avec les tags trouvés, utilisez l'`index composite` sur (user_id, tag_id) dans la table TagInfo pour récupérer les informations liées à l'utilisateur connecté pour chaque tag.
+Récupération des informations non lues :
+
+Une fois que vous avez les TagInfo pour l'utilisateur et les tags, vous pouvez facilement afficher le nombre d'informations non lues par section.
+
 
 
 ## 2. Gestion des événements tâches et information

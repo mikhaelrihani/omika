@@ -30,7 +30,7 @@ class Tag extends BaseEntity
     private int $task_count = 0; // Compte des tâches actives
 
     #[ORM\Column(nullable: true)]
-    private ?array $active_day_range = null;
+    private ?int $active_day = null;
 
     /**
      * @var Collection<int, TagInfo>
@@ -95,14 +95,14 @@ class Tag extends BaseEntity
     }
 
    
-    public function getActiveDayRange(): ?array
+    public function getActiveDay(): ?int
     {
-        return $this->active_day_range;
+        return $this->active_day;
     }
 
-    public function setActiveDayRange(?array $active_day_range): static
+    public function setActiveDay(?int $active_day): static
     {
-        $this->active_day_range = $active_day_range;
+        $this->active_day = $active_day;
 
         return $this;
     }

@@ -19,6 +19,9 @@ class Event extends BaseEntity
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: false)]
+    private ?\DateTimeImmutable $dueDate = null;
+
     #[ORM\Column(type: 'boolean', nullable: false)]
     private ?bool $isRecurring = false;
 
@@ -53,10 +56,10 @@ class Event extends BaseEntity
 
     #[ORM\Column(length: 50, nullable: false)]
     #[Assert\NotBlank(message: "Date status should not be blank.")]
-    private ?string $date_status = null;
-    
+    private ?string $date_status = null;// Statut de la date (ex. "past", "active_day_range", "future")
+
     #[ORM\Column(nullable: true)]
-    private ?array $active_day_range = null;
+    private ?int $active_day = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Side should not be blank.")]
@@ -99,7 +102,17 @@ class Event extends BaseEntity
         return $this->id;
     }
 
-
+    public function getDueDate(): ?\DateTimeImmutable
+    {
+        return $this->dueDate;
+    }
+    
+    public function setDueDate(\DateTimeImmutable $dueDate): static
+    {
+        $this->dueDate = $dueDate;
+        return $this;
+    }
+    
     public function isRecurring(): ?bool
     {
         return $this->isRecurring;
@@ -267,14 +280,14 @@ class Event extends BaseEntity
         return $this;
     }
 
-    public function getActiveDayRange(): ?array
+    public function getActiveDay(): ?int
     {
-        return $this->active_day_range;
+        return $this->active_day;
     }
 
-    public function setActiveDayRange(?array $active_day_range): static
+    public function setActiveDay(?int $active_day): static
     {
-        $this->active_day_range = $active_day_range;
+        $this->active_day = $active_day;
 
         return $this;
     }
