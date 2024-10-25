@@ -11,15 +11,15 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: EventRecurringRepository::class)]
-#[ORM\Index(name: "eventRecurring_period_idx", columns: [ "periodeStart", "periodeEnd"])]
+#[ORM\Index(name: "eventRecurring_period_idx", columns: ["periodeStart", "periodeEnd"])]
 
 class EventRecurring extends BaseEntity
 {
     #[ORM\Id]
-    #[ORM\Column(type: Types::STRING)]
-    #[Assert\NotBlank(message: "L'identifiant est requis.")]
-    #[Assert\Uuid(message: "L'identifiant doit être un UUID valide.")]
-    private string $id;
+    #[ORM\GeneratedValue]
+    #[ORM\Column(type: Types::INTEGER)]
+    private ?int $id = null;
+    
 
     #[ORM\Column(name: "periodeStart", type: 'datetime_immutable', nullable: false)]
     #[Assert\NotBlank(message: "La date de début est requise.")]
@@ -44,28 +44,25 @@ class EventRecurring extends BaseEntity
     /**
      * @var Collection<int, PeriodDate>
      */
-    #[ORM\ManyToMany(targetEntity: PeriodDate::class, mappedBy: 'periodDates')]
+    #[ORM\ManyToMany(targetEntity: PeriodDate::class, inversedBy: 'eventRecurrings')]
+    #[ORM\JoinTable(name: 'event_recurring_period_date')]
+    #[ORM\JoinColumn(name: 'event_recurring_id', referencedColumnName: 'id')]
+    #[ORM\InverseJoinColumn(name: 'period_date_id', referencedColumnName: 'id')]
     #[Assert\Valid]
     private Collection $periodDates;
 
-    /**
-     * @var Collection<int, WeekDay>
-     */
-    #[ORM\ManyToMany(targetEntity: WeekDay::class, mappedBy: 'weekDays')]
-    #[Assert\Valid]
-    #[Assert\All([
-        new Assert\Range(min: 1, max: 7, notInRangeMessage: "Les jours de la semaine doivent être entre 1 (lundi) et 7 (dimanche)")
-    ])]
+
+    #[ORM\ManyToMany(targetEntity: WeekDay::class, inversedBy: 'eventRecurrings')]
+    #[ORM\JoinTable(name: 'event_recurring_week_day')]
+    #[ORM\JoinColumn(name: 'event_recurring_id', referencedColumnName: 'id')]
+    #[ORM\InverseJoinColumn(name: 'week_day_id', referencedColumnName: 'id')]
     private Collection $weekDays;
 
-    /**
-     * @var Collection<int, MonthDay>
-     */
-    #[ORM\ManyToMany(targetEntity: MonthDay::class, mappedBy: 'monthDays')]
-    #[Assert\Valid]
-    #[Assert\All([
-        new Assert\Range(min: 1, max: 31, notInRangeMessage: "Les jours du mois doivent être entre 1 et 31.")
-    ])]
+
+    #[ORM\ManyToMany(targetEntity: MonthDay::class, inversedBy: 'eventRecurrings')]
+    #[ORM\JoinTable(name: 'event_recurring_month_day')]
+    #[ORM\JoinColumn(name: 'event_recurring_id', referencedColumnName: 'id')]
+    #[ORM\InverseJoinColumn(name: 'month_day_id', referencedColumnName: 'id')]
     private Collection $monthDays;
 
     #[ORM\Column]
@@ -160,19 +157,19 @@ class EventRecurring extends BaseEntity
             $this->weekDays->add($weekDay);
             $weekDay->addEventRecurring($this);  // Mise à jour de l'autre côté
         }
-    
+
         return $this;
     }
-    
+
     public function removeWeekDay(WeekDay $weekDay): static
     {
         if ($this->weekDays->removeElement($weekDay)) {
             $weekDay->removeEventRecurring($this);  // Mise à jour de l'autre côté
         }
-    
+
         return $this;
     }
-    
+
 
     /**
      * @return Collection<int, MonthDay>
