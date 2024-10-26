@@ -83,6 +83,7 @@ class Event extends BaseEntity
      * @var Collection<int, User>
      */
     #[ORM\ManyToMany(targetEntity: User::class, inversedBy: 'favoriteEvents')]
+    #[ORM\JoinTable(name: 'user_favoriteEvents')]
     private Collection $favoritedBy;
 
     public function __construct()

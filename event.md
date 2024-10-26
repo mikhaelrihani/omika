@@ -127,11 +127,16 @@ on pensera a faire un reminder quotidien ou toutes les deux heures pour que l us
 
 ## chapitre entité info:
 
-- **Champ `user_read_info_count`** : 
+- **Champ `sharedWith`** : liste d'user qui peuvent voir l info. ce champs est utilise tres frequement, par ex a chaque fois que l on fait une requete sur une date on vient voir ce cahmps pour verifeir si l'user connecté peut voir l info. 
 
-- **Champ `shared_with_count`** : 
+- **Champ `shared_with_count`** : integre qui represente avec combien d user autorisé  l info a été partagée (mis ajour a la creation de l info ou a une modification de l'info)
 
-- **Champ `is_fully_read`** : 
+- **Champ `user_read_info_count`** : integer qui represente le nombre d'user autorisé a avoir lu l'info(on estime que l info a été lu des lors que l'utilisateur clique sur l info sur l'interface).
+
+- **Champ `shared_with_count`** : integre qui represente avec combien d user autorisé  l info a été partagée (mis ajour a la creation de l info ou a une modification de l'info)
+
+- **Champ `is_fully_read`** : boolean qui indique si tous les utilisateurs autorisés ont lu l'info ,lorsque `user_read_info_count` === `shared_with_count` on passe le staut du boolean a true.
+ce qui plus tard dans l app si un user veut supprimer l info il peut, car pour supprimer l info est lie a la condition que ce cahmps est true ...au plus tard l info est supprime apres une periode de 30jour a pres sa due date par un cron job.
 
 
 
