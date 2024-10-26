@@ -111,15 +111,27 @@ chaque section etant propre a kitchen ou office, mais peuvent etre pour une info
 - **`favoritedBy`** : permet de mettre en evidence sur l interface un event favoris de l user connecté.
 
 ## chapitre entité task:
-- **Champ `task_details`** : Permet de lier la tâche à une action spécifique (par exemple, passer une commande chez un fournisseur).
-Pour associer précisément la tâche à l'action de l'utilisateur sur l'application et pouvoir modifier le status de celle ci, le champ task_details est utilisé. Ce champ contient des informations spécifiques telles que la concaténation des valeurs de l'event_section (pour indiquer la catégorie de l'événement) et d'autres indicateurs/références comme le supplierName (nom du fournisseur) ou d'autres éléments contextuels.
 
-Le champ task_details est généré lors de la création de la tâche, que ce soit par l'application ou par l'utilisateur, et contient toutes les informations nécessaires pour tracer l'action effectuée.
+- **Champ `task_status`** : voir le chapitre gestion des taches.
+- **Champ `task_details`** : utilisé pour lier une action utilisateur a une tache correspondante afin de mettre a jour son statut.
+- Le champ task_details est généré lors de la création de la tâche, que ce soit par l'application ou par l'utilisateur, et contient toutes les informations nécessaires pour tracer l'action effectuée.
+- Le champ task_details contient des informations spécifiques telles que la concaténation des valeurs de l'event_section (pour indiquer la catégorie de l'événement) et d'autres indicateurs/références comme le supplierName (nom du fournisseur) ou d'autres éléments contextuels.
 
-Lorsque l'utilisateur réalise une action sur l'application (comme passer une commande), le statut de la tâche doit etre mis à jour en conséquence. Par exemple, une tâche initialement en statut "todo" avec la description "passer une commande chez le fournisseur B" doit passer à un autre statut (comme "done") une fois l'action effectuée par l'utilisateur.
+cas d'usage:
+- Lorsque l'utilisateur réalise une action sur l'application (comme passer une commande), le statut de la tâche doit etre mis à jour en conséquence. Par exemple, une tâche initialement en statut "todo" avec la description "passer une commande chez le fournisseur B" doit passer à un autre statut (comme "done") une fois l'action effectuée par l'utilisateur.
+lorsqu'il soumet la cde on va chercher une correspondance avec une tache en bdd.on utilisera alors les champs comme duedate, suppliername, section....
 
+- cette action/miseajour/liaison automatique, n est pas possible lorsque l user effectue une tache hors de l application mais pour autant cette tache est demande sur/depuis l application.
+dans ce cas l user doit lui meme passer la cde de gauche a droite pour changer le statut de la tache en done, par contre si la tache est en cours il peut modifier le status directement a droite sur le tag ou est rensiegne le status.
+on pensera a faire un reminder quotidien ou toutes les deux heures pour que l user bascule le status des taches hros app .
 
 ## chapitre entité info:
+
+- **Champ `user_read_info_count`** : 
+
+- **Champ `shared_with_count`** : 
+
+- **Champ `is_fully_read`** : 
 
 
 
@@ -144,14 +156,11 @@ pour modifier les events recurents enfants , le processus sera :
 par ex une recherche sur une date future va aller chercher l'entité eventRecurring et va utiliser ces trois champs pour afficher/inscrire les events taches/infos.
 - **`isEveryday`** est un boolean utilise pour la meme raison que les champs **`periodDates`**,**`weekDays`**,**`monthDays`** et indique si un event recurring a été crée pour etre inscrit/visible tous les jours de sa periode active entre **`periodeStart`** et **`periodeEnd`**.
 
-### 3.3 Gestion des événements automatiques de l'application
+### 3.2 Gestion des événements automatiques de l'application
 - **Entité `supplier`** : Associe des événements récurrents à des fournisseurs grâce au champ **`recuring_events`**, qui liste les IDs des événements récurrents liés aux habitudes de commandes ou d'opérations du fournisseur.
 cela permet de modifier les events_recurrents facilement et de lancer la logique metier pour la suppression des events recurrents enfant.
 
 ## 4. Suppression et mise à jour des événements
-
-### 4.1 Suppression automatique
-
 - Les événements passés sont supprimés automatiquement 30 jours après la dueDate  via un **cron job**.
 
 
