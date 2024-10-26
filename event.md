@@ -78,7 +78,8 @@ Cela permet d'éviter d'avoir deux tâches identiques.
 - **Champ `unreadUsers`** : Tableau contenant les utilisateurs n'ayant pas encore lu l'information.
 - Dans le cas ou un user n'a pas lu une info, l' événement info est créé  par duplication et donc inscrit en bdd avec une période active de un jour (aujourd'hui) et ce tant que le user est présent dans le champ **`shared_with`**. Cette actualisation se fait par un cron job a minuit.
 - L'utilisateur peut également supprimer manuellement un événement de type "Info", sous réserve que tous les utilisateurs l'aient lu.
-pour cela on utilise le champs `userReadInfoCount` qui est un integer qui s'incremente des qu'un user lis l'info ; puis lorsque la valeur du champs `userReadInfoCount` est egal au nbre de user `sharedWithCount` alors on passe la valeur du boolean isFullyRead a true, ce qui va permettre de valider la suppression souhaité de l'info.
+pour cela on utilise le champs `userReadInfoCount` qui est un integer qui s'incremente des qu'un user lis l'info ; puis lorsque la valeur du champs `userReadInfoCount` est egal au nbre de user `sharedWithCount` alors on passe la valeur du boolean `isFullyRead` a true, ce qui va permettre de valider la suppression souhaité de l'info.
+- un champ `sharedWith` dans l'entité eventInfo est utilisé pour vérifier si l'eventinfo peut etre affiche pour cet user.
 
 ## 3. Gestion des événements récurrents
 

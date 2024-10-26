@@ -4,6 +4,7 @@ namespace App\Entity\user;
 
 use App\Entity\BaseEntity;
 use App\Entity\Event\Event;
+use App\Entity\Event\EventInfo;
 use App\Repository\user\UserRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -100,18 +101,14 @@ class User extends BaseEntity implements RecipientInterface
     /**
      * @var Collection<int, Event>
      */
-    #[ORM\ManyToMany(targetEntity: Event::class, mappedBy: 'favoritedBy')]
+    #[ORM\ManyToMany(targetEntity: EventInfo::class, mappedBy: 'favoritedBy')]
     private Collection $favoriteEvents;
-
-    #[ORM\ManyToMany(targetEntity: Event::class, mappedBy: 'sharedWith')]
-    private Collection $sharedEvents;
 
     public function __construct()
     {
         parent::__construct();
         $this->absence = new ArrayCollection();
         $this->favoriteEvents = new ArrayCollection();
-        $this->sharedEvents = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -329,21 +326,6 @@ class User extends BaseEntity implements RecipientInterface
 
         return $this;
     }
-    public function addSharedEvent(Event $event): self
-    {
-        if (!$this->sharedEvents->contains($event)) {
-            $this->sharedEvents->add($event);
-            $event->addSharedWith($this);  // Mise à jour dans Event
-        }
-        return $this;
-    }
-
-    public function removeSharedEvent(Event $event): self
-    {
-        if ($this->sharedEvents->removeElement($event)) {
-            $event->removeSharedWith($this);  // Mise à jour dans Event
-        }
-        return $this;
-    }
+    
 
 }

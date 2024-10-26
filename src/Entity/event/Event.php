@@ -46,11 +46,6 @@ class Event extends BaseEntity
     #[Assert\NotBlank(message: "Description should not be blank.")]
     private ?string $description = null;
 
-    #[ORM\ManyToMany(targetEntity: User::class, inversedBy: 'sharedEvents')]
-    #[ORM\JoinTable(name: 'event_user_share')]
-    private Collection $sharedWith;
-
-
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "CreatedBy should not be blank.")]
     private ?string $createdBy = null;
@@ -89,24 +84,15 @@ class Event extends BaseEntity
     #[ORM\ManyToMany(targetEntity: user::class, inversedBy: 'favoriteEvents')]
     private Collection $favoritedBy;
 
-    #[ORM\Column]
-    private ?int $userReadInfoCount = null;
+    #[ORM\OneToOne(cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private ?EventInfo $info = null;
 
-    #[ORM\Column]
-    private ?int $sharedWithCount = null;
-
-    #[ORM\Column]
-    private ?bool $isFullyRead = null;
-
-
-
+  
     public function __construct()
     {
         parent::__construct();
         $this->favoritedBy = new ArrayCollection();
-        $this->sharedWith = new ArrayCollection();
     }
-
 
     // Getters and Setters 
 
@@ -178,21 +164,6 @@ class Event extends BaseEntity
         $this->description = $description;
         return $this;
     }
-
-    public function addSharedWith(User $user): self
-    {
-        if (!$this->sharedWith->contains($user)) {
-            $this->sharedWith->add($user);
-        }
-        return $this;
-    }
-
-    public function removeSharedWith(User $user): self
-    {
-        $this->sharedWith->removeElement($user);
-        return $this;
-    }
-
 
     public function getCreatedBy(): ?string
     {
@@ -332,42 +303,16 @@ class Event extends BaseEntity
         return $this;
     }
 
-    public function getUserReadInfoCount(): ?int
+    public function getEventInfo(): ?EventInfo
     {
-        return $this->userReadInfoCount;
+        return $this->info;
     }
 
-    public function setUserReadInfoCount(int $userReadInfoCount): static
+    public function setEventInfo(?EventInfo $info): static
     {
-        $this->userReadInfoCount = $userReadInfoCount;
+        $this->info = $info;
 
         return $this;
     }
-
-    public function getSharedWithCount(): ?int
-    {
-        return $this->sharedWithCount;
-    }
-
-    public function setSharedWithCount(int $sharedWithCount): static
-    {
-        $this->sharedWithCount = $sharedWithCount;
-
-        return $this;
-    }
-
-    public function isFullyRead(): ?bool
-    {
-        return $this->isFullyRead;
-    }
-
-    public function setFullyRead(bool $isFullyRead): static
-    {
-        $this->isFullyRead = $isFullyRead;
-
-        return $this;
-    }
-
-
 
 }
