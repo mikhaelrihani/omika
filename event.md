@@ -5,7 +5,7 @@
 Cette application permet à l'utilisateur de consulter rapidement tous les événements (tâches ou informations) d'une journée donnée. L'objectif est d'optimiser les requêtes pour un affichage rapide, d'automatiser la gestion des statuts des tâches (internes à l'application ou externes) et d'améliorer la gestion des tags.
 
 Primordial de comprendre que un event ou un tag(count) correspond a un seul jour; un event récurrent est lui defini sur une période avec une fin ou unlimited.
-Les événements peuvent être signalés comme importants grâce au champ **`importance`** ou favorite
+Les événements peuvent être signalés comme importants grâce au champ **`importance`** ou **`favoriteby`**
 
 Les événements sont supprimés automatiquement après 30 jours suivant leur date de presentation "today" via un **cron job**.
 Un événement correspond a un seul jour demandé de réalisation ou d'information
@@ -67,12 +67,13 @@ Cela permet d'éviter d'avoir deux tâches identiques.
 
 ### 2.1 Gestion des tâches
 - **Statuts des tâches** :
-  - `todo`, `done`, `late`, `pending`, `unrealised`, `warning`.
+  - `todo`, `done`, `late`, `pending`, `unrealised`, `warning`,`modified`.
 - Chaque event tâche créée par un utilisateur est initialisé avec un statut `todo` par défaut.
 - le status `late` est utilisé pour marquer un event tache comme non réalise mais representé aujourdhui.
 - le statut `unrealized` est utilisé pour marquer les events de la veille des lors qu'un event tache est marqué comme late a la date de aujourdhui.ce statut ne changera pas dans le passé.
 - le statut `warning` est utilisé pour indiquer a l'user qu'un event doit etre reconsideré car il a été classé obsolete de par un changement de son event_recurrents qui l'a créee.
 - L'utilisateur peut également supprimer manuellement un event tache  , dans ce cas un event info, avec un tag important, est crée pour en aviser les autres users et garder une trace de cette décision.
+- Le statut `modified` est utilisé dans le cas ou l utisateur a modifie la description ou tout autre champs, accesible a la modification depuis l'interface, de l event tache.
 
 ### 2.2 Gestion des événements d'information
 - **Champ `unreadUsers`** : Tableau contenant les utilisateurs n'ayant pas encore lu l'information.
@@ -81,46 +82,85 @@ Cela permet d'éviter d'avoir deux tâches identiques.
 pour cela on utilise le champs `userReadInfoCount` qui est un integer qui s'incremente des qu'un user lis l'info ; puis lorsque la valeur du champs `userReadInfoCount` est egal au nbre de user `sharedWithCount` alors on passe la valeur du boolean `isFullyRead` a true, ce qui va permettre de valider la suppression souhaité de l'info.
 - un champ `sharedWith` dans l'entité eventInfo est utilisé pour vérifier si l'eventinfo peut etre affiche pour cet user.
 
+#### Champs spécifiques :
+
+## chapitre entité event:
+
+- **`isRecurring`** : boolean utilisé pour trier/séparer les eventRecurring des events affichable sur l interface
+- **`eventRecurring`** : integer de la relation de l'instance eventRecurring à laquelle cet event est attaché, permet de recuperer les events qui doivent etre pris en compte lors d'une modification de l'eventRecurring parent.
+- **`task`** : integer de la relation de l'instance task dans laquelle on retrouve les infos propre a un event task(voir chapitre entite task).
+- **`info`** : integer de la relation de l'instance task dans laquelle on retrouve les infos propre a un event info(voir chapitre entite info).
+- **`dueDate`** : date a laquelle l'event doit etre visible sur interface
+- **`date_status`** : a une des valeurs suivantes past/activedayrange/future, permet de degrossir les events a rechercher pour optimiser les requetes.
+- **`active_day`** : a une valeur integer qui represente la valeur d une date entre -3 et +7 (activeDayRange determine dans .env)
+la valeur est modifie chaque jour par le cronjob a minuit pour garantir la coherence des dates par rapport a datenow() qui est aujourdhui et aui a pour valeur 0. demain par ex a une valeur 1 et hier -1.
+ce champ existe pour optimiser les requetes en utilisant les indexs.
+si due date est hors du champs activeDayRange alors ce champs est null.
+
+- **`side`** : event appartient a kitchen ou office
+- **`type`** : si l'event est de type info ou task
+- **`section `** : sur l interface les events sont filtrer d abord sur leur side puis sur leur type et enfin par section(carte,recette,fournisuers,inventaire,planning,etc...)
+chaque section etant propre a kitchen ou office, mais peuvent etre pour une info ou une tache.
+
+
+- **`title`** : titre pour rapidement visualiser le sujet lors du listing des events dune recherche.
+- **`description`** : description de la tache a effectuer ou de l'information a lire.
+- **`createdBy `** : auteur original(application ou utilisateur)
+- **`updatedBy`** : auteur de l update(application ou utilisateur)
+- **`isImportant`** : permet de mettre en evidence sur l interface un event plus qu'un autre car on le considere priortaire par ex.
+- **`favoritedBy`** : permet de mettre en evidence sur l interface un event favoris de l user connecté.
+
+## chapitre entité task:
+- **Champ `task_details`** : Permet de lier la tâche à une action spécifique (par exemple, passer une commande chez un fournisseur).
+Pour associer précisément la tâche à l'action de l'utilisateur sur l'application et pouvoir modifier le status de celle ci, le champ task_details est utilisé. Ce champ contient des informations spécifiques telles que la concaténation des valeurs de l'event_section (pour indiquer la catégorie de l'événement) et d'autres indicateurs/références comme le supplierName (nom du fournisseur) ou d'autres éléments contextuels.
+
+Le champ task_details est généré lors de la création de la tâche, que ce soit par l'application ou par l'utilisateur, et contient toutes les informations nécessaires pour tracer l'action effectuée.
+
+Lorsque l'utilisateur réalise une action sur l'application (comme passer une commande), le statut de la tâche doit etre mis à jour en conséquence. Par exemple, une tâche initialement en statut "todo" avec la description "passer une commande chez le fournisseur B" doit passer à un autre statut (comme "done") une fois l'action effectuée par l'utilisateur.
+
+
+## chapitre entité info:
+
+
+
 ## 3. Gestion des événements récurrents
 
 ### 3.1 Structure des événements récurrents
-- Les événements récurrents ne sont inscrits en base de données que lorsqu'ils entrent dans l'**`active_day_range`** ou lorsqu'un utilisateur les modifie. Cela permet d'éviter de surcharger la base de données.
+- Les événements_récurrents sont inscrits en base de données lors de leur création par l user.
+- les evenement_récurrents ne sont pas affiché sur l interface car leur but est de gérer les events qui sont récurrents.
+- Les evenement_récurrents peuvent etre considérés comme les parents des events récurrents, cad des events que l user souhaite voir se répéetrsur une periode donnee ou ilimité.
+- Les evenement_récurrents permettent d afficher les events récurrents non encore inscrit en bdd pour une date choise par user; cad qu'ils sont visible sur l interface mais pas en bdd.
+- les evenement_récurrents permettent l inscription des events recurrents lorsque leur duedate est dans la fenetre de active_day_range; ou lorsqu'un utilisateur interagit/modifie un event recurrent pour le moment uniquemnt visible sur interface(par ex  si il est de type info alors celui ci est marque comme lue, ou si c'est une tache alors son statut todo est modifie en fonction ) .
 
 #### Champs spécifiques :
-- **`isRecurring`** : Boolean indiquant si un événement est récurrent.
-- **`ispseudo_recurring`** : Boolean (valeur par défaut false) utilisé pour identifier les événements pseudo-récurrents, c'est-à-dire des événements qui se répètent ou se dupliquent, mais dont la période de fin (periode_end) est définie.
-- **`event_frequence`** : Relation One-to-One avec l'entité `Event_Frequence` pour gérer les informations de récurrence (jours de la semaine, jour du mois, etc.).
+- **`periodeStart`** et **`periodeEnd`** : ils definissent la periode sur laquelle les events recurrents seront a terme crée/inscrit en bdd ou simplement visible sur interface dans ces dates des la creation de cet event_recurrents parent. 
+- **`events`** : liste tous les events recurrents enfant inscrit en bdd . 
+un cas d usage frequent sera le jour ou un user decide de modifier un event_recurrent parent alors il faut pouvoir modifier automatiquement les events inscrit(les events futurs/non inscrit ne sont pas impacte car il refleteront les champs du event_recurrent parent le jour de leur creation uniquement ).
+pour modifier les events recurents enfants , le processus sera :
+- la suppression de tous les events_info inscrit(en verifiant/supprimant l aref isfavorite dans entité user), et creation/inscription(si dans active_day_range) des nouveaux events info"modifiés".
+- la suppression de tous les events taches qui ont un statut todo,et creation/inscription(si dans active_day_range) des nouveaux events taches"modifiés".
+- le signalement a l user pour les evnets taches inscrit dont le statut est differents de todo; chacun de ses event taches aura desormais un statut"warning" et l user decidera que faire avec ses events taches devenu obsoletes.
+- **`periodDates`**,**`weekDays`**,**`monthDays`** sont des listes de dates ou integers qui permettent la mise a jour/inscriptions(par le cronjob) des nouveaux events taches/infos en bdd ou simplement pour visualiser les events taches/infos sur une date hors de la fenetre active_day_range(en plus dec eux eventuellement déjà inscrit en bdd).
+par ex une recherche sur une date future va aller chercher l'entité eventRecurring et va utiliser ces trois champs pour afficher/inscrire les events taches/infos.
+- **`isEveryday`** est un boolean utilise pour la meme raison que les champs **`periodDates`**,**`weekDays`**,**`monthDays`** et indique si un event recurring a été crée pour etre inscrit/visible tous les jours de sa periode active entre **`periodeStart`** et **`periodeEnd`**.
 
-Les événements récurrents qui ne sont pas encore enregistrés dans la base de données peuvent être affichés en fonction de la date recherchée par l'utilisateur sans pour autant être inscrits en base.
-Pour éviter de surcharger la base de données, si un utilisateur décide qu'un événement doit se répéter sur une période excédant 7 jours, cet événement sera marqué avec le champ ispseudo_recurring.
-Ce champ ispseudo_recurring devra être pris en compte pour gérer la visibilité des événements futurs à une date spécifique, mais ces événements ne seront créés qu'au niveau de l'interface, sans être enregistrés en base de données.
-
-Le cron job qui met à jour les événements à minuit devra non seulement vérifier le champ isRecurring, mais également le champ ispseudo_recurring pour actualiser les événements futurs basés sur ces critères. Le champ ispseudo_recurring est initialement défini à false.
-
-
-#### Recherche d'événements récurrents :
-- Lorsqu'un utilisateur crée un événement récurrent, les paramètres de l'événement sont stockés en base de données :
-  - `periode_start` (sans `periode_end`),
-  - Une valeur dans le champ **`event_frequence`** (par exemple, `day` ou `monthDay`),
-  - `isRecurring = true` pour optimiser les recherches.Cela signifie que seul les events récurrents ont une inscription dans l'entité event_frequence.
-
-Cette structure permet de retrouver facilement un événement récurrent ou de modifier tous les événements associés à une récurrence (par exemple, changer la fréquence de lavage des réfrigérateurs de jeudi à vendredi).
-Par exemple si un user souhaite voir les events d'une date future, alors on va chercher tous les events ou `isRecurring = true`(champ ispseudo_recurring devra être pris en compte) , puis on utilise l'entité event_frequence ou on cherche un match avec les champs days ou monthDays et la date recherchée; puis pour etre sur de la valeur de l'event futur, on va devoir comparer chaque occurence des events futurs déja inscrit en bdd (qui a la base etaitent des events_recurrents)sur la date recherchée et afficher la vrai valeur.
-On doit aussi vérifier si la valeur de la date recherchée est postérieur a la valeur de période_start.
-
-### 3.2 Modification des événements récurrents
-- Lorsqu'un utilisateur modifie les champs d'un événement récurrent, l'application modifiera les futurs événements liés demandés visuelement par l'user , mais ne modifie pas les événements récurrents futurs déja inscrit en bdd et ne modifie pas les événements passés.
-
-### 3.3 Gestion des événements automatiques
+### 3.3 Gestion des événements automatiques de l'application
 - **Entité `supplier`** : Associe des événements récurrents à des fournisseurs grâce au champ **`recuring_events`**, qui liste les IDs des événements récurrents liés aux habitudes de commandes ou d'opérations du fournisseur.
+cela permet de modifier les events_recurrents facilement et de lancer la logique metier pour la suppression des events recurrents enfant.
 
 ## 4. Suppression et mise à jour des événements
 
 ### 4.1 Suppression automatique
-- **Champ `date_limit`** : Enregistre la date limite pour la suppression automatique d'un événement, 30 jours après son passage à `done` ou `unrealised`.
-- Les événements passés sont supprimés automatiquement après cette période via un **cron job**.
+
+- Les événements passés sont supprimés automatiquement 30 jours après la dueDate  via un **cron job**.
+
+
+
+
 
 ## 5. Gestion des tags et comptage
+
+$unreadInfoCount --> a checker avec la suppresion/ modification 'un event_recurrents parent pour les infos et taches.
 
 ### 5.1 Comptage des tâches par section
 - Champ tag_task_active : Utilisé pour comptabiliser le nombre de tâches actives par section, pour chaque jour de l'active_day_range.
@@ -147,75 +187,7 @@ tag_info_active = {
 
 - Lorsqu'un utilisateur consulte une section contenant des informations non lues, celles-ci seront affichées en priorité. Si l'utilisateur demande des événements ou des informations en dehors de l'active_day_range, une requête plus complexe sera nécessaire, similaire à celle utilisée pour la gestion des événements.
 
-## 6. Gestion des modifications utilisateur
 
-### 6.1 Auteur et modifications
-- **Champ `créatedBy`** : Identifie l'auteur initial de l'event (application ou utilisateur).
-- **Champ `updatedBy`** : Identifie l'auteur de la modification (application ou utilisateur).
-- **Champ `task_details`** : Permet de lier la tâche à une action spécifique (par exemple, passer une commande chez un fournisseur).
 
-Lorsque l'utilisateur réalise une action sur l'application (comme passer une commande), le statut de la tâche doit etre mis à jour en conséquence. Par exemple, une tâche initialement en statut "todo" avec la description "passer une commande chez le fournisseur B" doit passer à un autre statut (comme "done") une fois l'action effectuée par l'utilisateur.
 
-Pour associer précisément la tâche à l'action de l'utilisateur sur l'application et pouvoir modifier le status de celle ci, le champ task_details est utilisé. Ce champ contient des informations spécifiques telles que la concaténation des valeurs de l'event_section (pour indiquer la catégorie de l'événement) et d'autres indicateurs/références comme le supplierName (nom du fournisseur) ou d'autres éléments contextuels.
 
-Le champ task_details est généré lors de la création de la tâche, que ce soit par l'application ou par l'utilisateur, et contient toutes les informations nécessaires pour tracer l'action effectuée.
-
-## 7. Schéma des entités et relations
-
-### 7.1 Entité `Event`
-
-#### Champs principaux :
-- **`id`** : Identifiant unique de l'événement.
-- **`type`** : Type d'événement, soit `task` (tâche), soit `info` (information).
-- **`importance`** : Boolean indiquant si l'événement est marqué comme important (true ou false).
-- **`description`** : Texte décrivant les détails de l'événement.
-- **`shared_with`** : Tableau JSON listant les utilisateurs avec qui l'événement est partagé.
-- **`createdBy`** : Identifiant de l'utilisateur qui a créé l'événement.
-- **`updatedBy`** : Identifiant de l'utilisateur qui a modifié l'événement pour la dernière fois.
-- **`periode_start`** : Date de début de la période durant laquelle l'événement est actif.
-- **`periode_end`** : Date de fin de la période d'activité de l'événement. Peut être null pour des événements d'une seule journée.
-- **`date_status`** : Statut temporel de l'événement, pouvant être :
-  - `past` : Événement passé.
-  - `activedayrange` : Événement dans la plage active.
-  - `future` : Événement futur en dehors de la plage active.
-- **`isRecurring`** : Boolean indiquant si l'événement est récurrent (true ou false).
-- **`ispseudo_recurring`** : Boolean indiquant si l'événement est pseudo-récurrent (répétition sur plusieurs jours mais non continue).
-- **`active_day_range`** : Plage de jours durant laquelle l'événement est actif (exemple : de -3 à +7 jours autour de la date courante).
-- **`event_frequence`** : Relation One-to-One avec l'entité `Event_Frequence`, qui stocke les détails de la fréquence pour les événements récurrents (ex. jours de la semaine, jours du mois).
-- **`task_details`** : Détails supplémentaires associés à une tâche, comme des informations spécifiques sur une commande, une procédure, etc.
-- **`task_status`** : Statut de la tâche, qui peut être :
-  - `todo` : À faire.
-  - `pending` : En attente.
-  - `done` : Réalisée.
-  - `late` : En retard.
-  - `unrealised` : Non réalisée.
-- **`unreadUsers`** : Tableau contenant les utilisateurs qui n'ont pas encore lu l'information associée à l'événement de type `info`.
-- **`side`** : Indique le contexte ou le côté de l'événement (ex. "kitchen", "office", ou tout autre domaine pertinent pour l'organisation des événements).
-- **`date_limit`** : Date limite à laquelle l'événement sera automatiquement supprimé (30 jours après la réalisation ou après la fin de la période active).
-- **`tag_task_active`** : Comptabilise les tâches actives pour chaque section par jour dans la plage active.
-- **`tag_info_active`** : Comptabilise les informations non lues pour chaque section et utilisateur par jour dans la plage active.
-
-#### Relations :
-- **`section`** : Relation One-to-One avec une section spécifique via son `id`.
-- **`event_frequence`** : Relation One-to-One pour gérer la récurrence.
-- **`supplier`** : Associe un fournisseur à des événements récurrents.
-
-### 7.2 Entité `Section`
-- `id` : Identifiant de la section .
-- `name` : Nom de la section.
-
-### 7.3 Entité `Event_Frequence`
-- `day` : Jour de la semaine pour les événements récurrents hebdomadaires (1-7, 8 = illimité).
-- `monthDay` : Jour du mois pour les événements récurrents mensuels.
-
-### 7.4 Entité `User_Events`
-- **Champ `recurringEvents`** : Tableau associatif contenant les IDs des événements récurrents créés/modifiés par l'utilisateur et leur section.
-- **Champ `infoEvents`** : Tableau associatif contenant les IDs des événements info créés/modifiés par l'utilisateur et leur section.
-- **Champ `taskEvents`** : Tableau associatif contenant les IDs des événements task créés/modifiés par l'utilisateur et leur section.
-
-cela permet a l'utilisateur de retrouver facilement les events pour lesquels il a participé grace a un affichage par section et chronologie;
-et ainsi eviter a chercher parmi toutes les dates.
-
-### 7.5 Entité `Supplier`
-- `id` : Identifiant du fournisseur.
-- `recuring_events` : Tableau des IDs des événements récurrents associés au fournisseur.
