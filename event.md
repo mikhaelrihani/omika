@@ -26,6 +26,7 @@ un champ dueDate dans event et un champ day dans tag/taginfo permet d'horodater 
 
 ### 1.3 Cache des sessions
 - Les événements sont stockés en cache pour la session de l'utilisateur, ce qui permet de réduire les appels à la base de données lorsque l'utilisateur navigue sur plusieurs jours.
+---> attentio au cache qui ne prendrai pas en compte une modif en tant reel!!!
 
 ### 1.4  6 Index composite
 
@@ -186,46 +187,34 @@ on decremente jusqu'a zero ou incremente a l infini.
 - **`section`** :  section sur laquelle le count du tag va etre affiché(carte,recette,fournisuers,inventaire,planning,etc...) 
 - **`	day `** : date a laquelle ce tag doit etre pris en compte pour afficher les bonnes valeurs sur interface
 - **`date_status`** : a une des valeurs suivantes past/activedayrange, permet de degrossir les tags a rechercher pour optimiser les requetes.
-- **`task_count`** 
+- **`task_count`** : integer representant le nombre a afficher sur le tag d une section correspondant au tasks.
 - **`active_day`** : a une valeur integer qui represente la valeur d une date entre -3 et +7 (activeDayRange determine dans .env)
 la valeur est modifie chaque jour par le cronjob a minuit pour garantir la coherence des dates par rapport a datenow() qui est aujourdhui et aui a pour valeur 0. demain par ex a une valeur 1 et hier -1.
 ce champ existe pour optimiser les requetes en utilisant les indexs.
 si day est hors du champs activeDayRange alors ce champs est null.
 
 ## entité tagInfo:
-- **`tag_id `** 
-- **`user_id  `** 
-- **`	unread_info_count	`** 
+pour afficher le bon compte du nbre d'info par section il faut prendre en considération qui est l'user connecté, et vérifier connecter avec les infos qui luis ont visbles personnellement.
+donc pour chaque instance de tag pour un date et par section, nous avons plusieurs valeurs en fonction de l user.
+d'ou l utilité de la table pivot taginfo.
+- **`tag_id `** le tag concerné
+- **`user_id  `** le user concerné
+- **`	unread_info_count	`** integer representant le nombre d'info non lue par user pour la section et date.
+
+la valeur de ce champs est récupérée :
+Dans le cas ou le tag est inscrit en bdd car nous sommes sur une date dans active_day_range ou passée.
+- lorsque un event de type info est crée ce champs s'incrémente de un .
+- lorsque l user clique sur l info , elle est considérée comme lue , donc on decremente de un.
+Dans le cas ou le tag n'est pas inscrit en bdd car nous sommes sur une date future.
+ il faudrait récupérer toutes les infos shared avec lui a cette date est soustarire celle qu'il a déjà lue; 
+ pour cela on utilise l'entité `EventSharedInfo` avec le champs **`isRead`**.
+
+- Dans le cas de la suppression ou modification d'un eventRecurring, on doit mettre a h´jour le taginfo concerné.
+la valeur du champ unreadInfoCount pour les tags inscrit en bdd (donc dans activeDayRange)est modifie de la meme maniere que si un user avait lu l info car l info est d abord supprimée (l'eventInfo etant supprimé); et ensuite si la modification de eventRecurring recree un eventInfo alors on incremente de un.
 
 
 
 
-$unreadInfoCount --> a checker avec la suppresion/ modification 'un event_recurrents parent pour les infos et taches.
-
-### 5.1 Comptage des tâches par section
-- Champ tag_task_active : Utilisé pour comptabiliser le nombre de tâches actives par section, pour chaque jour de l'active_day_range.
-- Ce comptage est mis à jour automatiquement via un cron job quotidien ou manuellement lorsque l'utilisateur effectue une modification, par exemple lorsqu'il passe une tâche de todo à done, ou lorsqu'une nouvelle tâche est créée pour une section et une date données.
-Pour optimiser les requêtes, le comptage des tâches est enregistré dans le **Champ  `tag_task_active`**, qui est un tableau associatif. La clé est la valeur du jour dans l'active_day_range, et la valeur est un tableau contenant les sections et le nombre d'occurrences pour chaque section. Par exemple :
-
-tag_task_active = {
-   "day1": {"section1": 5, "section2": 3},
-   "day2": {"section1": 2, "section2": 6},
-   ...
-}
-- En dehors de l'active_day_range, une requête plus lourde est nécessaire pour récupérer ces informations, suivant le même modèle que pour les événements. Le cron job veille à actualiser ce champ chaque jour et lors de toute modification de l'utilisateur.
-
-### 5.2 Comptage des informations non lues par section
-- Champ tag_info_active : Utilisé pour comptabiliser le nombre d'informations non lues par section, en fonction du champ unreadUsers, qui est un tableau des utilisateurs n'ayant pas encore lu l'information.
-- Pour chaque jour dans l'active_day_range, le **Champ `tag_info_active`** stocke un tableau associatif avec les sections et le nombre d'occurrences d'informations non lues par utilisateur. Les informations à comptabiliser se basent sur trois éléments : la section, la date, et si l'utilisateur a lu l'information ou non (via le champ unreadUsers). Par exemple :
-
-tag_info_active = {
-   "day1": {"section1": 2, "section2": 4},
-   "day2": {"section1": 1, "section2": 5},
-   ...
-}
-- Chaque jour, un cron job exécute le comptage des informations non lues par section et met à jour le champ tag_info_active, en utilisant les données du champ unreadUsers pour chaque événement de type info. Ce champ est également mis à jour manuellement lorsque l'utilisateur ouvre une section avec de nouvelles informations, ce qui réinitialise le compteur pour cette section.
-
-- Lorsqu'un utilisateur consulte une section contenant des informations non lues, celles-ci seront affichées en priorité. Si l'utilisateur demande des événements ou des informations en dehors de l'active_day_range, une requête plus complexe sera nécessaire, similaire à celle utilisée pour la gestion des événements.
 
 
 

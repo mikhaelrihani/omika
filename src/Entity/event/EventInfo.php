@@ -22,7 +22,8 @@ class EventInfo extends BaseEntity
         return $this->id;
     }
     #[ORM\ManyToMany(targetEntity: User::class)]
-    #[ORM\JoinTable(name: 'event_user_share')]
+    #[ORM\OneToMany(mappedBy: 'eventInfo', targetEntity: EventSharedInfo::class, cascade: ['persist', 'remove'])]
+
     private Collection $sharedWith;
 
     #[ORM\Column]
