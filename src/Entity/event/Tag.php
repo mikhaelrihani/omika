@@ -10,7 +10,8 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: TagRepository::class)]
-
+#[ORM\Index(name: "Tag_dateStatus_activeDay_idx", columns: ["date_status", "active_day"])]
+#[ORM\Index(name: "Tag_dateStatus_day_idx", columns: ["date_status", "day"])]
 class Tag extends BaseEntity
 {
     #[ORM\Id]

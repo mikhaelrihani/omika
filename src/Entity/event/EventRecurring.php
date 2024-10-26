@@ -11,7 +11,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: EventRecurringRepository::class)]
-#[ORM\Index(name: "eventRecurring_period_idx", columns: ["periodeStart", "periodeEnd"])]
+#[ORM\Index(name: "EventRecurring_period_idx", columns: ["periodeStart", "periodeEnd"])]
 
 class EventRecurring extends BaseEntity
 {

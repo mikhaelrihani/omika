@@ -1,17 +1,18 @@
 
 
-# Gestion des événements et optimisation des requêtes
+# Gestion des événements et tags et optimisation des requêtes
 
 Cette application permet à l'utilisateur de consulter rapidement tous les événements (tâches ou informations) d'une journée donnée. L'objectif est d'optimiser les requêtes pour un affichage rapide, d'automatiser la gestion des statuts des tâches (internes à l'application ou externes) et d'améliorer la gestion des tags.
 
-Les événements peuvent être signalés comme importants grâce au champ **`importance`** 
+Primordial de comprendre que un event ou un tag(count) correspond a un seul jour; un event récurrent est lui defini sur une période avec une fin ou unlimited.
+Les événements peuvent être signalés comme importants grâce au champ **`importance`** ou favorite
 
 Les événements sont supprimés automatiquement après 30 jours suivant leur date de presentation "today" via un **cron job**.
 Un événement correspond a un seul jour demandé de réalisation ou d'information
 ## 1. Optimisation des requêtes
 
 ### 1.1 Plage de jours actifs
-- **Champ `active_day_range`** : Limite les recherches aux événements actifs dans une plage de jours définie (par exemple, de -3 à +7 jours autour de la date actuelle).
+- **Champ `active_day`** : Limite les recherches aux événements actifs dans une plage de jours définie dans .env "active day range" (par exemple, de -3 à +7 jours autour de datenow()).
   - Cela permet de réduire le volume de données à traiter et d'optimiser les performances.
   - Mise à jour quotidienne via un **cron job**, qui ajuste la plage active des événements.
   - Si l'utilisateur demande des événements en dehors de cette plage, des requêtes plus complexes sont effectuées.
@@ -21,11 +22,12 @@ Un événement correspond a un seul jour demandé de réalisation ou d'informati
   - `past` : événements passés.
   - `active_day_range` : événements autours de today sur un range de  10 jours
   - `future` : événements futurs.
+un champ dueDate dans event et un champ day dans tag/taginfo permet d'horodater ceux ci et de filtrer. 
 
 ### 1.3 Cache des sessions
 - Les événements sont stockés en cache pour la session de l'utilisateur, ce qui permet de réduire les appels à la base de données lorsque l'utilisateur navigue sur plusieurs jours.
 
-### 1.4 Index composite
+### 1.4  6 Index composite
 
 - `index composite` sur date_status et active_day dans la table Event: utile pour sélectionner directement les événements actifs dans la plage active_day_range et afficher rapidement les événements/tags pour une date précise.
 
@@ -39,12 +41,13 @@ Avantages : Optimise les requêtes pour identifier les événements à afficher 
 Processus d’Utilisation
 Recherche des Tags et Événements :
 
-Utilisez l’`index composite` (date_status, active_day) pour récupérer les tags et événements qui sont actifs à une date donnée .
+Utilisez l’`index composite` (date_status, active_day) dans la table tag, pour récupérer les tags et événements qui sont actifs à une date donnée de activeDayRange.
+Utilisez l’`index composite` (date_status, day) dans la table tag, pour récupérer les tags et événements qui sont actifs à une date donnée off activeDayRange.
 
 Cela vous donne une liste de tags pertinents.
 Affiner la recherche avec les TagInfos :
 
-Avec les tags trouvés, utilisez l'`index composite` sur (user_id, tag_id) dans la table TagInfo pour récupérer les informations liées à l'utilisateur connecté pour chaque tag.
+Avec les tags trouvés, utilisez l'`index composite` sur (user_id, tag_id) dans la table TagInfo, pour récupérer les informations liées à l'utilisateur connecté pour chaque tag.
 Récupération des informations non lues :
 
 Une fois que vous avez les TagInfo pour l'utilisateur et les tags, vous pouvez facilement afficher le nombre d'informations non lues par section.
@@ -52,21 +55,30 @@ Une fois que vous avez les TagInfo pour l'utilisateur et les tags, vous pouvez f
 
 
 ## 2. Gestion des événements tâches et information
-- Les événements sont visibles uniquement s'ils se trouvent entre periode_start et periode_end, à l'exception des événements de type tâche qui sont marqués comme en retard (late) ou en attente (pending).
-- Dans les cas où une tâche est en statut late ou pending, l'événement tâche est dupliqué et enregistré en base de données avec une période active limitée à une journée (aujourd'hui). Cette duplication continue chaque jour jusqu'à ce que le statut de la tâche passe à done ou unrealised. Cette mise à jour est effectuée par un cron job chaque jour à minuit.
-- L'événement original qui a généré cette duplication sera quant à lui marqué comme unrealised.
-- De plus, si l'événement initial avait une période active supérieure à une journée et que cette même tâche est planifiée pour le lendemain, celle-ci sera automatiquement marquée comme unrealised. Cela permet d'éviter d'avoir deux tâches identiques : une dans la section "en cours/retard" et l'autre dans "à faire" (par exemple, pour éviter deux tâches "passer le balai").
+- Les événements sont visibles uniquement sur leur due_date.
+- les events et events récurrents ne sont inscris en bdd que lorsqu'il font partie du range active_day_range. un cronjob mets a jour quotidinnement la bdd en inscrivant chaque event(en observant la due date) /eventRécurring(en observant leur periode) qui entre dans la fentere de temps active _day_range.
+- Dans les cas où une tâche est en statut late ou pending, l'événement tâche est dupliqué et enregistré en base de données au lendemain. Cette duplication continue chaque jour jusqu'à ce que le statut de la tâche passe à done ou unrealised. Cette mise à jour est effectuée par un cron job chaque jour à minuit;
+cette duplication a lieu si et seulement si apres avoir vérifié que l'event tache ne fait pas partie d'un groupe eventRécurring/et que la période de l'eventRécurring est active le lendemain.
+Cela permet d'éviter d'avoir deux tâches identiques.
+- L'événement tache de la veille qui a généré cette duplication sera quant à lui marqué comme unrealised.
+- les events de type info eux n'ont pas de status, par contre une logique métier est appliqué au niveau des tags pour signaler les nouveaux events info, cad non lu par l'user conneté.
+- les statuts des events dans le passé sont immuables.
+
 
 ### 2.1 Gestion des tâches
 - **Statuts des tâches** :
-  - `todo`, `done`, `late`, `pending`, `unrealised`.
-- Chaque tâche créée par un utilisateur est inscrite en base de données avec un statut `todo` par défaut, sauf si elle est récurrente, auquel cas d'autres règles s'appliquent (voir section récurrence).
-- L'utilisateur peut également supprimer manuellement une tache , dans ce cas la un event annoté important est crée pour en aviser les autres users et garder une trace de cette décision.
+  - `todo`, `done`, `late`, `pending`, `unrealised`, `warning`.
+- Chaque event tâche créée par un utilisateur est initialisé avec un statut `todo` par défaut.
+- le status `late` est utilisé pour marquer un event tache comme non réalise mais representé aujourdhui.
+- le statut `unrealized` est utilisé pour marquer les events de la veille des lors qu'un event tache est marqué comme late a la date de aujourdhui.ce statut ne changera pas dans le passé.
+- le statut `warning` est utilisé pour indiquer a l'user qu'un event doit etre reconsideré car il a été classé obsolete de par un changement de son event_recurrents qui l'a créee.
+- L'utilisateur peut également supprimer manuellement un event tache  , dans ce cas un event info, avec un tag important, est crée pour en aviser les autres users et garder une trace de cette décision.
 
 ### 2.2 Gestion des événements d'information
 - **Champ `unreadUsers`** : Tableau contenant les utilisateurs n'ayant pas encore lu l'information.
 - Dans le cas ou un user n'a pas lu une info, l' événement info est créé  par duplication et donc inscrit en bdd avec une période active de un jour (aujourd'hui) et ce tant que le user est présent dans le champ **`shared_with`**. Cette actualisation se fait par un cron job a minuit.
 - L'utilisateur peut également supprimer manuellement un événement de type "Info", sous réserve que tous les utilisateurs l'aient lu.
+pour cela on utilise le champs `userReadInfoCount` qui est un integer qui s'incremente des qu'un user lis l'info ; puis lorsque la valeur du champs `userReadInfoCount` est egal au nbre de user `sharedWithCount` alors on passe la valeur du boolean isFullyRead a true, ce qui va permettre de valider la suppression souhaité de l'info.
 
 ## 3. Gestion des événements récurrents
 

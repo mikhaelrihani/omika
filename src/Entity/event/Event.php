@@ -12,8 +12,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: EventRepository::class)]
-#[ORM\Index(name: "event_date_status_active_day_idx", columns: ["date_status", "active_day"])]
-#[ORM\Index(name: "event_date_status_due_date_idx", columns: ["date_status", "due_date"])]
+#[ORM\Index(name: "Event_dateStatus_activeDay_idx", columns: ["date_status", "active_day"])]
+#[ORM\Index(name: "Event_dateStatus_dueDate_idx", columns: ["date_status", "due_date"])]
 class Event extends BaseEntity
 {
     #[ORM\Id]
@@ -91,6 +91,12 @@ class Event extends BaseEntity
 
     #[ORM\Column]
     private ?int $userReadInfoCount = null;
+
+    #[ORM\Column]
+    private ?int $sharedWithCount = null;
+
+    #[ORM\Column]
+    private ?bool $isFullyRead = null;
 
 
 
@@ -334,6 +340,30 @@ class Event extends BaseEntity
     public function setUserReadInfoCount(int $userReadInfoCount): static
     {
         $this->userReadInfoCount = $userReadInfoCount;
+
+        return $this;
+    }
+
+    public function getSharedWithCount(): ?int
+    {
+        return $this->sharedWithCount;
+    }
+
+    public function setSharedWithCount(int $sharedWithCount): static
+    {
+        $this->sharedWithCount = $sharedWithCount;
+
+        return $this;
+    }
+
+    public function isFullyRead(): ?bool
+    {
+        return $this->isFullyRead;
+    }
+
+    public function setFullyRead(bool $isFullyRead): static
+    {
+        $this->isFullyRead = $isFullyRead;
 
         return $this;
     }
