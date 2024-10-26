@@ -90,7 +90,7 @@ pour cela on utilise le champs `userReadInfoCount` qui est un integer qui s'incr
 - **`eventRecurring`** : integer de la relation de l'instance eventRecurring à laquelle cet event est attaché, permet de recuperer les events qui doivent etre pris en compte lors d'une modification de l'eventRecurring parent.
 - **`task`** : integer de la relation de l'instance task dans laquelle on retrouve les infos propre a un event task(voir chapitre entite task).
 - **`info`** : integer de la relation de l'instance task dans laquelle on retrouve les infos propre a un event info(voir chapitre entite info).
-- **`dueDate`** : date a laquelle l'event doit etre visible sur interface
+- **`dueDate`** : date a laquelle l'event est due et doit etre visible sur interface
 - **`date_status`** : a une des valeurs suivantes past/activedayrange/future, permet de degrossir les events a rechercher pour optimiser les requetes.
 - **`active_day`** : a une valeur integer qui represente la valeur d une date entre -3 et +7 (activeDayRange determine dans .env)
 la valeur est modifie chaque jour par le cronjob a minuit pour garantir la coherence des dates par rapport a datenow() qui est aujourdhui et aui a pour valeur 0. demain par ex a une valeur 1 et hier -1.
@@ -173,6 +173,32 @@ cela permet de modifier les events_recurrents facilement et de lancer la logique
 
 
 ## 5. Gestion des tags et comptage
+
+#### Champs spécifiques :
+Dans l'optique d'optimiser les requetes(en evitant de calculer les tags count a la demande d'un jour),
+un tag est initialisé/crée (inscrit)pour chaque section chaque jour nouveau de active_day_range et ai initialisé a zéro(ils sont conserve ensuite dans l historique du past et supprime apres 30jours par un cronjob); 
+Tous les jours nous avons au minimum autant de nouvelle instance de tag inscrite en bdd que de section.
+Aucun tag n est inscrit en bdd dans le futur.(un calcul pour le visuel sur interface sera effecué).
+chaque création/update d'un event(hors type eventRecurring bien sur)  dans la fenetre active_day_range, impacte le tag associe a la meme section a la meme date;
+on decremente jusqu'a zero ou incremente a l infini.
+
+## entité tag:
+- **`section`** :  section sur laquelle le count du tag va etre affiché(carte,recette,fournisuers,inventaire,planning,etc...) 
+- **`	day `** : date a laquelle ce tag doit etre pris en compte pour afficher les bonnes valeurs sur interface
+- **`date_status`** : a une des valeurs suivantes past/activedayrange, permet de degrossir les tags a rechercher pour optimiser les requetes.
+- **`task_count`** 
+- **`active_day`** : a une valeur integer qui represente la valeur d une date entre -3 et +7 (activeDayRange determine dans .env)
+la valeur est modifie chaque jour par le cronjob a minuit pour garantir la coherence des dates par rapport a datenow() qui est aujourdhui et aui a pour valeur 0. demain par ex a une valeur 1 et hier -1.
+ce champ existe pour optimiser les requetes en utilisant les indexs.
+si day est hors du champs activeDayRange alors ce champs est null.
+
+## entité tagInfo:
+- **`tag_id `** 
+- **`user_id  `** 
+- **`	unread_info_count	`** 
+
+
+
 
 $unreadInfoCount --> a checker avec la suppresion/ modification 'un event_recurrents parent pour les infos et taches.
 
