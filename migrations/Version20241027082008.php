@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20241026143240 extends AbstractMigration
+final class Version20241027082008 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -62,7 +62,8 @@ final class Version20241026143240 extends AbstractMigration
         $this->addSql('CREATE TABLE room_product (id INT AUTO_INCREMENT NOT NULL, room_id INT DEFAULT NULL, product_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', room_shelf INT NOT NULL, INDEX IDX_3F68B84D54177093 (room_id), INDEX IDX_3F68B84D4584665A (product_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE rupture (id INT AUTO_INCREMENT NOT NULL, product_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', info VARCHAR(1000) NOT NULL, origin VARCHAR(50) NOT NULL, unique_solution VARCHAR(255) DEFAULT NULL, solution VARCHAR(1000) DEFAULT NULL, status VARCHAR(255) NOT NULL, UNIQUE INDEX UNIQ_D21071124584665A (product_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE section (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', name VARCHAR(25) NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE supplier (id INT AUTO_INCREMENT NOT NULL, business_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', logistic VARCHAR(1000) NOT NULL, habits VARCHAR(1000) DEFAULT NULL, order_days JSON NOT NULL, good_to_know VARCHAR(1000) DEFAULT NULL, delivery_days JSON NOT NULL, recuring_events JSON DEFAULT NULL, UNIQUE INDEX UNIQ_9B2A6C7EA89DB457 (business_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE supplier (id INT AUTO_INCREMENT NOT NULL, business_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', logistic VARCHAR(1000) NOT NULL, habits VARCHAR(1000) DEFAULT NULL, order_days JSON NOT NULL, good_to_know VARCHAR(1000) DEFAULT NULL, delivery_days JSON NOT NULL, UNIQUE INDEX UNIQ_9B2A6C7EA89DB457 (business_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE supplier_event (supplier_id INT NOT NULL, event_id INT NOT NULL, INDEX IDX_E2B5088D2ADD6D8C (supplier_id), INDEX IDX_E2B5088D71F7E88B (event_id), PRIMARY KEY(supplier_id, event_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE tag (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', section VARCHAR(255) NOT NULL, day DATE NOT NULL, date_status VARCHAR(255) NOT NULL, task_count INT NOT NULL, active_day INT DEFAULT NULL, INDEX Tag_dateStatus_activeDay_idx (date_status, active_day), INDEX Tag_dateStatus_day_idx (date_status, day), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE tag_info (id INT AUTO_INCREMENT NOT NULL, tag_id INT NOT NULL, user_id INT NOT NULL, unread_info_count INT DEFAULT NULL, INDEX IDX_25868EE1BAD26311 (tag_id), INDEX IDX_25868EE1A76ED395 (user_id), INDEX Taginfo_user_tag_idx (user_id, tag_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE template (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', name VARCHAR(255) NOT NULL, text VARCHAR(1000) NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
@@ -118,6 +119,8 @@ final class Version20241026143240 extends AbstractMigration
         $this->addSql('ALTER TABLE room_product ADD CONSTRAINT FK_3F68B84D4584665A FOREIGN KEY (product_id) REFERENCES product (id)');
         $this->addSql('ALTER TABLE rupture ADD CONSTRAINT FK_D21071124584665A FOREIGN KEY (product_id) REFERENCES product (id)');
         $this->addSql('ALTER TABLE supplier ADD CONSTRAINT FK_9B2A6C7EA89DB457 FOREIGN KEY (business_id) REFERENCES business (id)');
+        $this->addSql('ALTER TABLE supplier_event ADD CONSTRAINT FK_E2B5088D2ADD6D8C FOREIGN KEY (supplier_id) REFERENCES supplier (id) ON DELETE CASCADE');
+        $this->addSql('ALTER TABLE supplier_event ADD CONSTRAINT FK_E2B5088D71F7E88B FOREIGN KEY (event_id) REFERENCES event (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE tag_info ADD CONSTRAINT FK_25868EE1BAD26311 FOREIGN KEY (tag_id) REFERENCES tag (id)');
         $this->addSql('ALTER TABLE tag_info ADD CONSTRAINT FK_25868EE1A76ED395 FOREIGN KEY (user_id) REFERENCES user (id)');
         $this->addSql('ALTER TABLE user ADD CONSTRAINT FK_8D93D649A89DB457 FOREIGN KEY (business_id) REFERENCES business (id)');
@@ -175,6 +178,8 @@ final class Version20241026143240 extends AbstractMigration
         $this->addSql('ALTER TABLE room_product DROP FOREIGN KEY FK_3F68B84D4584665A');
         $this->addSql('ALTER TABLE rupture DROP FOREIGN KEY FK_D21071124584665A');
         $this->addSql('ALTER TABLE supplier DROP FOREIGN KEY FK_9B2A6C7EA89DB457');
+        $this->addSql('ALTER TABLE supplier_event DROP FOREIGN KEY FK_E2B5088D2ADD6D8C');
+        $this->addSql('ALTER TABLE supplier_event DROP FOREIGN KEY FK_E2B5088D71F7E88B');
         $this->addSql('ALTER TABLE tag_info DROP FOREIGN KEY FK_25868EE1BAD26311');
         $this->addSql('ALTER TABLE tag_info DROP FOREIGN KEY FK_25868EE1A76ED395');
         $this->addSql('ALTER TABLE user DROP FOREIGN KEY FK_8D93D649A89DB457');
@@ -223,6 +228,7 @@ final class Version20241026143240 extends AbstractMigration
         $this->addSql('DROP TABLE rupture');
         $this->addSql('DROP TABLE section');
         $this->addSql('DROP TABLE supplier');
+        $this->addSql('DROP TABLE supplier_event');
         $this->addSql('DROP TABLE tag');
         $this->addSql('DROP TABLE tag_info');
         $this->addSql('DROP TABLE template');

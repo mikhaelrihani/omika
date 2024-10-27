@@ -6,7 +6,7 @@ Cette application permet à l'utilisateur de consulter rapidement tous les évé
 
 Il est primordial de comprendre qu'un événement ou un tag (count) correspond à un seul jour ; un événement récurrent est défini sur une période avec une fin ou de manière illimitée. 
 
-Les événements sont supprimés automatiquement après 30 jours suivant leur date de presentation "duedate" les atgs de meme avec "day" via un **cron job**.
+Les événements sont supprimés automatiquement après 30 jours suivant leur date de presentation "duedate" les tags de meme avec "day" via un **cron job** quotidien a minuit.
 
 ## 1. Optimisation des requêtes
 
@@ -137,7 +137,7 @@ Attention : Le cache pourrait ne pas prendre en compte une modification en temps
 
 
 ## 5. Gestion des événements automatiques de l'application
-- **Entité `Supplier`** : Associe des événements récurrents aux fournisseurs via le champ **`recurring_events`**, listant les IDs des événements récurrents liés aux commandes ou opérations récurrentes du fournisseur. Cela facilite la modification des événements récurrents pour répondre aux besoins spécifiques d'un fournisseur.
+- **Entité `Supplier`** : Associe des événements récurrents aux fournisseurs via le champ **`recurring_event_children`**, listant les IDs des événements récurrents liés aux commandes ou opérations récurrentes du fournisseur. Cela facilite la modification des événements récurrents pour répondre aux besoins spécifiques d'un fournisseur.
 
 
 ## 6. Gestion des Tags et Comptage

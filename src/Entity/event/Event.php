@@ -3,6 +3,7 @@
 namespace App\Entity\Event;
 
 use App\Entity\BaseEntity;
+use App\Entity\Product\Supplier;
 use App\Entity\User\User;
 use App\Repository\Event\EventRepository;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -86,6 +87,7 @@ class Event extends BaseEntity
     #[ORM\JoinTable(name: 'user_favoriteEvents')]
     private Collection $favoritedBy;
 
+   
     public function __construct()
     {
         parent::__construct();
@@ -285,4 +287,5 @@ class Event extends BaseEntity
         $this->favoritedBy->removeElement($favoritedBy);
         return $this;
     }
+
 }

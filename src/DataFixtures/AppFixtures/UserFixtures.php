@@ -11,6 +11,7 @@ use App\Entity\user\Contact;
 use App\Entity\user\User;
 use App\Entity\user\UserLogin;
 use Doctrine\Persistence\ObjectManager;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -69,7 +70,7 @@ class UserFixtures extends BaseFixtures
     public function createUserLoginAdmin(): UserLogin
     {
         $timestamps = $this->faker->createTimeStamps();
-        $userLogin = new UserLogin();
+        $userLogin = new UserLogin($this->userPasswordHasher);
         $userLogin
             ->setRoles(["ROLE_SUPER_ADMIN"])
             ->setPassword($this->userPasswordHasher->hashPassword($userLogin, "Password29!"))
@@ -91,7 +92,7 @@ class UserFixtures extends BaseFixtures
     public function createUserLogin(): UserLogin
     {
         $timestamps = $this->faker->createTimeStamps();
-        $userLogin = new UserLogin();
+        $userLogin = new UserLogin($this->userPasswordHasher);
         $userLogin
             ->setRoles($this->faker->role())
             ->setPassword($this->userPasswordHasher->hashPassword($userLogin, "Password29!"))
