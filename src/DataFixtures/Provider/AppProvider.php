@@ -121,8 +121,8 @@ class AppProvider extends Base
         return $this->productTypes;
     }
 
-    //! EventSection entity
-    private $eventSections = [
+    //! Section entity
+    private $Sections = [
         "carte",
         "product",
         "recipe",
@@ -133,13 +133,13 @@ class AppProvider extends Base
         "inventaire",
         "other"
     ];
-    public function oneRandomEventSection(): string
+    public function oneRandomSection(): string
     {
-        return $this->eventSections[array_rand($this->eventSections)];
+        return $this->Sections[array_rand($this->Sections)];
     }
-    public function getEventSectionList(): array
+    public function getSectionList(): array
     {
-        return $this->eventSections;
+        return $this->Sections;
     }
 
     //! kitchenSpace Property

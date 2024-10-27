@@ -29,10 +29,10 @@ class Event extends BaseEntity
     #[ORM\ManyToOne(inversedBy: 'events')]
     private ?EventRecurring $eventRecurring = null;
 
-    #[ORM\OneToOne(mappedBy: 'event', targetEntity: EventTask::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToOne(targetEntity: EventTask::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private ?EventTask $task = null;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToOne(targetEntity:EventInfo::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private ?EventInfo $info = null;
 
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: false)]

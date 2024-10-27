@@ -19,7 +19,7 @@ class EventRecurring extends BaseEntity
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER)]
     private ?int $id = null;
-    
+
 
     #[ORM\Column(name: "periodeStart", type: 'datetime_immutable', nullable: false)]
     #[Assert\NotBlank(message: "La date de début est requise.")]
@@ -44,7 +44,7 @@ class EventRecurring extends BaseEntity
     /**
      * @var Collection<int, PeriodDate>
      */
-    #[ORM\ManyToMany(targetEntity: PeriodDate::class, inversedBy: 'eventRecurrings')]
+    #[ORM\ManyToMany(targetEntity: PeriodDate::class, inversedBy: 'eventRecurrings', cascade: ['persist', 'remove'])]
     #[ORM\JoinTable(name: 'event_recurring_period_date')]
     #[ORM\JoinColumn(name: 'event_recurring_id', referencedColumnName: 'id')]
     #[ORM\InverseJoinColumn(name: 'period_date_id', referencedColumnName: 'id')]
@@ -52,14 +52,14 @@ class EventRecurring extends BaseEntity
     private Collection $periodDates;
 
 
-    #[ORM\ManyToMany(targetEntity: WeekDay::class, inversedBy: 'eventRecurrings')]
+    #[ORM\ManyToMany(targetEntity: WeekDay::class, inversedBy: 'eventRecurrings', cascade: ['persist', 'remove'])]
     #[ORM\JoinTable(name: 'event_recurring_week_day')]
     #[ORM\JoinColumn(name: 'event_recurring_id', referencedColumnName: 'id')]
     #[ORM\InverseJoinColumn(name: 'week_day_id', referencedColumnName: 'id')]
     private Collection $weekDays;
 
 
-    #[ORM\ManyToMany(targetEntity: MonthDay::class, inversedBy: 'eventRecurrings')]
+    #[ORM\ManyToMany(targetEntity: MonthDay::class, inversedBy: 'eventRecurrings', cascade: ['persist', 'remove'])]
     #[ORM\JoinTable(name: 'event_recurring_month_day')]
     #[ORM\JoinColumn(name: 'event_recurring_id', referencedColumnName: 'id')]
     #[ORM\InverseJoinColumn(name: 'month_day_id', referencedColumnName: 'id')]
@@ -79,7 +79,7 @@ class EventRecurring extends BaseEntity
 
     // Getters and Setters
 
-    public function getId(): string
+    public function getId(): int
     {
         return $this->id;
     }
@@ -228,4 +228,12 @@ class EventRecurring extends BaseEntity
 
         return $this;
     }
+
+    public function resetRecurringDays(): void
+    {
+        $this->periodDates->clear();
+        $this->weekDays->clear();
+        $this->monthDays->clear();
+    }
+
 }

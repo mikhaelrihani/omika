@@ -23,9 +23,8 @@ class MonthDay extends BaseEntity
     #[ORM\ManyToMany(targetEntity: EventRecurring::class, mappedBy: 'monthDays')]
     private Collection $eventRecurrings;
 
-    public function __construct(int $day)
+    public function __construct()
     {
-        $this->day = $day;
         $this->eventRecurrings = new ArrayCollection();
     }
 

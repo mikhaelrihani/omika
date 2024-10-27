@@ -5,13 +5,18 @@ namespace App\DataFixtures\AppFixtures;
 use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
 use App\Entity\event\Event;
-use App\Entity\event\EventFrequence;
-use App\Entity\event\EventSection;
+use App\Entity\event\Section;
 use App\Entity\event\EventTask;
 use App\Entity\event\EventInfo;
+use App\Entity\Event\EventRecurring;
 use App\Entity\event\Issue;
+use App\Entity\Event\MonthDay;
+use App\Entity\Event\PeriodDate;
+use App\Entity\Event\WeekDay;
+use DateTimeImmutable;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
+use PhpParser\Node\Stmt\For_;
 
 class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 {
@@ -20,31 +25,31 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->faker->addProvider(new AppProvider($this->faker));
 
         // Créer les sections d'événements
-        $this->createEventSections();
+        $this->createSections();
         $this->em->flush();
 
         // Créer les événements
         $this->createEvents(30);
 
         // Créer des Issues (ici en tant qu'exemple)
-        $this->createIssues(10);
+        $this->createIssues();
 
         $this->em->flush();
     }
 
-    public function createEventSections(): void
+    public function createSections(): void
     {
         $timestamps = $this->faker->createTimeStamps();
-        $eventSections = $this->faker->getEventSectionList();
+        $Sections = $this->faker->getSectionList();
         $s = 0;
 
-        foreach ($eventSections as $section) {
-            $eventSection = new Section();
-            $eventSection->setName($section);
-            $eventSection->setCreatedAt($timestamps[ 'createdAt' ]);
-            $eventSection->setUpdatedAt($timestamps[ 'updatedAt' ]);
-            $this->em->persist($eventSection);
-            $this->addReference("eventSection_{$s}", $eventSection);
+        foreach ($Sections as $section) {
+            $Section = new Section();
+            $Section->setName($section);
+            $Section->setCreatedAt($timestamps[ 'createdAt' ]);
+            $Section->setUpdatedAt($timestamps[ 'updatedAt' ]);
+            $this->em->persist($Section);
+            $this->addReference("eventSection_{$s}", $Section);
             $s++;
         }
     }
@@ -68,6 +73,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             // Créer un nouvel Event
             $event = new Event();
             $event
+                ->setIsRecurring($this->faker->boolean(10))
                 ->setType($this->faker->randomElement(['info', 'task']))
                 ->setImportance($this->faker->boolean)
                 ->setSharedWith($this->faker->randomElements($users, rand(1, 3))) // Ajoute un tableau de 1 à 3 utilisateurs unique 
@@ -139,31 +145,85 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         }
     }
 
-    public function createEventFrequence(Event $event): EventFrequence
-    {
-        $weekDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-        $eventFrequence = new EventFrequence();
+    public function createEventRecurring($numEventsRecurring): void
+{
+    for ($e = 0; $e < $numEventsRecurring; $e++) {
 
-        $everyday = $this->faker->boolean;
-        $selectedWeekDays = $this->faker->randomElements($weekDays, rand(1, 7));
-        $monthDay = $this->faker->numberBetween(1, 31);
+        // Assure l'ordre chronologique : createdAt < periodeStart < updatedAt < periodeEnd.
+        $timestamps = $this->faker->createTimeStamps();
+        $createdAt = $timestamps['createdAt'];
+        $updatedAt = $timestamps['updatedAt'];
 
-        // Choix aléatoire de la fréquence
-        $frequencesChoice = [$everyday, $monthDay, $selectedWeekDays];
-        $randomChoice = $this->faker->randomElement($frequencesChoice);
+        // Génère un periodeStart entre createdAt et updatedAt
+        $periodeStart = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $updatedAt->format('Y-m-d H:i:s'));
+        // Génère un periodeEnd entre updatedAt et maintenant (now)
+        $periodeEnd = $this->faker->dateTimeImmutableBetween($updatedAt->format('Y-m-d H:i:s'), "now");
 
-        if ($randomChoice == $everyday) {
-            $eventFrequence->setEveryday(true);
-        } elseif ($randomChoice == $selectedWeekDays) {
-            $eventFrequence->setWeekDays($selectedWeekDays);
+        $eventRecurring = new EventRecurring();
+        $eventRecurring
+            ->setPeriodeStart($periodeStart)
+            ->setPeriodeEnd($periodeEnd);
+
+        // Détermine si l'événement est quotidien ou non
+        $everyday = rand(0, 1);
+
+        if (!$everyday) {
+            // Choisir au hasard l’un des trois types de récurrence : jours du mois, jours de la semaine ou dates spécifiques.
+            $recurrenceType = rand(1, 3); // 1 = jours du mois, 2 = jours de la semaine, 3 = dates spécifiques
+            $randomIndex = rand(1, 4);
+
+            if ($recurrenceType === 1) {  // Choix des jours du mois
+                $monthDays = [];
+                for ($i = 0; $i < $randomIndex; $i++) {
+                    $randomDay = rand(1, 28);
+                    if (!in_array($randomDay, $monthDays)) {
+                        $monthday = new MonthDay();
+                        $monthday->setDay($randomDay);
+                        $eventRecurring->addMonthDay($monthday);
+                        $monthDays[] = $randomDay;
+                    }
+                }
+            } elseif ($recurrenceType === 2) {  // Choix des jours de la semaine
+                $weekDays = [];
+                for ($i = 0; $i < $randomIndex; $i++) {
+                    $randomDay = rand(1, 7);
+                    if (!in_array($randomDay, $weekDays)) {
+                        $weekday = new WeekDay();
+                        $weekday->setDay($randomDay);
+                        $eventRecurring->addWeekDay($weekday);
+                        $weekDays[] = $randomDay;
+                    }
+                }
+            } else {  // Choix de dates spécifiques
+                $periodDates = [];
+                $randomIndex = rand(3, 10);
+                for ($i = 0; $i < $randomIndex; $i++) {
+                    $randomDate = new DateTimeImmutable();  // Crée une nouvelle date aléatoire
+                    if (!in_array($randomDate, $periodDates)) {
+                        $periodDate = new PeriodDate();
+                        $periodDate->setDate($randomDate);
+                        $eventRecurring->addPeriodDate($periodDate);
+                        $periodDates[] = $randomDate;
+                    }
+                }
+            }
         } else {
-            $eventFrequence->setMonthDay($monthDay);
+            $eventRecurring->resetRecurringDays();
+            $eventRecurring->setEveryday(true);
         }
 
-        $eventFrequence->setCreatedAt($event->getCreatedAt());
-        $eventFrequence->setUpdatedAt($event->getUpdatedAt());
+        $eventRecurring->setCreatedAt($createdAt);
+        $eventRecurring->setUpdatedAt($updatedAt);
 
-        return $eventFrequence;
+        $this->em->persist($eventRecurring);
+    }
+}
+
+
+
+
+
+
     }
 
     public function createIssues()
