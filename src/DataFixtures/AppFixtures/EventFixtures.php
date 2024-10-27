@@ -16,7 +16,7 @@ use App\Entity\Event\WeekDay;
 use DateTimeImmutable;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
-use PhpParser\Node\Stmt\For_;
+
 
 class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 {
@@ -27,13 +27,13 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         // Créer les sections d'événements
         $this->createSections();
         $this->em->flush();
-
+        // Créer les événements récurrence
+        $this->createEventRecurring(30);
+        $this->em->flush();
         // Créer les événements
         $this->createEvents(30);
-
         // Créer des Issues (ici en tant qu'exemple)
         $this->createIssues();
-
         $this->em->flush();
     }
 
@@ -49,182 +49,201 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $Section->setCreatedAt($timestamps[ 'createdAt' ]);
             $Section->setUpdatedAt($timestamps[ 'updatedAt' ]);
             $this->em->persist($Section);
-            $this->addReference("eventSection_{$s}", $Section);
+            $this->addReference("Section_{$s}", $Section);
             $s++;
         }
     }
 
     public function createEvents($numEvents): void
     {
-        $eventSections = $this->retrieveEntities("eventSection", $this);
+        $eventsRecurring = $this->retrieveEntities("eventRecurring", $this);
+        $Sections = $this->retrieveEntities("Section", $this);
         $users = $this->retrieveEntities("user", $this);
 
         for ($e = 0; $e < $numEvents; $e++) {
             $timestamps = $this->faker->createTimeStamps();
             $createdAt = $timestamps[ 'createdAt' ];
             $updatedAt = $timestamps[ 'updatedAt' ];
-            $unlimited = $this->faker->boolean(20);
-            $daysToAdd = $this->faker->numberBetween(1, 7); // Générer un nombre aléatoire de jours entre 1 et 7
-            $dateLimit = $createdAt->modify('+1 month')->modify("+$daysToAdd days"); // Ajouter ces jours à la date d'un mois
-            $activeDayRange = $this->faker->randomElements(range(-3, 7), rand(3, 11));
-            $author = $this->faker->randomElement($users);
+            // $unlimited = $this->faker->boolean(20);
+            // $daysToAdd = $this->faker->numberBetween(1, 7); // Générer un nombre aléatoire de jours entre 1 et 7
+            // $dateLimit = $createdAt->modify('+1 month')->modify("+$daysToAdd days"); // Ajouter ces jours à la date d'un mois
+            // $activeDayRange = $this->faker->randomElements(range(-3, 7), rand(3, 11));
+            // $author = $this->faker->randomElement($users);
 
 
-            // Créer un nouvel Event
             $event = new Event();
-            $event
-                ->setIsRecurring($this->faker->boolean(10))
-                ->setType($this->faker->randomElement(['info', 'task']))
-                ->setImportance($this->faker->boolean)
-                ->setSharedWith($this->faker->randomElements($users, rand(1, 3))) // Ajoute un tableau de 1 à 3 utilisateurs unique 
-                ->setDateCreated($createdAt)
-                ->setDateLimit($dateLimit)
-                ->setStatus($this->faker->randomElement(['published', 'draft']))
-                ->setDescription($this->faker->sentence)
-                ->setEventSection($this->faker->randomElement($eventSections))
-                ->setAuthor($author->getFullName())
-                ->setSide($this->faker->randomElement(['kitchen', 'office']))
-                ->setPeriodeStart($updatedAt)
-                ->setCreatedAt($createdAt)
-                ->setUpdatedAt($updatedAt)
-                ->setPeriodeUnlimited($unlimited);
-            $event->setActiveDayRange($activeDayRange);
+$event
+->setActiveDay()
+            $isRecurring = $this->faker->boolean(10);
+            if ($isRecurring) {
+                $randomEventRecurring = $eventsRecurring[array_rand($eventsRecurring)];
+                $createdAtEventRecurring = $randomEventRecurring->getCreatedAt();
+                $createdAt = $this->faker->dateTimeImmutableBetween($createdAtEventRecurring->format('Y-m-d H:i:s'), 'now');
+                $updatedAt = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), 'now');
+                $event
+                    ->setIsRecurring(True)
+                    ->setCreatedAt($createdAt)
+                    ->setUpdatedAt($updatedAt);
 
+                $randomEventRecurring->addEvent($event);
 
-            if (!$unlimited) {
-                $event->setPeriodeEnd((clone $updatedAt)->modify('+' . $this->faker->numberBetween(1, 7) . ' days'));
-            }
-
-            // Création et association de la fréquence
-            $eventFrequence = $this->createEventFrequence($event);
-            $event->setEventFrequence($eventFrequence);
-
-            // Gestion de la création d'EventTask ou EventInfo en fonction du type
-            if ($event->getType() === 'task') {
-                // Récupérer le nom de la section liée à l'événement
-                $sectionName = $event->getEventSection()->getName();
-
-                // Créer un nouvel EventTask
-                $taskStatusActiveRange = [];
-                $taskStatusOffRange = [];
-                foreach ($activeDayRange as $activeDay) {
-                    $status = $this->faker->randomElement(['done', 'todo', 'pending', 'late']);
-                    $taskStatusActiveRange[$activeDay] = $status;
-                    $taskStatusOffRange[] = $status;
-                }
-                ;
-
-                $eventTask = new EventTask();
-                $eventTask->setTaskDetails($sectionName . ': ' . $this->faker->word()) // Ajout du nom de la section devant le texte aléatoire
-                    ->setTaskStatusActiveRange($taskStatusActiveRange)
-                    ->setTaskStatusOffRange($taskStatusOffRange)
-                    ->setEvent($event);
-
-                $this->em->persist($eventTask);
-                $event->setEventTask($eventTask);
             } else {
-                $eventInfo = new EventInfo();
-                $tagInfoActiveRange = [];
-                foreach ($activeDayRange as $activeDay) {
-                    $status = $this->faker->randomElement(['unread', 'read']);
-                    $tagInfoActiveRange[$activeDay] = $status;
-                }
-                ;
-                $eventInfo
-                    ->setTagInfoActiveRange($tagInfoActiveRange)
-                    ->setTagInfoOffRange([$this->faker->randomElement(['read', 'archived'])])
-                    ->setReadUsers([$author->getFullName()])
-                    ->setEvent($event);
-                $this->em->persist($eventInfo);
-                $event->setEventInfo($eventInfo);
+
+                $event
+                    ->setIsRecurring(False);
+                //         ->setType($this->faker->randomElement(['info', 'task']))
+                //         ->setImportance($this->faker->boolean)
+                //         ->setSharedWith($this->faker->randomElements($users, rand(1, 3))) // Ajoute un tableau de 1 à 3 utilisateurs unique 
+                //         ->setDateCreated($createdAt)
+                //         ->setDateLimit($dateLimit)
+                //         ->setStatus($this->faker->randomElement(['published', 'draft']))
+                //         ->setDescription($this->faker->sentence)
+                //         ->setEventSection($this->faker->randomElement($eventSections))
+                //         ->setAuthor($author->getFullName())
+                //         ->setSide($this->faker->randomElement(['kitchen', 'office']))
+                //         ->setPeriodeStart($updatedAt)
+                //         ->setCreatedAt($createdAt)
+                //         ->setUpdatedAt($updatedAt)
+                //         ->setPeriodeUnlimited($unlimited);
+                //     $event->setActiveDayRange($activeDayRange);
+
+
+                //     if (!$unlimited) {
+                //         $event->setPeriodeEnd((clone $updatedAt)->modify('+' . $this->faker->numberBetween(1, 7) . ' days'));
+                //     }
+
+                //     // Création et association de la fréquence
+                //     $eventFrequence = $this->createEventFrequence($event);
+                //     $event->setEventFrequence($eventFrequence);
+
+                //     // Gestion de la création d'EventTask ou EventInfo en fonction du type
+                //     if ($event->getType() === 'task') {
+                //         // Récupérer le nom de la section liée à l'événement
+                //         $sectionName = $event->getEventSection()->getName();
+
+                //         // Créer un nouvel EventTask
+                //         $taskStatusActiveRange = [];
+                //         $taskStatusOffRange = [];
+                //         foreach ($activeDayRange as $activeDay) {
+                //             $status = $this->faker->randomElement(['done', 'todo', 'pending', 'late']);
+                //             $taskStatusActiveRange[$activeDay] = $status;
+                //             $taskStatusOffRange[] = $status;
+                //         }
+                //         ;
+
+                //         $eventTask = new EventTask();
+                //         $eventTask->setTaskDetails($sectionName . ': ' . $this->faker->word()) // Ajout du nom de la section devant le texte aléatoire
+                //             ->setTaskStatusActiveRange($taskStatusActiveRange)
+                //             ->setTaskStatusOffRange($taskStatusOffRange)
+                //             ->setEvent($event);
+
+                //         $this->em->persist($eventTask);
+                //         $event->setEventTask($eventTask);
+                //     } else {
+                //         $eventInfo = new EventInfo();
+                //         $tagInfoActiveRange = [];
+                //         foreach ($activeDayRange as $activeDay) {
+                //             $status = $this->faker->randomElement(['unread', 'read']);
+                //             $tagInfoActiveRange[$activeDay] = $status;
+                //         }
+                //         ;
+                //         $eventInfo
+                //             ->setTagInfoActiveRange($tagInfoActiveRange)
+                //             ->setTagInfoOffRange([$this->faker->randomElement(['read', 'archived'])])
+                //             ->setReadUsers([$author->getFullName()])
+                //             ->setEvent($event);
+                //         $this->em->persist($eventInfo);
+                //         $event->setEventInfo($eventInfo);
             }
 
-            // Persister l'événement et sa fréquence
-            $this->em->persist($eventFrequence);
-            $this->em->persist($event);
+            //     // Persister l'événement et sa fréquence
+            //     $this->em->persist($eventFrequence);
+            //     $this->em->persist($event);
         }
     }
+
+
+
+
 
     public function createEventRecurring($numEventsRecurring): void
-{
-    for ($e = 0; $e < $numEventsRecurring; $e++) {
+    {
+        for ($e = 0; $e < $numEventsRecurring; $e++) {
 
-        // Assure l'ordre chronologique : createdAt < periodeStart < updatedAt < periodeEnd.
-        $timestamps = $this->faker->createTimeStamps();
-        $createdAt = $timestamps['createdAt'];
-        $updatedAt = $timestamps['updatedAt'];
+            // Assure l'ordre chronologique : createdAt < periodeStart < updatedAt < periodeEnd.
+            $timestamps = $this->faker->createTimeStamps();
+            $createdAt = $timestamps[ 'createdAt' ];
+            $updatedAt = $timestamps[ 'updatedAt' ];
 
-        // Génère un periodeStart entre createdAt et updatedAt
-        $periodeStart = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $updatedAt->format('Y-m-d H:i:s'));
-        // Génère un periodeEnd entre updatedAt et maintenant (now)
-        $periodeEnd = $this->faker->dateTimeImmutableBetween($updatedAt->format('Y-m-d H:i:s'), "now");
+            // Génère un periodeStart entre createdAt et updatedAt
+            $periodeStart = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $updatedAt->format('Y-m-d H:i:s'));
+            // Génère un periodeEnd entre updatedAt et maintenant (now)
+            $periodeEnd = $this->faker->dateTimeImmutableBetween($updatedAt->format('Y-m-d H:i:s'), "now");
 
-        $eventRecurring = new EventRecurring();
-        $eventRecurring
-            ->setPeriodeStart($periodeStart)
-            ->setPeriodeEnd($periodeEnd);
+            $eventRecurring = new EventRecurring();
+            $eventRecurring
+                ->setPeriodeStart($periodeStart)
+                ->setPeriodeEnd($periodeEnd);
 
-        // Détermine si l'événement est quotidien ou non
-        $everyday = rand(0, 1);
+            // Détermine si l'événement est quotidien ou non
+            $everyday = rand(0, 1);
 
-        if (!$everyday) {
-            // Choisir au hasard l’un des trois types de récurrence : jours du mois, jours de la semaine ou dates spécifiques.
-            $recurrenceType = rand(1, 3); // 1 = jours du mois, 2 = jours de la semaine, 3 = dates spécifiques
-            $randomIndex = rand(1, 4);
+            if (!$everyday) {
+                // Choisir au hasard l’un des trois types de récurrence : jours du mois, jours de la semaine ou dates spécifiques.
+                $recurrenceType = rand(1, 3); // 1 = jours du mois, 2 = jours de la semaine, 3 = dates spécifiques
+                $randomIndex = rand(1, 4);
 
-            if ($recurrenceType === 1) {  // Choix des jours du mois
-                $monthDays = [];
-                for ($i = 0; $i < $randomIndex; $i++) {
-                    $randomDay = rand(1, 28);
-                    if (!in_array($randomDay, $monthDays)) {
-                        $monthday = new MonthDay();
-                        $monthday->setDay($randomDay);
-                        $eventRecurring->addMonthDay($monthday);
-                        $monthDays[] = $randomDay;
+                if ($recurrenceType === 1) {  // Choix des jours du mois
+                    $monthDays = [];
+                    for ($i = 0; $i < $randomIndex; $i++) {
+                        $randomDay = rand(1, 28);
+                        if (!in_array($randomDay, $monthDays)) {
+                            $monthday = new MonthDay();
+                            $monthday->setDay($randomDay);
+                            $eventRecurring->addMonthDay($monthday);
+                            $monthDays[] = $randomDay;
+                        }
+                    }
+                } elseif ($recurrenceType === 2) {  // Choix des jours de la semaine
+                    $weekDays = [];
+                    for ($i = 0; $i < $randomIndex; $i++) {
+                        $randomDay = rand(1, 7);
+                        if (!in_array($randomDay, $weekDays)) {
+                            $weekday = new WeekDay();
+                            $weekday->setDay($randomDay);
+                            $eventRecurring->addWeekDay($weekday);
+                            $weekDays[] = $randomDay;
+                        }
+                    }
+                } else {  // Choix de dates spécifiques
+                    $periodDates = [];
+                    $randomIndex = rand(3, 10);
+                    for ($i = 0; $i < $randomIndex; $i++) {
+                        $randomDate = new DateTimeImmutable();  // Crée une nouvelle date aléatoire
+                        if (!in_array($randomDate, $periodDates)) {
+                            $periodDate = new PeriodDate();
+                            $periodDate->setDate($randomDate);
+                            $eventRecurring->addPeriodDate($periodDate);
+                            $periodDates[] = $randomDate;
+                        }
                     }
                 }
-            } elseif ($recurrenceType === 2) {  // Choix des jours de la semaine
-                $weekDays = [];
-                for ($i = 0; $i < $randomIndex; $i++) {
-                    $randomDay = rand(1, 7);
-                    if (!in_array($randomDay, $weekDays)) {
-                        $weekday = new WeekDay();
-                        $weekday->setDay($randomDay);
-                        $eventRecurring->addWeekDay($weekday);
-                        $weekDays[] = $randomDay;
-                    }
-                }
-            } else {  // Choix de dates spécifiques
-                $periodDates = [];
-                $randomIndex = rand(3, 10);
-                for ($i = 0; $i < $randomIndex; $i++) {
-                    $randomDate = new DateTimeImmutable();  // Crée une nouvelle date aléatoire
-                    if (!in_array($randomDate, $periodDates)) {
-                        $periodDate = new PeriodDate();
-                        $periodDate->setDate($randomDate);
-                        $eventRecurring->addPeriodDate($periodDate);
-                        $periodDates[] = $randomDate;
-                    }
-                }
+            } else {
+                $eventRecurring->resetRecurringDays();
+                $eventRecurring->setEveryday(true);
             }
-        } else {
-            $eventRecurring->resetRecurringDays();
-            $eventRecurring->setEveryday(true);
+
+            $eventRecurring->setCreatedAt($createdAt);
+            $eventRecurring->setUpdatedAt($updatedAt);
+
+            $this->em->persist($eventRecurring);
+            $this->addReference("eventRecurring_{$e}", $eventRecurring);
+
         }
-
-        $eventRecurring->setCreatedAt($createdAt);
-        $eventRecurring->setUpdatedAt($updatedAt);
-
-        $this->em->persist($eventRecurring);
     }
-}
 
 
 
-
-
-
-    }
 
     public function createIssues()
     {
