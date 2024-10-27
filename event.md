@@ -6,7 +6,7 @@ Cette application permet à l'utilisateur de consulter rapidement tous les évé
 
 Il est primordial de comprendre qu'un événement ou un tag (count) correspond à un seul jour ; un événement récurrent est défini sur une période avec une fin ou de manière illimitée. 
 
-Les événements sont supprimés automatiquement après 30 jours suivant leur date de presentation "today" via un **cron job**.
+Les événements sont supprimés automatiquement après 30 jours suivant leur date de presentation "duedate" les atgs de meme avec "day" via un **cron job**.
 
 ## 1. Optimisation des requêtes
 
@@ -140,29 +140,21 @@ Attention : Le cache pourrait ne pas prendre en compte une modification en temps
 - **Entité `Supplier`** : Associe des événements récurrents aux fournisseurs via le champ **`recurring_events`**, listant les IDs des événements récurrents liés aux commandes ou opérations récurrentes du fournisseur. Cela facilite la modification des événements récurrents pour répondre aux besoins spécifiques d'un fournisseur.
 
 
-## 6. Suppression et mise à jour des événements
-- Les événements passés sont automatiquement supprimés 30 jours après leur `dueDate` via un **cron job**.
+## 6. Gestion des Tags et Comptage
 
-
-
-
-
-
-## 7. Gestion des Tags et Comptage
-
-### 7.1 Structure des Tags des Événements
+### 6.1 Structure des Tags des Événements
 Pour optimiser les requêtes et éviter les calculs en temps réel, chaque **section** génère un tag quotidien pour chaque nouveau jour dans `active_day_range`. Ces tags sont inscrits avec une valeur initiale de zéro et conservés pour l’historique des jours passés (supprimés après 30 jours via un cron job). Cela garantit un nombre minimal de tags inscrits quotidiennement, sans inscription de tags futurs (ceux-ci sont calculés uniquement pour l'affichage sur l'interface).
 
 La création ou la mise à jour d'un événement (hors événements de type `eventRecurring`) dans `active_day_range` affecte directement le tag de la même section et date en incrémentant ou décrémentant son compteur.
 
-### 7.2 Champs spécifiques de l’entité `Tag`
+### 6.2 Champs spécifiques de l’entité `Tag`
 - **`section`** : Section sur laquelle le tag sera affiché (ex : carte, recette, fournisseurs, inventaire, planning).
 - **`day`** : Date de prise en compte du tag pour afficher les valeurs correctes sur l’interface.
 - **`date_status`** : Indique si la date du tag est dans le passé ou dans `active_day_range`, permettant une optimisation des requêtes en limitant la recherche.
 - **`task_count`** : Entier représentant le nombre de tâches associées au tag d'une section pour une date spécifique.
 - **`active_day`** : Entier représentant une date relative entre -3 et +7 (selon la variable `activeDayRange` dans `.env`). Cette valeur est mise à jour chaque jour par un cron job pour garantir la cohérence des dates avec `datenow()` et optimiser les requêtes via les index. Ce champ est nul si `day` est en dehors de `activeDayRange`.
 
-### 7.3 Champs spécifiques de l’entité `TagInfo`
+### 6.3 Champs spécifiques de l’entité `TagInfo`
 Pour le comptage des infos non lues par utilisateur et par section, les informations sont personnalisées selon l’utilisateur connecté. La table pivot `TagInfo` permet de gérer ces valeurs spécifiques en fonction de chaque utilisateur.
 
 - **`tag_id`** : Identifiant du tag concerné.
