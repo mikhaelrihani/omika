@@ -64,16 +64,44 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $timestamps = $this->faker->createTimeStamps();
             $createdAt = $timestamps[ 'createdAt' ];
             $updatedAt = $timestamps[ 'updatedAt' ];
-            // $unlimited = $this->faker->boolean(20);
-            // $daysToAdd = $this->faker->numberBetween(1, 7); // Générer un nombre aléatoire de jours entre 1 et 7
-            // $dateLimit = $createdAt->modify('+1 month')->modify("+$daysToAdd days"); // Ajouter ces jours à la date d'un mois
-            // $activeDayRange = $this->faker->randomElements(range(-3, 7), rand(3, 11));
-            // $author = $this->faker->randomElement($users);
-
 
             $event = new Event();
-$event
-->setActiveDay()
+            $dateStatus = rand(1, 3);// 1= past,2= activeDayRange ,3= future
+            if ($dateStatus === 1) {
+                $dueDateMax = (new DateTimeImmutable(datetime: 'now'))->modify('-3 days');
+                $dueDate = $this->faker->dateTimeImmutableBetween(
+                    $createdAt->format('Y-m-d H:i:s'),
+                    $dueDateMax->format('Y-m-d H:i:s')
+                );
+
+                $event
+                    ->setDateStatus("past")
+                    ->setActiveDay(null)
+                    ->setDueDate($dueDate);
+            }
+            if ($dateStatus === 2) {
+                $randomIndex = rand(-3, 7);
+                $interval = "{$randomIndex} days";
+                $dueDate = (new DateTimeImmutable(datetime: 'now'))->modify($interval);
+                $event
+                    ->setDateStatus("activeDayRange")
+                    ->setActiveDay($randomIndex)
+                    ->setDueDate($dueDate);
+            }
+            if ($dateStatus === 3) {
+                $dueDateMin = (new DateTimeImmutable(datetime: 'now'))->modify('+7 days');
+                $dueDate = $this->faker->dateTimeImmutableBetween(
+                    $dueDateMin->format('Y-m-d H:i:s'),
+                    (new DateTimeImmutable('+10 years'))->format('Y-m-d H:i:s')
+                );
+
+                $event
+                    ->setDateStatus("future")
+                    ->setActiveDay(null);
+            }
+
+
+
             $isRecurring = $this->faker->boolean(10);
             if ($isRecurring) {
                 $randomEventRecurring = $eventsRecurring[array_rand($eventsRecurring)];
@@ -90,7 +118,9 @@ $event
             } else {
 
                 $event
-                    ->setIsRecurring(False);
+                    ->setIsRecurring(False)
+                    ->setCreatedAt($createdAt)
+                    ->setUpdatedAt($updatedAt);
                 //         ->setType($this->faker->randomElement(['info', 'task']))
                 //         ->setImportance($this->faker->boolean)
                 //         ->setSharedWith($this->faker->randomElements($users, rand(1, 3))) // Ajoute un tableau de 1 à 3 utilisateurs unique 
