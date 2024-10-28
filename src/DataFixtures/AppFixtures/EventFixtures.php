@@ -40,24 +40,25 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     public function createSections(): void
     {
         $timestamps = $this->faker->createTimeStamps();
-        $Sections = $this->faker->getSectionList();
-        $s = 0;
 
+        $Sections = $this->faker->getSectionList()();
+        $s = 0;
         foreach ($Sections as $section) {
             $Section = new Section();
             $Section->setName($section);
             $Section->setCreatedAt($timestamps[ 'createdAt' ]);
             $Section->setUpdatedAt($timestamps[ 'updatedAt' ]);
             $this->em->persist($Section);
-            $this->addReference("Section_{$s}", $Section);
+            $this->addReference("section_{$s}", $Section);
             $s++;
         }
+
     }
 
     public function createEvents($numEvents): void
     {
         $eventsRecurring = $this->retrieveEntities("eventRecurring", $this);
-        $Sections = $this->retrieveEntities("Section", $this);
+        $sections = $this->retrieveEntities("section", $this);
         $users = $this->retrieveEntities("user", $this);
 
         for ($e = 0; $e < $numEvents; $e++) {
@@ -66,6 +67,37 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $updatedAt = $timestamps[ 'updatedAt' ];
 
             $event = new Event();
+
+            $section = new Section();
+            $section->setName($sections[array_rand($sections)]);
+
+            $event
+                ->setDescription($this->faker->sentence)
+                ->setIsImportant($this->faker->boolean)
+                ->setSide($this->faker->randomElement(['kitchen', 'office']))
+                ->setSection($section);
+
+
+
+            $taskOrInfo = rand(0, 1);
+            if ($taskOrInfo === 1) {
+                $event->setInfo(null);
+                $task = new EventTask();
+                $task
+                    ->setTaskStatus($this->faker->getOneRandomStatus())
+                    ->setCreatedAt($createdAt)
+                    ->setUpdatedAt($updatedAt);
+            } else {
+                $event->setTask(null);
+                $info = new EventInfo();
+                $info
+                    ->setUserReadInfoCount($this->faker->numberBetween(1, 3))
+                    ->setSharedWithCount($this->faker->numberBetween(1, 3))
+                    ->setFullyRead($this->faker->boolean);
+            }
+
+
+
             $dateStatus = rand(1, 3);// 1= past,2= activeDayRange ,3= future
             if ($dateStatus === 1) {
                 $dueDateMax = (new DateTimeImmutable(datetime: 'now'))->modify('-3 days');
@@ -104,6 +136,9 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
             $isRecurring = $this->faker->boolean(10);
             if ($isRecurring) {
+                // si eventRecurring est hors de activeDayRange
+
+                // si eventRecurring est dans activeDayRange
                 $randomEventRecurring = $eventsRecurring[array_rand($eventsRecurring)];
                 $createdAtEventRecurring = $randomEventRecurring->getCreatedAt();
                 $createdAt = $this->faker->dateTimeImmutableBetween($createdAtEventRecurring->format('Y-m-d H:i:s'), 'now');
@@ -121,74 +156,13 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                     ->setIsRecurring(False)
                     ->setCreatedAt($createdAt)
                     ->setUpdatedAt($updatedAt);
-                //         ->setType($this->faker->randomElement(['info', 'task']))
-                //         ->setImportance($this->faker->boolean)
-                //         ->setSharedWith($this->faker->randomElements($users, rand(1, 3))) // Ajoute un tableau de 1 à 3 utilisateurs unique 
-                //         ->setDateCreated($createdAt)
-                //         ->setDateLimit($dateLimit)
-                //         ->setStatus($this->faker->randomElement(['published', 'draft']))
-                //         ->setDescription($this->faker->sentence)
-                //         ->setEventSection($this->faker->randomElement($eventSections))
-                //         ->setAuthor($author->getFullName())
-                //         ->setSide($this->faker->randomElement(['kitchen', 'office']))
-                //         ->setPeriodeStart($updatedAt)
-                //         ->setCreatedAt($createdAt)
-                //         ->setUpdatedAt($updatedAt)
-                //         ->setPeriodeUnlimited($unlimited);
-                //     $event->setActiveDayRange($activeDayRange);
 
 
-                //     if (!$unlimited) {
-                //         $event->setPeriodeEnd((clone $updatedAt)->modify('+' . $this->faker->numberBetween(1, 7) . ' days'));
-                //     }
 
-                //     // Création et association de la fréquence
-                //     $eventFrequence = $this->createEventFrequence($event);
-                //     $event->setEventFrequence($eventFrequence);
-
-                //     // Gestion de la création d'EventTask ou EventInfo en fonction du type
-                //     if ($event->getType() === 'task') {
-                //         // Récupérer le nom de la section liée à l'événement
-                //         $sectionName = $event->getEventSection()->getName();
-
-                //         // Créer un nouvel EventTask
-                //         $taskStatusActiveRange = [];
-                //         $taskStatusOffRange = [];
-                //         foreach ($activeDayRange as $activeDay) {
-                //             $status = $this->faker->randomElement(['done', 'todo', 'pending', 'late']);
-                //             $taskStatusActiveRange[$activeDay] = $status;
-                //             $taskStatusOffRange[] = $status;
-                //         }
-                //         ;
-
-                //         $eventTask = new EventTask();
-                //         $eventTask->setTaskDetails($sectionName . ': ' . $this->faker->word()) // Ajout du nom de la section devant le texte aléatoire
-                //             ->setTaskStatusActiveRange($taskStatusActiveRange)
-                //             ->setTaskStatusOffRange($taskStatusOffRange)
-                //             ->setEvent($event);
-
-                //         $this->em->persist($eventTask);
-                //         $event->setEventTask($eventTask);
-                //     } else {
-                //         $eventInfo = new EventInfo();
-                //         $tagInfoActiveRange = [];
-                //         foreach ($activeDayRange as $activeDay) {
-                //             $status = $this->faker->randomElement(['unread', 'read']);
-                //             $tagInfoActiveRange[$activeDay] = $status;
-                //         }
-                //         ;
-                //         $eventInfo
-                //             ->setTagInfoActiveRange($tagInfoActiveRange)
-                //             ->setTagInfoOffRange([$this->faker->randomElement(['read', 'archived'])])
-                //             ->setReadUsers([$author->getFullName()])
-                //             ->setEvent($event);
-                //         $this->em->persist($eventInfo);
-                //         $event->setEventInfo($eventInfo);
             }
 
-            //     // Persister l'événement et sa fréquence
-            //     $this->em->persist($eventFrequence);
-            //     $this->em->persist($event);
+
+
         }
     }
 
@@ -196,34 +170,61 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
 
 
-    public function createEventRecurring($numEventsRecurring): void
+    public function createEventRecurring(): void
     {
-        for ($e = 0; $e < $numEventsRecurring; $e++) {
+        // L'objectif des fixtures est de simuler un environnement de test réaliste, proche de la production. 
+        // Pour cela, il est essentiel de générer des événements enfants pour chaque `EventRecurring`, répartis selon les fenêtres temporelles définies par `datestatus` : `past`, `activeDayRange`, et `future`.
+        // Les timestamps de chaque `EventRecurring` serviront ainsi à horodater les événements enfants, en garantissant que ceux créés pendant la période active restent dans cette même période. Il en va de même pour les périodes *past* et *future*.
+        // De cette manière, chaque événement enfant aura un `createdAt` supérieur à celui de son `EventRecurring` parent et respectera la règle `dueDate >= createdAt`.
+        // Nous créons donc trois types d'`EventRecurring`, correspondant à chacun de ces statuts (`past`, `activeDayRange`, et `future`).
 
-            // Assure l'ordre chronologique : createdAt < periodeStart < updatedAt < periodeEnd.
-            $timestamps = $this->faker->createTimeStamps();
-            $createdAt = $timestamps[ 'createdAt' ];
-            $updatedAt = $timestamps[ 'updatedAt' ];
+        // L'ordre chronologique des timestamps pour les périodes de `EventRecurring` doit être strictement respecté : `createdAt < periodeStart < updatedAt < periodeEnd`.
 
-            // Génère un periodeStart entre createdAt et updatedAt
+
+        //! Ici, la base de données sera capturée à la date de chargement des fixtures. Cette capture sera ensuite mise à jour par un cron job.
+        //! Cependant, plus le chargement des fixtures s’éloigne de la date actuelle, moins les données du active day range seront pertinentes.
+        //! Il est donc recommandé de recharger régulièrement les fixtures ou de créer un cron job pour recharger les fixtures, par exemple tous les trois jours.
+
+        for ($e = 0; $e < 200; $e++) {
+
+            // Initialisation des timestamps
+            if ($e <= 40) {
+                // EventRecurring dans le passé
+                $createdAt = $this->faker->dateTimeImmutableBetween('-1 month', '-5 days');
+                $updatedAt = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), '-4 days');
+                $prefix = 'past_';
+            } elseif (41 <= $e <= 151) {
+                // EventRecurring dans la période active
+                $createdAt = $this->faker->dateTimeImmutableBetween('-3 days', '+7 days');
+                $updatedAt = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), 'now');
+                $prefix = 'active_';
+            } else {
+                // EventRecurring dans le futur
+                $createdAt = $this->faker->dateTimeImmutableBetween('+8 days', '+3 month');
+                $updatedAt = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), '+6 days');
+                $prefix = 'future_';
+            }
+
+            // Générer les dates de début et de fin de période
             $periodeStart = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $updatedAt->format('Y-m-d H:i:s'));
-            // Génère un periodeEnd entre updatedAt et maintenant (now)
-            $periodeEnd = $this->faker->dateTimeImmutableBetween($updatedAt->format('Y-m-d H:i:s'), "now");
+            $periodeEnd = $this->faker->dateTimeImmutableBetween($updatedAt->format('Y-m-d H:i:s'), "+1 month");
 
+            // Initialisation de l'EventRecurring
             $eventRecurring = new EventRecurring();
-            $eventRecurring
-                ->setPeriodeStart($periodeStart)
-                ->setPeriodeEnd($periodeEnd);
+            $eventRecurring->setPeriodeStart($periodeStart)
+                ->setPeriodeEnd($periodeEnd)
+                ->setCreatedAt($createdAt)
+                ->setUpdatedAt($updatedAt);
 
-            // Détermine si l'événement est quotidien ou non
+            // Déterminer si l'événement est quotidien ou non
             $everyday = rand(0, 1);
-
             if (!$everyday) {
-                // Choisir au hasard l’un des trois types de récurrence : jours du mois, jours de la semaine ou dates spécifiques.
-                $recurrenceType = rand(1, 3); // 1 = jours du mois, 2 = jours de la semaine, 3 = dates spécifiques
+                // Choisir au hasard une des trois récurrences : jours du mois, jours de la semaine, dates spécifiques
+                $recurrenceType = rand(1, 3);
                 $randomIndex = rand(1, 4);
 
-                if ($recurrenceType === 1) {  // Choix des jours du mois
+                if ($recurrenceType === 1) {
+                    // Jours du mois
                     $monthDays = [];
                     for ($i = 0; $i < $randomIndex; $i++) {
                         $randomDay = rand(1, 28);
@@ -234,7 +235,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                             $monthDays[] = $randomDay;
                         }
                     }
-                } elseif ($recurrenceType === 2) {  // Choix des jours de la semaine
+                } elseif ($recurrenceType === 2) {
+                    // Jours de la semaine
                     $weekDays = [];
                     for ($i = 0; $i < $randomIndex; $i++) {
                         $randomDay = rand(1, 7);
@@ -245,11 +247,12 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                             $weekDays[] = $randomDay;
                         }
                     }
-                } else {  // Choix de dates spécifiques
+                } else {
+                    // Dates spécifiques
                     $periodDates = [];
                     $randomIndex = rand(3, 10);
                     for ($i = 0; $i < $randomIndex; $i++) {
-                        $randomDate = new DateTimeImmutable();  // Crée une nouvelle date aléatoire
+                        $randomDate = new DateTimeImmutable();
                         if (!in_array($randomDate, $periodDates)) {
                             $periodDate = new PeriodDate();
                             $periodDate->setDate($randomDate);
@@ -263,13 +266,12 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $eventRecurring->setEveryday(true);
             }
 
-            $eventRecurring->setCreatedAt($createdAt);
-            $eventRecurring->setUpdatedAt($updatedAt);
-
+            // Persister l'EventRecurring avec le préfixe de référence
             $this->em->persist($eventRecurring);
-            $this->addReference("eventRecurring_{$e}", $eventRecurring);
-
+            $this->addReference("{$prefix}eventRecurring_{$e}", $eventRecurring);
         }
+
+
     }
 
 

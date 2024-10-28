@@ -56,7 +56,7 @@ class Event extends BaseEntity
     private ?string $type = null;
 
     #[ORM\ManyToOne(targetEntity: Section::class)]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true)]
     private ?Section $section = null;
 
 
@@ -128,18 +128,18 @@ class Event extends BaseEntity
         return $this->task;
     }
 
-    public function setTask(EventTask $task): static
+    public function setTask(?EventTask $task): static
     {
         $this->task = $task;
         return $this;
     }
 
-    public function getEventInfo(): ?EventInfo
+    public function getInfo(): ?EventInfo
     {
         return $this->info;
     }
 
-    public function setEventInfo(?EventInfo $info): static
+    public function setInfo(?EventInfo $info): static
     {
         $this->info = $info;
         return $this;
