@@ -28,10 +28,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->createSections();
         $this->em->flush();
         // Créer les événements récurrence
-        $this->createEventRecurring(30);
+        $this->createEventRecurring();
         $this->em->flush();
         // Créer les événements
-        $this->createEvents(30);
+        $this->createEvents(200);
         // Créer des Issues (ici en tant qu'exemple)
         $this->createIssues();
         $this->em->flush();
@@ -55,30 +55,118 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     }
 
-    public function createEvents($numEvents): void
+    public function getEventBase(): Event
     {
-        $eventsRecurring = $this->retrieveEntities("eventRecurring", $this);
         $sections = $this->retrieveEntities("section", $this);
-        $users = $this->retrieveEntities("user", $this);
 
-        for ($e = 0; $e < $numEvents; $e++) {
-            $timestamps = $this->faker->createTimeStamps();
-            $createdAt = $timestamps[ 'createdAt' ];
-            $updatedAt = $timestamps[ 'updatedAt' ];
+        $event = new Event();
+        $event
+            ->setDescription($this->faker->sentence)
+            ->setIsImportant($this->faker->boolean)
+            ->setSide($this->faker->randomElement(['kitchen', 'office']));
 
-            $event = new Event();
+        $section = new Section();
+        $section->setName($sections[array_rand($sections)]);
+        $event
+            ->setSection($section);
+        return $event;
 
-            $section = new Section();
-            $section->setName($sections[array_rand($sections)]);
+    }
+    public function createEventsfromRecurring(): void
+    {
+        $past_eventsRecurring = $this->retrieveEntities("past_eventRecurring", $this);
+        $active_eventsRecurring = $this->retrieveEntities("active_eventRecurring", $this);
+        $future_eventsRecurring = $this->retrieveEntities("future_eventRecurring", $this);
+
+        $event = $this->getEventBase();
+        $event
+            ->setIsRecurring(True);
+
+
+        foreach ($past_eventsRecurring as $eventRecurring) {
+            $createdAtEventRecurring = $eventRecurring->getCreatedAt();
+            $maxTimestamp = (new DateTimeImmutable(datetime: 'now'))->modify('-4 days')->format('Y-m-d H:i:s');
+            $createdAt = $this->faker->dateTimeImmutableBetween($createdAtEventRecurring->format('Y-m-d H:i:s'), $maxTimestamp);
+            $updatedAt = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $maxTimestamp);
+            $dueDate = $this->faker->dateTimeImmutableBetween(
+                $createdAt,
+                $updatedAt
+            );
+            $event
+                ->setCreatedAt($createdAt)
+                ->setUpdatedAt($updatedAt)
+                ->setDateStatus("past")
+                ->setActiveDay(null)
+                ->setDueDate($dueDate);
+
+            $eventRecurring->addEvent($event)
+            ;
+
+
+        }
+
+        foreach ($active_eventsRecurring as $eventRecurring) {
+            $createdAtEventRecurring = $eventRecurring->getCreatedAt();
+            $maxTimestamp = (new DateTimeImmutable(datetime: 'now'))->modify('+7 days')->format('Y-m-d H:i:s');
+            $createdAt = $this->faker->dateTimeImmutableBetween($createdAtEventRecurring->format('Y-m-d H:i:s'), $maxTimestamp);
+            $updatedAt = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $maxTimestamp);
+            $dueDate = $this->faker->dateTimeImmutableBetween(
+                $createdAt,
+                $updatedAt
+            );
+            // Calcul de activeDay en fonction de l'écart de jours entre today et dueDate
+            $activeday = (int) $dueDate->diff(new DateTimeImmutable('now'))->format('%r%a');
 
             $event
-                ->setDescription($this->faker->sentence)
-                ->setIsImportant($this->faker->boolean)
-                ->setSide($this->faker->randomElement(['kitchen', 'office']))
-                ->setSection($section);
+                ->setCreatedAt($createdAt)
+                ->setUpdatedAt($updatedAt)
+                ->setDateStatus("activeDayRange")
+                ->setActiveDay($activeday)
+                ->setDueDate($dueDate);
+
+            $eventRecurring->addEvent($event);
+        }
+
+        foreach ($future_eventsRecurring as $eventRecurring) {
+            $createdAtEventRecurring = $eventRecurring->getCreatedAt();
+            $maxTimestamp = (new DateTimeImmutable(datetime: 'now'))->modify('+3 month')->format('Y-m-d H:i:s');
+            $createdAt = $this->faker->dateTimeImmutableBetween($createdAtEventRecurring->format('Y-m-d H:i:s'), $maxTimestamp);
+            $updatedAt = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $maxTimestamp);
+
+            $event
+                ->setCreatedAt($createdAt)
+                ->setUpdatedAt($updatedAt)
+                ->setDateStatus("future")
+                ->setActiveDay(null)
+                ->setDueDate($dueDate);
+
+            $eventRecurring->addEvent($event);
+        }
+    }
 
 
 
+    public function createEvents($numEvents): void
+    {
+        $timestamps = $this->faker->createTimeStamps();
+        $createdAt = $timestamps[ 'createdAt' ];
+        $updatedAt = $timestamps[ 'updatedAt' ];
+
+        $users = $this->retrieveEntities("user", $this);
+
+
+        for ($e = 0; $e < $numEvents; $e++) {
+
+            $event = $this->getEventBase();
+            $event
+                ->setIsRecurring(False)
+                ->setCreatedAt($createdAt)
+                ->setUpdatedAt($updatedAt);
+
+
+
+
+            //! to correct
             $taskOrInfo = rand(0, 1);
             if ($taskOrInfo === 1) {
                 $event->setInfo(null);
@@ -98,68 +186,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
 
 
-            $dateStatus = rand(1, 3);// 1= past,2= activeDayRange ,3= future
-            if ($dateStatus === 1) {
-                $dueDateMax = (new DateTimeImmutable(datetime: 'now'))->modify('-3 days');
-                $dueDate = $this->faker->dateTimeImmutableBetween(
-                    $createdAt->format('Y-m-d H:i:s'),
-                    $dueDateMax->format('Y-m-d H:i:s')
-                );
-
-                $event
-                    ->setDateStatus("past")
-                    ->setActiveDay(null)
-                    ->setDueDate($dueDate);
-            }
-            if ($dateStatus === 2) {
-                $randomIndex = rand(-3, 7);
-                $interval = "{$randomIndex} days";
-                $dueDate = (new DateTimeImmutable(datetime: 'now'))->modify($interval);
-                $event
-                    ->setDateStatus("activeDayRange")
-                    ->setActiveDay($randomIndex)
-                    ->setDueDate($dueDate);
-            }
-            if ($dateStatus === 3) {
-                $dueDateMin = (new DateTimeImmutable(datetime: 'now'))->modify('+7 days');
-                $dueDate = $this->faker->dateTimeImmutableBetween(
-                    $dueDateMin->format('Y-m-d H:i:s'),
-                    (new DateTimeImmutable('+10 years'))->format('Y-m-d H:i:s')
-                );
-
-                $event
-                    ->setDateStatus("future")
-                    ->setActiveDay(null);
-            }
 
 
 
-            $isRecurring = $this->faker->boolean(10);
-            if ($isRecurring) {
-                // si eventRecurring est hors de activeDayRange
 
-                // si eventRecurring est dans activeDayRange
-                $randomEventRecurring = $eventsRecurring[array_rand($eventsRecurring)];
-                $createdAtEventRecurring = $randomEventRecurring->getCreatedAt();
-                $createdAt = $this->faker->dateTimeImmutableBetween($createdAtEventRecurring->format('Y-m-d H:i:s'), 'now');
-                $updatedAt = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), 'now');
-                $event
-                    ->setIsRecurring(True)
-                    ->setCreatedAt($createdAt)
-                    ->setUpdatedAt($updatedAt);
-
-                $randomEventRecurring->addEvent($event);
-
-            } else {
-
-                $event
-                    ->setIsRecurring(False)
-                    ->setCreatedAt($createdAt)
-                    ->setUpdatedAt($updatedAt);
-
-
-
-            }
 
 
 
