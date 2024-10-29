@@ -113,7 +113,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                             // ajout des relations
                             $newTask = new EventTask();
                             $newTask
-                                ->setTaskStatus('todo')
+                                ->setTaskStatus('late')
                                 ->setCreatedAt($today)
                                 ->setUpdatedAt($today);
                             $newEvent->setTask($newTask);
@@ -143,22 +143,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
                 }
 
-                // $task = new EventTask();
-                // $task
-                //     ->setTaskStatus($taskStatut)
-                //     ->setCreatedAt($createdAt)
-                //     ->setUpdatedAt($updatedAt);
-                // $event->setTask($task);
 
-            } elseif ($activeDay === 0) {
-                if(){
-                    
-                }
-                $task->setTaskStatus($this->faker->randomElement(['todo', `todo_modified`, 'done', 'pending', 'warning', 'late']));
-
-            } else {
-                $task->setTaskStatus($this->faker->randomElement(['todo', `todo_modified`, 'done', 'warning']));
-            }
+            } elseIf ($activeDay >= 0 && !null) {
+                $task = new EventTask();
+                $task
+                    ->setTaskStatus($this->faker->randomElement(['todo', `todo_modified`, 'done', 'pending']))
+                    ->setCreatedAt($createdAt)
+                    ->setUpdatedAt($updatedAt);
+                $event->setTask($task);
+            } 
 
             // traitement du type Info
         } else {
