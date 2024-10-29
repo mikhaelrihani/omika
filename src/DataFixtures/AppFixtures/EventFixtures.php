@@ -9,6 +9,7 @@ use App\Entity\event\Section;
 use App\Entity\event\EventTask;
 use App\Entity\event\EventInfo;
 use App\Entity\Event\EventRecurring;
+use App\Entity\Event\EventSharedInfo;
 use App\Entity\event\Issue;
 use App\Entity\Event\MonthDay;
 use App\Entity\Event\PeriodDate;
@@ -202,13 +203,44 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
             // traitement du type Info
         } else {
+
+            $users = $this->retrieveEntities("user", $this);
+            $usersCount = count($users);
+            $randomNumOfUsers = $this->faker->numberBetween(1, $usersCount);
+            $randomUsers = [];
+            $randomUsers[] = $randomUsers[array_rand($users, $randomNumOfUsers)];
+
             $info = new EventInfo();
+            $inforeadCounter = 0;
+
+            foreach ($randomUsers as $user) {
+                $eventSharedInfo = new EventSharedInfo();
+                $isRead = $this->faker->boolean;
+                if (!$isRead) {
+                    $info->setFullyRead(false);
+                } else {
+                    $inforeadCounter++;
+                }
+                $eventSharedInfo
+                    ->setUser($user)
+                    ->setIsRead($isRead)
+                    ->setCreatedAt($createdAt)
+                    ->setUpdatedAt($updatedAt);
+                $info->addSharedWith($user);
+
+            }
+
             $info
                 ->setCreatedAt($createdAt)
                 ->setUpdatedAt($updatedAt)
-                ->setInfo($this->faker->sentence);
+                ->setUserReadInfoCount($inforeadCounter)
+                ->setSharedWithCount($randomNumOfUsers);
 
         }
+
+
+
+
     }
 
     public function setEventRecurringType(DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt, int $activeDay = null): EventTask|EventInfo
@@ -302,7 +334,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     public function createEvent(): Event
     {
-        $users = $this->retrieveEntities("user", $this);
         $timestamps = $this->faker->createTimeStamps();
         $createdAt = $timestamps[ 'createdAt' ];
         $updatedAt = $timestamps[ 'updatedAt' ];

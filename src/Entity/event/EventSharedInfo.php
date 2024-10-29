@@ -2,12 +2,13 @@
 
 namespace App\Entity\Event;
 
+use App\Entity\BaseEntity;
 use App\Entity\User\user;
 use App\Repository\Event\EventSharedInfoRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: EventSharedInfoRepository::class)]
-class EventSharedInfo
+class EventSharedInfo extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -59,7 +60,7 @@ class EventSharedInfo
         return $this->isRead;
     }
 
-    public function setRead(bool $isRead): static
+    public function setIsRead(bool $isRead): static
     {
         $this->isRead = $isRead;
 
