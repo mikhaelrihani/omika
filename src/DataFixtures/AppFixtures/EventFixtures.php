@@ -136,22 +136,69 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                                 ->setCreatedAt($day)
                                 ->setUpdatedAt($day);
                             $newEvent->setTask($newTask);
-
                         }
                     }
-
-
                 }
-
-
-            } elseIf ($activeDay >= 0 && !null) {
+            } elseif ($activeDay >= 0 && !null) {
                 $task = new EventTask();
                 $task
                     ->setTaskStatus($this->faker->randomElement(['todo', `todo_modified`, 'done', 'pending']))
                     ->setCreatedAt($createdAt)
                     ->setUpdatedAt($updatedAt);
                 $event->setTask($task);
-            } 
+
+                // traitement dans le cas ou Le dateStatus est "future" 
+            } elseif ($event->getDateStatus() === "future") {
+                $task = new EventTask();
+                $task
+                    ->setTaskStatus($this->faker->randomElement([`todo_modified`, 'done', 'pending']))
+                    ->setCreatedAt($createdAt)
+                    ->setUpdatedAt($updatedAt);
+                $event->setTask($task);
+
+                // traitement dans le cas ou Le dateStatus est "past"
+            } else if ($event->getDateStatus() === "past") {
+                $task = new EventTask();
+                $task
+                    ->setTaskStatus($this->faker->randomElement(['done', 'unrealised']));
+                if ($task->getTaskStatus() === 'unrealised') {
+                    // cela veut dire qu'au moin un event a été créé le jour suivant.
+                    // donc on va faire un random sur le nombre de jour d'affilé ou l'event du lendemain est aussi unrealised.
+                    $randomUnrealisedDays = $this->faker->numberBetween(1, 3);
+                    for ($i = 0; $i <= $randomUnrealisedDays; $i++) {
+
+                        $newEvent = $this->eventDuplicationService->duplicateEventProperties($event);
+                        $dueDate = $event->getDueDate();
+                        $createdAt = $event->getCreatedAt();
+                        $updatedAt = $event->getUpdatedAt();
+
+
+                        // ajout des timestamps
+                        $newEvent
+                            ->setActiveDay(null)
+                            ->setDateStatus('past')
+                            ->setDueDate($dueDate->modify("+{$i} days"))
+                            ->setCreatedAt($createdAt->modify("+{$i} days"))
+                            ->setUpdatedAt($updatedAt->modify("+{$i} days"));
+
+                        // ajout des relations
+                        $newTask = new EventTask();
+                        ($i === $randomUnrealisedDays) ? $taskStatut = "done" : $taskStatut = "unrealised";
+                        $newTask
+                            ->setTaskStatus($taskStatut)
+                            ->setCreatedAt($createdAt->modify("+{$i} days"))
+                            ->setUpdatedAt($updatedAt->modify("+{$i} days"));
+                        $newEvent->setTask($newTask);
+
+                    }
+                } else {
+                    $task
+                        ->setCreatedAt($createdAt)
+                        ->setUpdatedAt($updatedAt);
+                    $event->setTask($task);
+                }
+
+            }
 
             // traitement du type Info
         } else {
