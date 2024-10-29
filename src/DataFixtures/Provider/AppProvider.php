@@ -63,7 +63,7 @@ class AppProvider extends Base
         "late",
         "pending",
         "warning",
-        "modified"
+        "todo_modified"
     ];
 
     /**

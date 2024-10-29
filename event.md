@@ -69,7 +69,12 @@ Attention : Le cache pourrait ne pas prendre en compte une modification en temps
 - Le statut `unrealised` est utilisé pour marquer les événements de la veille lorsque qu'un événement tâche est marqué comme `late` à la date d'aujourd'hui. Ce statut ne changera pas dans le passé.
 - Le statut `warning` est utilisé pour indiquer à l'utilisateur qu'un événement doit être reconsidéré car il a été classé obsolète en raison d'un changement dans son événement récurrent qui l'a créé.
 - L'utilisateur peut également supprimer manuellement un événement tâche. Dans ce cas, un événement info, avec un tag important, est créé pour en aviser les autres utilisateurs et garder une trace de cette décision.
-- Le statut `modified` est utilisé lorsque l'utilisateur a modifié la description ou tout autre champ, accessible à la modification depuis l'interface, de l'événement tâche.
+- Le statut `todo_modified` est utilisé lorsque l'utilisateur a modifié la description ou tout autre champ, accessible à la modification depuis l'interface, de l'événement tâche.
+ce statut est uniquement utilisé pour les evenements enfant d'un eventRecurring(isRecurring=true);
+il a pour objectif de conserver les modifications apportés par un user lorsque son eventRecurring parent est modifié.La procédure de modification du parent est de supprimer tous les enfants qui ont un statut `todo` et de changer le status des autres (inscrits en bdd) à `warning`.
+ici nous somme dans le cas ou l'event enfant est toujours en pseudo todo car toujours a faire , cad qu'il est inscrit en bdd meme hors activedayrange mais avec un status `todo_modified` .ainsi il peut passer en warning aussi en cas de modificartion sur l'eventRecurring parent.
+Sur l'interface le tag est ecrit `todo` , ici le status `todo_modified` est utilie a a logique metier uniquement.
+
 
 ### 2.2 Gestion des événements d'information
 - **Champ `unreadUsers`** : Tableau contenant les utilisateurs n'ayant pas encore lu l'information.

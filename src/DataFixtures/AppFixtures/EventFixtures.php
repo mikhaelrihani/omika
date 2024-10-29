@@ -16,7 +16,7 @@ use App\Entity\Event\WeekDay;
 use DateTimeImmutable;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
-
+use phpseclib3\Crypt\Random;
 
 class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 {
@@ -69,9 +69,45 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $section->setName($sections[array_rand($sections)]);
         $event
             ->setSection($section);
+
+
         return $event;
 
     }
+
+    public function setEventTaskOrInfo(DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt, int $activeDay = null): EventTask|EventInfo
+    {
+        $taskOrInfo = $this->faker->boolean;
+        if ($taskOrInfo) {
+            $task = new EventTask();
+            $task
+                ->setCreatedAt($createdAt)
+                ->setUpdatedAt($updatedAt);
+
+            if ($activeDay < 0) {
+                $task->setTaskStatus($this->faker->randomElement(['todo', 'done', 'pending','unrealised']));
+            } elseif ($activeDay === 0) {
+                $task->setTaskStatus($this->faker->randomElement(['todo', 'done', 'pending','warning','late']));
+
+            } else {
+                $task->setTaskStatus($this->faker->getOneRandomStatus());
+            }
+
+            return $task;
+        } else {
+            $info = new EventInfo();
+            $info
+                ->setCreatedAt($createdAt)
+                ->setUpdatedAt($updatedAt)
+                ->setInfo($this->faker->sentence);
+            return $info;
+        }
+    }
+
+    public function setEventRecurringTaskOrInfo(DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt, int $activeDay = null): EventTask|EventInfo
+    {
+    }
+
     public function createEventsfromRecurring(): void
     {
         $past_eventsRecurring = $this->retrieveEntities("past_eventRecurring", $this);
@@ -142,18 +178,24 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
             $eventRecurring->addEvent($event);
         }
+        $this->em->persist($eventRecurring);
     }
 
 
 
     public function createEvents($numEvents): void
     {
+        $users = $this->retrieveEntities("user", $this);
         $timestamps = $this->faker->createTimeStamps();
         $createdAt = $timestamps[ 'createdAt' ];
         $updatedAt = $timestamps[ 'updatedAt' ];
-
-        $users = $this->retrieveEntities("user", $this);
-
+        $dueDate = $this->faker->dateTimeImmutableBetween(
+            $createdAt,
+            $updatedAt
+        );
+        $activeDayInt = $this->faker->
+            // Limite $activeDayInt entre -3 et 7
+            $activeDay = ($activeDayInt >= -3 && $activeDayInt <= 7) ? $activeDayInt : null;
 
         for ($e = 0; $e < $numEvents; $e++) {
 
@@ -161,38 +203,11 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $event
                 ->setIsRecurring(False)
                 ->setCreatedAt($createdAt)
-                ->setUpdatedAt($updatedAt);
+                ->setUpdatedAt($updatedAt)
+                ->setActiveDay($activeDay)
+                ->setDueDate($dueDate);
 
-
-
-
-            //! to correct
-            $taskOrInfo = rand(0, 1);
-            if ($taskOrInfo === 1) {
-                $event->setInfo(null);
-                $task = new EventTask();
-                $task
-                    ->setTaskStatus($this->faker->getOneRandomStatus())
-                    ->setCreatedAt($createdAt)
-                    ->setUpdatedAt($updatedAt);
-            } else {
-                $event->setTask(null);
-                $info = new EventInfo();
-                $info
-                    ->setUserReadInfoCount($this->faker->numberBetween(1, 3))
-                    ->setSharedWithCount($this->faker->numberBetween(1, 3))
-                    ->setFullyRead($this->faker->boolean);
-            }
-
-
-
-
-
-
-
-
-
-
+            $this->em->persist($event);
         }
     }
 
