@@ -13,13 +13,21 @@ use App\Entity\event\Issue;
 use App\Entity\Event\MonthDay;
 use App\Entity\Event\PeriodDate;
 use App\Entity\Event\WeekDay;
+use App\Service\EventDuplicationService;
 use DateTimeImmutable;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
-use phpseclib3\Crypt\Random;
+
 
 class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 {
+
+
+    public function __construct(private EventDuplicationService $eventDuplicationService)
+    {
+
+    }
+
     public function load(ObjectManager $manager): void
     {
         $this->faker->addProvider(new AppProvider($this->faker));
@@ -75,36 +83,95 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     }
 
-    public function setEventTaskOrInfo(DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt, int $activeDay = null): EventTask|EventInfo
+    public function setEventType(Event $event): void
     {
-        $taskOrInfo = $this->faker->boolean;
-        if ($taskOrInfo) {
-            $task = new EventTask();
-            $task
-                ->setCreatedAt($createdAt)
-                ->setUpdatedAt($updatedAt);
+        $createdAt = $event->getCreatedAt();
+        $updatedAt = $event->getUpdatedAt();
+        $activeDay = $event->getActiveDay();
 
-            if ($activeDay < 0) {
-                $task->setTaskStatus($this->faker->randomElement(['todo', 'done', 'pending','unrealised']));
+        $type = $this->faker->boolean;
+        // traitement du type Task
+        if ($type) {
+            // traitement dans le cas ou Le dateStatus est "activeDayRange"
+            if ($activeDay < 0 && !null) {
+                $taskStatut = $this->faker->randomElement(['done', 'unrealised']);
+                // si l event est marqué comme unrealised, la logique veut que le lendemain on est le meme event(duplicate) avec un task status = "todo" si nous sommes today, sinon le status reste unrealised.
+                if ($taskStatut === 'unrealised') {
+                    for ($i = $activeDay; $i < 0; $i++) {
+                        if ($i === -1) {
+                            $today = new DateTimeImmutable(datetime: 'now');
+
+                            $newEvent = $this->eventDuplicationService->duplicateEventProperties($event);
+                            // ajout des timestamps
+                            $newEvent
+                                ->setActiveDay(0)
+                                ->setDateStatus('activeDayRange')
+                                ->setDueDate($today)
+                                ->setCreatedAt($today)
+                                ->setUpdatedAt($today);
+
+                            // ajout des relations
+                            $newTask = new EventTask();
+                            $newTask
+                                ->setTaskStatus('todo')
+                                ->setCreatedAt($today)
+                                ->setUpdatedAt($today);
+                            $newEvent->setTask($newTask);
+
+                        } elseif ($activeDay === -2 || $activeDay === -3) {
+                            $newEvent = $this->eventDuplicationService->duplicateEventProperties($event);
+                            $day = $event->getCreatedAt()->modify("+1 days");
+                            // ajout des timestamps
+                            $newEvent
+                                ->setActiveDay(-1)
+                                ->setDateStatus('activeDayRange')
+                                ->setDueDate($day)
+                                ->setCreatedAt($day)
+                                ->setUpdatedAt($day);
+
+                            // ajout des relations
+                            $newTask = new EventTask();
+                            $newTask
+                                ->setTaskStatus('unrealised')
+                                ->setCreatedAt($day)
+                                ->setUpdatedAt($day);
+                            $newEvent->setTask($newTask);
+
+                        }
+                    }
+
+
+                }
+
+                // $task = new EventTask();
+                // $task
+                //     ->setTaskStatus($taskStatut)
+                //     ->setCreatedAt($createdAt)
+                //     ->setUpdatedAt($updatedAt);
+                // $event->setTask($task);
+
             } elseif ($activeDay === 0) {
-                $task->setTaskStatus($this->faker->randomElement(['todo', 'done', 'pending','warning','late']));
+                if(){
+                    
+                }
+                $task->setTaskStatus($this->faker->randomElement(['todo', `todo_modified`, 'done', 'pending', 'warning', 'late']));
 
             } else {
-                $task->setTaskStatus($this->faker->getOneRandomStatus());
+                $task->setTaskStatus($this->faker->randomElement(['todo', `todo_modified`, 'done', 'warning']));
             }
 
-            return $task;
+            // traitement du type Info
         } else {
             $info = new EventInfo();
             $info
                 ->setCreatedAt($createdAt)
                 ->setUpdatedAt($updatedAt)
                 ->setInfo($this->faker->sentence);
-            return $info;
+
         }
     }
 
-    public function setEventRecurringTaskOrInfo(DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt, int $activeDay = null): EventTask|EventInfo
+    public function setEventRecurringType(DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt, int $activeDay = null): EventTask|EventInfo
     {
     }
 
@@ -185,6 +252,16 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     public function createEvents($numEvents): void
     {
+
+        for ($e = 0; $e < $numEvents; $e++) {
+
+            $event = $this->createEvent();
+            $this->setEventType($event);
+        }
+    }
+
+    public function createEvent(): Event
+    {
         $users = $this->retrieveEntities("user", $this);
         $timestamps = $this->faker->createTimeStamps();
         $createdAt = $timestamps[ 'createdAt' ];
@@ -193,24 +270,21 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $createdAt,
             $updatedAt
         );
-        $activeDayInt = $this->faker->
-            // Limite $activeDayInt entre -3 et 7
-            $activeDay = ($activeDayInt >= -3 && $activeDayInt <= 7) ? $activeDayInt : null;
+        $activeDayInt = (int) $dueDate->diff(new DateTimeImmutable('now'))->format('%r%a');
+        // Limite $activeDayInt entre -3 et 7
+        $activeDay = ($activeDayInt >= -3 && $activeDayInt <= 7) ? $activeDayInt : null;
 
-        for ($e = 0; $e < $numEvents; $e++) {
+        $event = $this->getEventBase();
+        $event
+            ->setIsRecurring(False)
+            ->setCreatedAt($createdAt)
+            ->setUpdatedAt($updatedAt)
+            ->setActiveDay($activeDay)
+            ->setDueDate($dueDate);
 
-            $event = $this->getEventBase();
-            $event
-                ->setIsRecurring(False)
-                ->setCreatedAt($createdAt)
-                ->setUpdatedAt($updatedAt)
-                ->setActiveDay($activeDay)
-                ->setDueDate($dueDate);
-
-            $this->em->persist($event);
-        }
+        $this->em->persist($event);
+        return $event;
     }
-
 
 
 

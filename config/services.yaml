@@ -78,5 +78,8 @@ services:
             $authToken: '%env(TWILIO_AUTH_TOKEN)%'
             $from: '%env(TWILIO_FROM_NUMBER)%' 
 
+    App\Service\EventDuplicationService:
+      
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

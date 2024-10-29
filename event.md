@@ -74,6 +74,7 @@ ce statut est uniquement utilisé pour les evenements enfant d'un eventRecurring
 il a pour objectif de conserver les modifications apportés par un user lorsque son eventRecurring parent est modifié.La procédure de modification du parent est de supprimer tous les enfants qui ont un statut `todo` et de changer le status des autres (inscrits en bdd) à `warning`.
 ici nous somme dans le cas ou l'event enfant est toujours en pseudo todo car toujours a faire , cad qu'il est inscrit en bdd meme hors activedayrange mais avec un status `todo_modified` .ainsi il peut passer en warning aussi en cas de modificartion sur l'eventRecurring parent.
 Sur l'interface le tag est ecrit `todo` , ici le status `todo_modified` est utilie a a logique metier uniquement.
+- les status late et pending n'existent que a la date de today.
 
 
 ### 2.2 Gestion des événements d'information

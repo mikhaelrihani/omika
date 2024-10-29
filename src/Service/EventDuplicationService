@@ -1,0 +1,51 @@
+<?php
+namespace App\Service;
+
+use App\Entity\Event\Event;
+use App\Entity\Event\Section;
+
+class EventDuplicationService
+{
+    /**
+     * Duplicates some of the properties of a given Event instance to a new Event instance.
+     * Sans les propriétés liées aux timestamps et aux relations.
+     *
+     * This method copies scalar properties of the original Event, such as 
+     * recurrence status, type, title, and important flags, to a new Event instance.
+     * Note: This does not copy related entities (like EventRecurring) to 
+     * ensure the duplicated Event remains independent.
+     *
+     * @param Event $originalEvent The original Event instance to duplicate.
+     *
+     * @return Event A new Event instance with copied properties from the original.
+     */
+    public function duplicateEventProperties(Event $originalEvent): Event
+    {
+        // Create a new instance of Section for the duplicated event
+        $newSection = new Section();
+        
+        // Retrieve the section name from the original event
+        $sectionName = $originalEvent->getSection() ? $originalEvent->getSection()->getName() : null;
+        
+        // Create a new Event instance
+        $newEvent = new Event();
+        
+        // Copy properties from the original event to the new event
+        $newEvent->setIsRecurring($originalEvent->isRecurring());
+        $newEvent->setSide($originalEvent->getSide());
+        $newEvent->setType($originalEvent->getType());
+        $newEvent->setTitle($originalEvent->getTitle());
+        $newEvent->setDescription($originalEvent->getDescription());
+        $newEvent->setCreatedBy($originalEvent->getCreatedBy());
+        $newEvent->setUpdatedBy($originalEvent->getUpdatedBy());
+        $newEvent->setIsImportant($originalEvent->isImportant());
+        
+        // Set the new section with the name from the original event
+        if ($sectionName) {
+            $newSection->setName($sectionName);
+            $newEvent->setSection($newSection);
+        }
+
+        return $newEvent;
+    }
+}
