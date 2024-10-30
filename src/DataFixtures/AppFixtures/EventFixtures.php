@@ -408,65 +408,89 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $weekDays = $eventRecurring->getWeekDays();
             $everyday = $eventRecurring->isEveryday();
 
-
+            $now = new DateTimeImmutable('now');
             $startDate = $eventRecurring->getPeriodeStart();
             $endDate = $eventRecurring->getPeriodeEnd();
-            // on filtre sur start date pour la creation ou non de l' eventchild en verifiant si levent recurrantparent a une date de periode start superierue a 7 jours from today.
-            $startDateIsFuture = (int) $startDate->diff(new DateTimeImmutable('now'))->format('%r%a');
-            if ($startDateIsFuture > 7 || $startDateIsFuture < -30) {
-                // si oui alors l'event ne sera pas créé/inscrit en bdd
-                continue;
-                // si non alors on va creer autant d'events enfants que le nombre de jour entre periode start et le septieme jour de activeDayRange.
-                // on utilisera ensuite a chaque boucle la methode setEventRecurringChildType pour attribuer un type a chaque event enfant en fonction du type de l event child precedent.
+            $createdAtParent = $updatedAtParent = $eventRecurring->getCreatedAt();
 
+
+            // on filtre pour ne garder que les events qui sont dans la plage active (+7 à -30 jours par rapport à aujourd'hui)
+            $firstDueDate = $startDate; // startDate du parent correspond à la dueDate du premier enfant
+            $lastDueDate = $endDate; // endDate du parent correspond à la dueDate du dernier enfant
+            $latestCreationDate = $now->modify('+7 days');
+            $earliestCreationDate = $now->modify('-30 days');
+            if ($firstDueDate > $latestCreationDate || $earliestCreationDate > $latestCreationDate) {
+                continue;// pas de creation d'event enfant
             }
-
 
             // case : isEveryday (avec ou sans periodend)
             if ($everyday) {
+
                 // on calcule le nombre d'eventChild 
-                $endDateMax = new DateTimeImmutable('+7 days');
-                if ($endDate > $endDateMax || $endDate === null) {
-                    $numberOfEventsChildren = (int) $startDate->diff($endDateMax->format('%r%a')) + 1;
+                if ($lastDueDate > $latestCreationDate || $lastDueDate === null) {
+                    $numberOfEventsChildren = (int) $firstDueDate->diff($latestCreationDate->format('%r%a')) + 1;
                 } else {
-                    $numberOfEventsChildren = (int) $startDate->diff($endDate->format('%r%a')) + 1;
+                    $numberOfEventsChildren = (int) $firstDueDate->diff($endDate->format('%r%a')) + 1;
                 }
             }
+            //! NARRATIF :
+            // Cas 1 : Si l’eventParent a des événements enfants dont les dueDate sont inférieures ou égales à 7 jours après la date de création (createdAt) du parent,
+            // ces événements enfants prendront la même createdAt que le parent, car ils tombent déjà dans la période active.
+            // Cas 2 : Si la dueDate de l'eventEnfant est située à plus de 7 jours après la createdAt de l'eventParent (qui est aussi la date actuelle dans ce contexte), alors :
+            // La createdAt de cet eventEnfant est définie à dueDate - 7 jours, garantissant ainsi que l'enfant commence à être actif dans la plage autorisée.
+            // Cela permet aux événements enfants de respecter la contrainte de +7 jours par rapport à la date actuelle, même lorsque leur dueDate est au-delà de cette limite.
 
+            // Boucle sur le nombre d'enfants à créer
             for ($i = 0; $i < $numberOfEventsChildren; $i++) {
-                $today = $startDate->modify("+{$i} days");
-                $isActiveDay = (int) $today->diff(new DateTimeImmutable('now'))->format('%r%a');
-                if ($isActiveDay >= -3) {
+
+                $dueDate = $firstDueDate->modify("+{$i} days");
+                // Calcul de la différence entre dueDate et createdAtParent
+                $daysUntilDueDate = (int) $createdAtParent->diff($dueDate)->format('%r%a');
+                if ($daysUntilDueDate <= 7) {
+                    // Cas 1 : Si la dueDate de l'enfant est inférieure ou égale à 7 jours après la createdAt du parent,
+                    // la createdAt de cet enfant sera la même que celle du parent.
+                    $createdAt = $updatedAt = $createdAtParent;
+                } else {
+                    // Cas 2 : Si la dueDate de l'enfant est plus de 7 jours après la createdAt du parent,
+                    // la createdAt de cet enfant est définie à `dueDate - 7 jours` pour le placer dans la période active.
+                    $createdAt = $updatedAt = $dueDate->modify("-7 days");
+                }
+
+
+                $isActiveDayInt = (int) $dueDate->diff($now)->format('%r%a');
+                if ($isActiveDayInt >= -3) {
                     $dateStatus = "activeDayRange";
-                    $activeDay = $isActiveDay;
+                    $activeDay = $isActiveDayInt;
                 } else {
                     $dateStatus = "past";
                     $activeDay = null;
                 }
-                $createdAt = $updatedAt = $today;
+
+
                 $event = $this->getEventBase();
                 $event
                     ->setIsRecurring(True)
-                    ->setCreatedAt($createdAt)
-                    ->setUpdatedAt($updatedAt)
+                    ->setCreatedAt($dueDate)
+                    ->setUpdatedAt($dueDate)
                     ->setDateStatus($dateStatus)
                     ->setActiveDay($activeDay)
-                    ->setDueDate($today);
+                    ->setDueDate($dueDate);
 
                 $eventRecurring->addEvent($event);
                 $this->em->persist($eventRecurring);
             }
+
             // case : periodDates
             if ($periodDates) {
                 foreach ($periodDates as $periodDate) {
-                    $date = $periodDate->getDate();
-                    $isActiveDay = (int) $date->diff(new DateTimeImmutable('now'))->format('%r%a');
-                    if ($isActiveDay > 7 || $isActiveDay < -30) {
-                        //on verifie que l'event est dans la feneter d'inscription en bdd qui est de 30 jours avant la date du jour et 7 jours apres.
+                    // on recupére toutes les dates qui sont dans la plage active (+7 à -30 jours par rapport à aujourd'hui)
+                    $dueDate = $periodDate->getDate();
+                    $dueDateInt = (int) $dueDate->diff($now)->format('%r%a');
+                    if ($dueDateInt > 7 || $dueDateInt < -30) {
                         continue;
-                    } elseif ($isActiveDay >= -3) {
+                    } elseif ($dueDateInt >= -3) {
                         $dateStatus = "activeDayRange";
-                        $activeDay = $isActiveDay;
+                        $activeDay = $dueDateInt;
                     } else {
                         $dateStatus = "past";
                         $activeDay = null;
@@ -475,8 +499,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                     $event = $this->getEventBase();
                     $event
                         ->setIsRecurring(True)
-                        ->setCreatedAt($createdAt)
-                        ->setUpdatedAt($updatedAt)
+                        ->setCreatedAt($createdAtParent)
+                        ->setUpdatedAt($updatedAtParent)
                         ->setDateStatus($dateStatus)
                         ->setActiveDay($activeDay)
                         ->setDueDate($date);
@@ -550,7 +574,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
 
     }
-
 
 
     public function createEvents($numEvents): void
