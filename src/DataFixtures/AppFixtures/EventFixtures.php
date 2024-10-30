@@ -485,13 +485,21 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $this->em->persist($eventRecurring);
             }
 
-            // case : periodDates
+            // Période active pour les dates d'événements enfants
+            $now = new DateTimeImmutable();
+            $earliestCreationDate = $now->modify('-30 days');
+            $latestCreationDate = $now->modify('+7 days');
+
+            // Cas : Dates de la période
             if ($periodDates) {
                 foreach ($periodDates as $periodDate) {
-                    // on recupére toutes les dates qui sont dans la plage active (+7 à -30 jours par rapport à aujourd'hui)
+                    // Récupérer toutes les dates dans la plage active (+7 à -30 jours par rapport à aujourd'hui)
                     $dueDate = $periodDate->getDate();
                     $dueDateInt = (int) $dueDate->diff($now)->format('%r%a');
+
+                    // Vérification de la plage active pour déterminer la validité de l'événement enfant
                     if ($dueDateInt > 7 || $dueDateInt < -30) {
+                        // Exclure les dates hors de la plage active
                         continue;
                     } elseif ($dueDateInt >= -3) {
                         $dateStatus = "activeDayRange";
@@ -500,78 +508,126 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                         $dateStatus = "past";
                         $activeDay = null;
                     }
-                    $createdAt = $updatedAt = $date;
+
+                    // Ajustement de la createdAt en fonction de la règle
+                    if ($dueDateInt <= 7) {
+                        // Cas 1 : `dueDate` dans les 7 jours après la création du parent
+                        $createdAt = $updatedAt = $createdAtParent;
+                    } else {
+                        // Cas 2 : `dueDate` au-delà de 7 jours
+                        $createdAt = $updatedAt = $dueDate->modify('-7 days');
+                    }
+
+                    // Création de l'événement enfant
                     $event = $this->getEventBase();
                     $event
-                        ->setIsRecurring(True)
-                        ->setCreatedAt($createdAtParent)
-                        ->setUpdatedAt($updatedAtParent)
+                        ->setIsRecurring(true)
+                        ->setCreatedAt($createdAt)
+                        ->setUpdatedAt($updatedAt)
                         ->setDateStatus($dateStatus)
                         ->setActiveDay($activeDay)
-                        ->setDueDate($date);
+                        ->setDueDate($dueDate);
 
+                    // Ajout de l'événement enfant à l'eventParent
                     $eventRecurring->addEvent($event);
-                    $this->em->persist($eventRecurring);
+                    $this->em->persist($event);
                 }
             }
-            // case : monthDays
+
+            // Cas : monthDays
             if ($monthDays) {
                 foreach ($monthDays as $monthDay) {
+                    // Récupération du jour du mois
                     $day = $monthDay->getDay();
                     $date = new DateTimeImmutable("now");
-                    $date = $date->modify("first day of this month");
-                    $date = $date->modify("+{$day} days");
+                    $date = $date->modify("first day of this month"); // Première date du mois
+                    $date = $date->modify("+{$day} days"); // Ajout du nombre de jours
+
+                    // Calcul du nombre de jours entre 'date' et 'now'
                     $isActiveDay = (int) $date->diff(new DateTimeImmutable('now'))->format('%r%a');
+
+                    // Déterminer l'état de la date (active ou passée)
                     if ($isActiveDay >= -3) {
-                        $dateStatus = "activeDayRange";
+                        $dateStatus = "activeDayRange"; // Date active
                         $activeDay = $isActiveDay;
                     } else {
-                        $dateStatus = "past";
+                        $dateStatus = "past"; // Date déjà passée
                         $activeDay = null;
                     }
-                    $createdAt = $updatedAt = $date;
+
+                    // Ajustement de createdAt et updatedAt
+                    // On vérifie si la date est dans la plage active
+                    if ($isActiveDay <= 7) {
+                        // Si la date est dans les 7 jours suivant la date actuelle
+                        $createdAt = $updatedAt = new DateTimeImmutable('now');
+                    } else {
+                        // Si la date est au-delà de 7 jours
+                        $createdAt = $updatedAt = $date->modify('-7 days');
+                    }
+
+                    // Création de l'événement
                     $event = $this->getEventBase();
                     $event
-                        ->setIsRecurring(True)
+                        ->setIsRecurring(true)
                         ->setCreatedAt($createdAt)
                         ->setUpdatedAt($updatedAt)
                         ->setDateStatus($dateStatus)
                         ->setActiveDay($activeDay)
                         ->setDueDate($date);
 
+                    // Ajout de l'événement à l'événement parent
                     $eventRecurring->addEvent($event);
-                    $this->em->persist($eventRecurring);
+                    $this->em->persist($event);
                 }
             }
-            // case : weekDays
+
+            // Cas : weekDays
             if ($weekDays) {
                 foreach ($weekDays as $weekDay) {
+                    // Récupération du jour de la semaine
                     $day = $weekDay->getDay();
                     $date = new DateTimeImmutable("now");
-                    $date = $date->modify("this week");
-                    $date = $date->modify("+{$day} days");
+                    $date = $date->modify("this week"); // Première date de la semaine
+                    $date = $date->modify("+{$day} days"); // Ajout du nombre de jours
+
+                    // Calcul du nombre de jours entre 'date' et 'now'
                     $isActiveDay = (int) $date->diff(new DateTimeImmutable('now'))->format('%r%a');
+
+                    // Déterminer l'état de la date (active ou passée)
                     if ($isActiveDay >= -3) {
-                        $dateStatus = "activeDayRange";
+                        $dateStatus = "activeDayRange"; // Date active
                         $activeDay = $isActiveDay;
                     } else {
-                        $dateStatus = "past";
+                        $dateStatus = "past"; // Date déjà passée
                         $activeDay = null;
                     }
-                    $createdAt = $updatedAt = $date;
+
+                    // Ajustement de createdAt et updatedAt
+                    // On vérifie si la date est dans la plage active
+                    if ($isActiveDay <= 7) {
+                        // Si la date est dans les 7 jours suivant la date actuelle
+                        $createdAt = $updatedAt = new DateTimeImmutable('now');
+                    } else {
+                        // Si la date est au-delà de 7 jours
+                        $createdAt = $updatedAt = $date->modify('-7 days');
+                    }
+
+                    // Création de l'événement
                     $event = $this->getEventBase();
                     $event
-                        ->setIsRecurring(True)
+                        ->setIsRecurring(true)
                         ->setCreatedAt($createdAt)
                         ->setUpdatedAt($updatedAt)
                         ->setDateStatus($dateStatus)
                         ->setActiveDay($activeDay)
                         ->setDueDate($date);
 
+                    // Ajout de l'événement à l'événement parent
                     $eventRecurring->addEvent($event);
-                    $this->em->persist($eventRecurring);
+                    $this->em->persist($event);
                 }
             }
+
 
 
         }
