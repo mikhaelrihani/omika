@@ -426,11 +426,16 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             // case : isEveryday (avec ou sans periodend)
             if ($everyday) {
 
-                // on calcule le nombre d'eventChild 
+                //! NARRATIF :
+                // Cas 1 : Si lastDueDate est au-delà de la limite de création active (latestCreationDate) ou indéfini,
+                // le nombre d'enfants est déterminé en fonction de la différence entre firstDueDate et latestCreationDate, 
+                // assurant que seuls les enfants dans la période active sont comptabilisés.
+                // Cas 2 : Si lastDueDate est dans la période active, le nombre d'enfants est calculé en fonction de la différence entre firstDueDate et endDate,
+                // assurant que tous les événements sont bien pris en compte jusqu'à la fin de l'événement récurrent (endDate).
                 if ($lastDueDate > $latestCreationDate || $lastDueDate === null) {
-                    $numberOfEventsChildren = (int) $firstDueDate->diff($latestCreationDate->format('%r%a')) + 1;
+                    $numberOfEventsChildren = (int) $firstDueDate->diff($latestCreationDate)->format('%r%a') + 1;
                 } else {
-                    $numberOfEventsChildren = (int) $firstDueDate->diff($endDate->format('%r%a')) + 1;
+                    $numberOfEventsChildren = (int) $firstDueDate->diff($endDate)->format('%r%a') + 1;
                 }
             }
             //! NARRATIF :
