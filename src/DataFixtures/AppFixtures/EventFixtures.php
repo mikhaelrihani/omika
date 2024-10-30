@@ -409,13 +409,11 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $everyday = $eventRecurring->isEveryday();
 
 
-
-            $createdAtEventRecurring = $eventRecurring->getCreatedAt();
             $startDate = $eventRecurring->getPeriodeStart();
             $endDate = $eventRecurring->getPeriodeEnd();
             // on filtre sur start date pour la creation ou non de l' eventchild en verifiant si levent recurrantparent a une date de periode start superierue a 7 jours from today.
             $startDateIsFuture = (int) $startDate->diff(new DateTimeImmutable('now'))->format('%r%a');
-            if ($startDateIsFuture > 7) {
+            if ($startDateIsFuture > 7 || $startDateIsFuture < -30) {
                 // si oui alors l'event ne sera pas créé/inscrit en bdd
                 continue;
                 // si non alors on va creer autant d'events enfants que le nombre de jour entre periode start et le septieme jour de activeDayRange.
@@ -459,8 +457,92 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $this->em->persist($eventRecurring);
             }
             // case : periodDates
+            if ($periodDates) {
+                foreach ($periodDates as $periodDate) {
+                    $date = $periodDate->getDate();
+                    $isActiveDay = (int) $date->diff(new DateTimeImmutable('now'))->format('%r%a');
+                    if ($isActiveDay > 7 || $isActiveDay < -30) {
+                        //on verifie que l'event est dans la feneter d'inscription en bdd qui est de 30 jours avant la date du jour et 7 jours apres.
+                        continue;
+                    } elseif ($isActiveDay >= -3) {
+                        $dateStatus = "activeDayRange";
+                        $activeDay = $isActiveDay;
+                    } else {
+                        $dateStatus = "past";
+                        $activeDay = null;
+                    }
+                    $createdAt = $updatedAt = $date;
+                    $event = $this->getEventBase();
+                    $event
+                        ->setIsRecurring(True)
+                        ->setCreatedAt($createdAt)
+                        ->setUpdatedAt($updatedAt)
+                        ->setDateStatus($dateStatus)
+                        ->setActiveDay($activeDay)
+                        ->setDueDate($date);
+
+                    $eventRecurring->addEvent($event);
+                    $this->em->persist($eventRecurring);
+                }
+            }
             // case : monthDays
+            if ($monthDays) {
+                foreach ($monthDays as $monthDay) {
+                    $day = $monthDay->getDay();
+                    $date = new DateTimeImmutable("now");
+                    $date = $date->modify("first day of this month");
+                    $date = $date->modify("+{$day} days");
+                    $isActiveDay = (int) $date->diff(new DateTimeImmutable('now'))->format('%r%a');
+                    if ($isActiveDay >= -3) {
+                        $dateStatus = "activeDayRange";
+                        $activeDay = $isActiveDay;
+                    } else {
+                        $dateStatus = "past";
+                        $activeDay = null;
+                    }
+                    $createdAt = $updatedAt = $date;
+                    $event = $this->getEventBase();
+                    $event
+                        ->setIsRecurring(True)
+                        ->setCreatedAt($createdAt)
+                        ->setUpdatedAt($updatedAt)
+                        ->setDateStatus($dateStatus)
+                        ->setActiveDay($activeDay)
+                        ->setDueDate($date);
+
+                    $eventRecurring->addEvent($event);
+                    $this->em->persist($eventRecurring);
+                }
+            }
             // case : weekDays
+            if ($weekDays) {
+                foreach ($weekDays as $weekDay) {
+                    $day = $weekDay->getDay();
+                    $date = new DateTimeImmutable("now");
+                    $date = $date->modify("this week");
+                    $date = $date->modify("+{$day} days");
+                    $isActiveDay = (int) $date->diff(new DateTimeImmutable('now'))->format('%r%a');
+                    if ($isActiveDay >= -3) {
+                        $dateStatus = "activeDayRange";
+                        $activeDay = $isActiveDay;
+                    } else {
+                        $dateStatus = "past";
+                        $activeDay = null;
+                    }
+                    $createdAt = $updatedAt = $date;
+                    $event = $this->getEventBase();
+                    $event
+                        ->setIsRecurring(True)
+                        ->setCreatedAt($createdAt)
+                        ->setUpdatedAt($updatedAt)
+                        ->setDateStatus($dateStatus)
+                        ->setActiveDay($activeDay)
+                        ->setDueDate($date);
+
+                    $eventRecurring->addEvent($event);
+                    $this->em->persist($eventRecurring);
+                }
+            }
 
 
         }
@@ -593,7 +675,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $this->em->persist($eventRecurring);
             $this->addReference("eventRecurring_{$e}", $eventRecurring);
 
-           
+
         }
 
 
