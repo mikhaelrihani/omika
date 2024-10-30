@@ -229,95 +229,244 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $info->addSharedWith($user);
 
             }
-
             $info
                 ->setCreatedAt($createdAt)
                 ->setUpdatedAt($updatedAt)
                 ->setUserReadInfoCount($inforeadCounter)
                 ->setSharedWithCount($randomNumOfUsers);
-
         }
-
-
-
-
     }
 
-    public function setEventRecurringType(DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt, int $activeDay = null): EventTask|EventInfo
+    public function setEventRecurringChildType($event, $eventParent): void
     {
+        // la diff entre seteventType est le fait que un eventUnique ne sera pas duplique dans le tps, un recuuring oui.
+        // on va devoir gerer le cas ou un evnt est unrealisede t duplique le lendemain et eviter un doublon si la recurrence avait prévu un event similaire le lendemain.
+        // un event peut avoir un status warning
+        // il y aun un champs recurring pour l id du parent
+        // il faut donc checker sur cchaque eventrecurring les periodes de repetition et creer les events enfants en fonctions de weekly, monthly, everyday, perioddate
+        // methode pour traduire un integer(représentant un jour du mois, ou un mois)vers un timestamps pour horodater l'event enfant.
+        $createdAt = $event->getCreatedAt();
+        $updatedAt = $event->getUpdatedAt();
+        $activeDay = $event->getActiveDay();
+
+        //! dateStatus = past && 
+        $type = $this->faker->boolean;
+        // traitement du type Task 
+        if ($type) {
+            // traitement dans le cas ou Le dateStatus est "activeDayRange"
+            if ($activeDay < 0 && !null) {
+                $taskStatut = $this->faker->randomElement(['done', 'unrealised']);
+                // si l event est marqué comme unrealised, la logique veut que le lendemain on est le meme event(duplicate) avec un task status = "todo" si nous sommes today, sinon le status reste unrealised.
+                if ($taskStatut === 'unrealised') {
+                    for ($i = $activeDay; $i < 0; $i++) {
+                        if ($i === -1) {
+                            $today = new DateTimeImmutable(datetime: 'now');
+
+                            $newEvent = $this->eventDuplicationService->duplicateEventProperties($event);
+                            // ajout des timestamps
+                            $newEvent
+                                ->setActiveDay(0)
+                                ->setDateStatus('activeDayRange')
+                                ->setDueDate($today)
+                                ->setCreatedAt($today)
+                                ->setUpdatedAt($today);
+
+                            // ajout des relations
+                            $newTask = new EventTask();
+                            $newTask
+                                ->setTaskStatus('late')
+                                ->setCreatedAt($today)
+                                ->setUpdatedAt($today);
+                            $newEvent->setTask($newTask);
+
+                        } elseif ($activeDay === -2 || $activeDay === -3) {
+                            $newEvent = $this->eventDuplicationService->duplicateEventProperties($event);
+                            $day = $event->getCreatedAt()->modify("+1 days");
+                            // ajout des timestamps
+                            $newEvent
+                                ->setActiveDay(-1)
+                                ->setDateStatus('activeDayRange')
+                                ->setDueDate($day)
+                                ->setCreatedAt($day)
+                                ->setUpdatedAt($day);
+
+                            // ajout des relations
+                            $newTask = new EventTask();
+                            $newTask
+                                ->setTaskStatus('unrealised')
+                                ->setCreatedAt($day)
+                                ->setUpdatedAt($day);
+                            $newEvent->setTask($newTask);
+                        }
+                    }
+                }
+            } elseif ($activeDay >= 0 && !null) {
+                $task = new EventTask();
+                $task
+                    ->setTaskStatus($this->faker->randomElement(['todo', `todo_modified`, 'done', 'pending']))
+                    ->setCreatedAt($createdAt)
+                    ->setUpdatedAt($updatedAt);
+                $event->setTask($task);
+
+                // traitement dans le cas ou Le dateStatus est "future" 
+            } elseif ($event->getDateStatus() === "future") {
+                $task = new EventTask();
+                $task
+                    ->setTaskStatus($this->faker->randomElement([`todo_modified`, 'done', 'pending']))
+                    ->setCreatedAt($createdAt)
+                    ->setUpdatedAt($updatedAt);
+                $event->setTask($task);
+
+                // traitement dans le cas ou Le dateStatus est "past"
+            } else if ($event->getDateStatus() === "past") {
+                $task = new EventTask();
+                $task
+                    ->setTaskStatus($this->faker->randomElement(['done', 'unrealised']));
+                if ($task->getTaskStatus() === 'unrealised') {
+                    // cela veut dire qu'au moin un event a été créé le jour suivant.
+                    // donc on va faire un random sur le nombre de jour d'affilé ou l'event du lendemain est aussi unrealised.
+                    $randomUnrealisedDays = $this->faker->numberBetween(1, 3);
+                    for ($i = 0; $i <= $randomUnrealisedDays; $i++) {
+
+                        $newEvent = $this->eventDuplicationService->duplicateEventProperties($event);
+                        $dueDate = $event->getDueDate();
+                        $createdAt = $event->getCreatedAt();
+                        $updatedAt = $event->getUpdatedAt();
+
+
+                        // ajout des timestamps
+                        $newEvent
+                            ->setActiveDay(null)
+                            ->setDateStatus('past')
+                            ->setDueDate($dueDate->modify("+{$i} days"))
+                            ->setCreatedAt($createdAt->modify("+{$i} days"))
+                            ->setUpdatedAt($updatedAt->modify("+{$i} days"));
+
+                        // ajout des relations
+                        $newTask = new EventTask();
+                        ($i === $randomUnrealisedDays) ? $taskStatut = "done" : $taskStatut = "unrealised";
+                        $newTask
+                            ->setTaskStatus($taskStatut)
+                            ->setCreatedAt($createdAt->modify("+{$i} days"))
+                            ->setUpdatedAt($updatedAt->modify("+{$i} days"));
+                        $newEvent->setTask($newTask);
+
+                    }
+                } else {
+                    $task
+                        ->setCreatedAt($createdAt)
+                        ->setUpdatedAt($updatedAt);
+                    $event->setTask($task);
+                }
+
+            }
+
+            // traitement du type Info
+        } else {
+
+            $users = $this->retrieveEntities("user", $this);
+            $usersCount = count($users);
+            $randomNumOfUsers = $this->faker->numberBetween(1, $usersCount);
+            $randomUsers = [];
+            $randomUsers[] = $randomUsers[array_rand($users, $randomNumOfUsers)];
+
+            $info = new EventInfo();
+            $inforeadCounter = 0;
+
+            foreach ($randomUsers as $user) {
+                $eventSharedInfo = new EventSharedInfo();
+                $isRead = $this->faker->boolean;
+                if (!$isRead) {
+                    $info->setFullyRead(false);
+                } else {
+                    $inforeadCounter++;
+                }
+                $eventSharedInfo
+                    ->setUser($user)
+                    ->setIsRead($isRead)
+                    ->setCreatedAt($createdAt)
+                    ->setUpdatedAt($updatedAt);
+                $info->addSharedWith($user);
+
+            }
+            $info
+                ->setCreatedAt($createdAt)
+                ->setUpdatedAt($updatedAt)
+                ->setUserReadInfoCount($inforeadCounter)
+                ->setSharedWithCount($randomNumOfUsers);
+        }
     }
 
-    public function createEventsfromRecurring(): void
+    public function createEventsChildrenforEachEventRecurringParent(): void
     {
-        $past_eventsRecurring = $this->retrieveEntities("past_eventRecurring", $this);
-        $active_eventsRecurring = $this->retrieveEntities("active_eventRecurring", $this);
-        $future_eventsRecurring = $this->retrieveEntities("future_eventRecurring", $this);
+        $eventsRecurring = $this->retrieveEntities("eventRecurring", $this);
 
-        $event = $this->getEventBase();
-        $event
-            ->setIsRecurring(True);
+        foreach ($eventsRecurring as $eventRecurring) {
+
+            $periodDates = $eventRecurring->getPeriodDates();
+            $monthDays = $eventRecurring->getMonthDays();
+            $weekDays = $eventRecurring->getWeekDays();
+            $everyday = $eventRecurring->isEveryday();
 
 
-        foreach ($past_eventsRecurring as $eventRecurring) {
+
             $createdAtEventRecurring = $eventRecurring->getCreatedAt();
-            $maxTimestamp = (new DateTimeImmutable(datetime: 'now'))->modify('-4 days')->format('Y-m-d H:i:s');
-            $createdAt = $this->faker->dateTimeImmutableBetween($createdAtEventRecurring->format('Y-m-d H:i:s'), $maxTimestamp);
-            $updatedAt = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $maxTimestamp);
-            $dueDate = $this->faker->dateTimeImmutableBetween(
-                $createdAt,
-                $updatedAt
-            );
-            $event
-                ->setCreatedAt($createdAt)
-                ->setUpdatedAt($updatedAt)
-                ->setDateStatus("past")
-                ->setActiveDay(null)
-                ->setDueDate($dueDate);
+            $startDate = $eventRecurring->getPeriodeStart();
+            $endDate = $eventRecurring->getPeriodeEnd();
+            // on filtre sur start date pour la creation ou non de l' eventchild en verifiant si levent recurrantparent a une date de periode start superierue a 7 jours from today.
+            $startDateIsFuture = (int) $startDate->diff(new DateTimeImmutable('now'))->format('%r%a');
+            if ($startDateIsFuture > 7) {
+                // si oui alors l'event ne sera pas créé/inscrit en bdd
+                continue;
+                // si non alors on va creer autant d'events enfants que le nombre de jour entre periode start et le septieme jour de activeDayRange.
+                // on utilisera ensuite a chaque boucle la methode setEventRecurringChildType pour attribuer un type a chaque event enfant en fonction du type de l event child precedent.
 
-            $eventRecurring->addEvent($event)
-            ;
+            }
+
+
+            // case : isEveryday (avec ou sans periodend)
+            if ($everyday) {
+                // on calcule le nombre d'eventChild 
+                $endDateMax = new DateTimeImmutable('+7 days');
+                if ($endDate > $endDateMax || $endDate === null) {
+                    $numberOfEventsChildren = (int) $startDate->diff($endDateMax->format('%r%a')) + 1;
+                } else {
+                    $numberOfEventsChildren = (int) $startDate->diff($endDate->format('%r%a')) + 1;
+                }
+            }
+
+            for ($i = 0; $i < $numberOfEventsChildren; $i++) {
+                $today = $startDate->modify("+{$i} days");
+                $isActiveDay = (int) $today->diff(new DateTimeImmutable('now'))->format('%r%a');
+                if ($isActiveDay >= -3) {
+                    $dateStatus = "activeDayRange";
+                    $activeDay = $isActiveDay;
+                } else {
+                    $dateStatus = "past";
+                    $activeDay = null;
+                }
+                $createdAt = $updatedAt = $today;
+                $event = $this->getEventBase();
+                $event
+                    ->setIsRecurring(True)
+                    ->setCreatedAt($createdAt)
+                    ->setUpdatedAt($updatedAt)
+                    ->setDateStatus($dateStatus)
+                    ->setActiveDay($activeDay)
+                    ->setDueDate($today);
+
+                $eventRecurring->addEvent($event);
+                $this->em->persist($eventRecurring);
+            }
+            // case : periodDates
+            // case : monthDays
+            // case : weekDays
 
 
         }
 
-        foreach ($active_eventsRecurring as $eventRecurring) {
-            $createdAtEventRecurring = $eventRecurring->getCreatedAt();
-            $maxTimestamp = (new DateTimeImmutable(datetime: 'now'))->modify('+7 days')->format('Y-m-d H:i:s');
-            $createdAt = $this->faker->dateTimeImmutableBetween($createdAtEventRecurring->format('Y-m-d H:i:s'), $maxTimestamp);
-            $updatedAt = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $maxTimestamp);
-            $dueDate = $this->faker->dateTimeImmutableBetween(
-                $createdAt,
-                $updatedAt
-            );
-            // Calcul de activeDay en fonction de l'écart de jours entre today et dueDate
-            $activeday = (int) $dueDate->diff(new DateTimeImmutable('now'))->format('%r%a');
 
-            $event
-                ->setCreatedAt($createdAt)
-                ->setUpdatedAt($updatedAt)
-                ->setDateStatus("activeDayRange")
-                ->setActiveDay($activeday)
-                ->setDueDate($dueDate);
 
-            $eventRecurring->addEvent($event);
-        }
-
-        foreach ($future_eventsRecurring as $eventRecurring) {
-            $createdAtEventRecurring = $eventRecurring->getCreatedAt();
-            $maxTimestamp = (new DateTimeImmutable(datetime: 'now'))->modify('+3 month')->format('Y-m-d H:i:s');
-            $createdAt = $this->faker->dateTimeImmutableBetween($createdAtEventRecurring->format('Y-m-d H:i:s'), $maxTimestamp);
-            $updatedAt = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $maxTimestamp);
-
-            $event
-                ->setCreatedAt($createdAt)
-                ->setUpdatedAt($updatedAt)
-                ->setDateStatus("future")
-                ->setActiveDay(null)
-                ->setDueDate($dueDate);
-
-            $eventRecurring->addEvent($event);
-        }
-        $this->em->persist($eventRecurring);
     }
 
 
@@ -360,7 +509,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
 
 
-    public function createEventRecurring(): void
+    public function createEventRecurringParent(): void
     {
         // L'objectif des fixtures est de simuler un environnement de test réaliste, proche de la production. 
         // Pour cela, il est essentiel de générer des événements enfants pour chaque `EventRecurring`, répartis selon les fenêtres temporelles définies par `datestatus` : `past`, `activeDayRange`, et `future`.
@@ -375,25 +524,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         //! Cependant, plus le chargement des fixtures s’éloigne de la date actuelle, moins les données du active day range seront pertinentes.
         //! Il est donc recommandé de recharger régulièrement les fixtures ou de créer un cron job pour recharger les fixtures, par exemple tous les trois jours.
 
-        for ($e = 0; $e < 200; $e++) {
-
-            // Initialisation des timestamps
-            if ($e <= 40) {
-                // EventRecurring dans le passé
-                $createdAt = $this->faker->dateTimeImmutableBetween('-1 month', '-5 days');
-                $updatedAt = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), '-4 days');
-                $prefix = 'past_';
-            } elseif (41 <= $e <= 151) {
-                // EventRecurring dans la période active
-                $createdAt = $this->faker->dateTimeImmutableBetween('-3 days', '+7 days');
-                $updatedAt = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), 'now');
-                $prefix = 'active_';
-            } else {
-                // EventRecurring dans le futur
-                $createdAt = $this->faker->dateTimeImmutableBetween('+8 days', '+3 month');
-                $updatedAt = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), '+6 days');
-                $prefix = 'future_';
-            }
+        for ($e = 0; $e < 10; $e++) {
+            $timeStamps = $this->faker->createTimeStamps();
+            $createdAt = $timeStamps[ 'createdAt' ];
+            $updatedAt = $timeStamps[ 'updatedAt' ];
 
             // Générer les dates de début et de fin de période
             $periodeStart = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $updatedAt->format('Y-m-d H:i:s'));
@@ -401,7 +535,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
             // Initialisation de l'EventRecurring
             $eventRecurring = new EventRecurring();
-            $eventRecurring->setPeriodeStart($periodeStart)
+            $eventRecurring
+                ->setPeriodeStart($periodeStart)
                 ->setPeriodeEnd($periodeEnd)
                 ->setCreatedAt($createdAt)
                 ->setUpdatedAt($updatedAt);
@@ -455,10 +590,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $eventRecurring->resetRecurringDays();
                 $eventRecurring->setEveryday(true);
             }
-
-            // Persister l'EventRecurring avec le préfixe de référence
             $this->em->persist($eventRecurring);
-            $this->addReference("{$prefix}eventRecurring_{$e}", $eventRecurring);
+            $this->addReference("eventRecurring_{$e}", $eventRecurring);
+
+           
         }
 
 
