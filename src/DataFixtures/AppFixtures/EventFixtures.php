@@ -108,11 +108,64 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $event->setTask($newTask);
     }
 
-    public function duplicatePendingRecurringEvent(event $event)
+
+    public function duplicatePendingRecurringEvent(Event $event)
     {
-        // on doit verifier si l'event a un frere le jour suivant et decider de combien de jours on va le mettre en pending pour finir sur done.
+        $eventParent = $event->getEventRecurring();
+        $eventsBrothers = $eventParent->getEvents();
+
+        // Initialise la date de l'événement courant et le jour suivant
+        $currentDueDate = $event->getDueDate();
+        $nextDueDate = $currentDueDate->modify('+1 day');
+
+        // Vérifie si un frère existe le jour suivant
+        $hasBrotherNextDay = $eventsBrothers->exists(function ($key, $eventBrotherNextDay) use ($nextDueDate) {
+            return $eventBrotherNextDay->getDueDate() == $nextDueDate;
+        });
+
+        // Si un frère est trouvé le jour suivant, on marque l'événement actuel comme "unrealised"
+        if ($hasBrotherNextDay) {
+            $this->setEventTask($event, 'unrealised');
+        } else {
+            // Sinon, on commence à créer des événements duplicata avec le statut "pending"
+            $numberOfPendingDays = $this->faker->numberBetween(1, 7);
+            $i = 1;
+
+            while ($i <= $numberOfPendingDays) {
+                $newEvent = $this->duplicateEvent($event);
+
+                // Vérifie encore une fois pour chaque nouvel événement si un frère est présent le jour suivant
+                $nextDueDate = $newEvent->getDueDate()->modify('+1 day');
+                $hasBrotherNextDay = $eventsBrothers->exists(function ($key, $eventBrotherNextDay) use ($nextDueDate) {
+                    return $eventBrotherNextDay->getDueDate() == $nextDueDate;
+                });
+
+                if ($hasBrotherNextDay) {
+                    // Si un frère est trouvé, on arrête la duplication et on passe au statut final
+                    $this->setEventTask($newEvent, 'done');
+                    break;
+                } else {
+                    // Sinon, on continue avec le statut "pending" ou "done" pour le dernier jour
+                    if ($i === $numberOfPendingDays) {
+                        $this->setEventTask($newEvent, 'done');
+                    } else {
+                        $this->setEventTask($newEvent, 'pending');
+                    }
+
+                    // Ajoute et persiste le nouvel événement
+                    $eventParent->addEvent($newEvent);
+                    $this->em->persist($newEvent);
+                }
+
+                // Passe au prochain événement
+                $event = $newEvent;
+                $i++;
+            }
+        }
+
 
     }
+
 
     public function duplicatePendingEvent(Event $event): void
     {
