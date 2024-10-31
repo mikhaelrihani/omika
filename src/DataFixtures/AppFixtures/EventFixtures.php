@@ -97,7 +97,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         return $newEvent;
     }
 
-    public function setTask($event, $taskStatus)
+    public function setEventTask($event, $taskStatus)
     {
         $newTask = new EventTask();
         $newTask
@@ -106,6 +106,29 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setUpdatedAt($event->getUpdatedAt());
 
         $event->setTask($newTask);
+    }
+
+    public function duplicatePendingRecurringEvent(event $event)
+    {
+        // on doit verifier si l'event a un frere le jour suivant et decider de combien de jours on va le mettre en pending pour finir sur done.
+
+    }
+
+    public function duplicatePendingEvent(Event $event): void
+    {
+        $numberOfPendingDays = $this->faker->numberBetween(1, 7);
+        $i = 1;
+        while ($i <= $numberOfPendingDays) {
+            $newEvent = $this->duplicateEvent($event);
+            if ($i === $numberOfPendingDays) {
+                $this->setEventTask($newEvent, 'done');
+            } else {
+                $this->setEventTask($newEvent, 'pending');
+            }
+            // Met à jour l'événement courant pour la prochaine itération
+            $event = $newEvent;
+            $i++;
+        }
     }
 
     public function duplicateUnrealisedRecurringEvent($event, $RangeStart = "-30days", $RangeEnd = "+7days")
@@ -144,7 +167,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $newEvent = $this->duplicateEvent($eventBrother);
                 // Ajoute une tâche "unrealised" ou un statut spécifique
                 $taskStatus = $this->faker->randomElement(['unrealised', 'done']);
-                $this->setTask($newEvent, $taskStatus);
+                $this->setEventTask($newEvent, $taskStatus);
                 // Ajoute l'événement au parent et persiste
                 $eventParent->addEvent($newEvent);
                 $this->em->persist($newEvent);
@@ -191,10 +214,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
         $createdAt = $event->getCreatedAt();
         $updatedAt = $event->getUpdatedAt();
-        $activeDay = $event->getActiveDay();
         $now = new DateTimeImmutable(datetime: 'now');
-        $eventParent = $event->getEventRecurring();
-        $eventsBrothers = $eventParent->getEvents();
 
         $randomType = $this->faker->boolean; //if ($taskStatut === 'unrealised' && $event->isRecurring()) 
         // traitement du type Task
@@ -214,7 +234,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 // Cas particulier : si la dueDate est hier (-1 jour), on crée un événement avec le statut "late"
                 if ($dueDateDiff === -1) {
                     $newEvent = $this->duplicateEvent($event);
-                    $this->setTask($newEvent, 'late');
+                    $this->setEventTask($newEvent, 'late');
                 }
                 // Si l'événement a un statut "unrealised"
                 elseif ($taskStatut === 'unrealised') {
@@ -224,11 +244,11 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
                         // Vérifie si la date d'échéance du nouvel événement est hier et définit le statut sur "done" si c'est le cas
                         if ($newEvent->getDueDate() === $now->modify('-1 day')) {
-                            $this->setTask($newEvent, 'done');
+                            $this->setEventTask($newEvent, 'done');
                             $taskStatus = 'done';  // Met à jour taskStatus pour arrêter la boucle
                         } else {
                             $taskStatus = $this->faker->randomElement(['unrealised', 'done']);
-                            $this->setTask($newEvent, $taskStatus);
+                            $this->setEventTask($newEvent, $taskStatus);
                         }
 
                         // Met à jour l'événement courant pour la prochaine itération
@@ -241,61 +261,70 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 //! check le cas du pending
                 if ($event->isRecurring()) {
                     $taskStatut = $this->faker->randomElement(['todo', `todo_modified`, 'done', 'pending', "warning"]);
+                    $this->setEventTask($event, $taskStatut);
+                    if ($taskStatut === 'pending') {
+                        $this->duplicatePendingRecurringEvent($event);
+                    }
                 } else {
                     $taskStatut = $this->faker->randomElement(['todo', `todo_modified`, 'done', 'pending']);
-                }
-                $event->setTask($taskStatut);
-
-                // traitement dans le cas apres today
-            } elseif ($dueDateDiff > 0 && $dueDateDiff <= 7) {
-                //! check le cas des event futures inscrit 
-                if ($event->isRecurring()) {
-                    $taskStatut = $this->faker->randomElement([`todo_modified`, 'done', 'pending', "warning"]);
-                } else {
-                    $taskStatut = $this->faker->randomElement([`todo_modified`, 'done', 'pending']);
-                }
-                $event->setTask($taskStatut);
-
-
-
-                // traitement du type Info
-            } else {
-
-                $users = $this->retrieveEntities("user", $this);
-                $usersCount = count($users);
-                $randomNumOfUsers = $this->faker->numberBetween(1, $usersCount);
-                $randomUsers = [];
-                $randomUsers[] = $randomUsers[array_rand($users, $randomNumOfUsers)];
-
-                $info = new EventInfo();
-                $inforeadCounter = 0;
-
-                foreach ($randomUsers as $user) {
-                    $eventSharedInfo = new EventSharedInfo();
-                    $isRead = $this->faker->boolean;
-                    if (!$isRead) {
-                        $info->setFullyRead(false);
-                    } else {
-                        $inforeadCounter++;
+                    $this->setEventTask($event, $taskStatut);
+                    if ($taskStatut === 'pending') {
+                        $this->duplicatePendingEvent($event);
                     }
-                    $eventSharedInfo
-                        ->setUser($user)
-                        ->setIsRead($isRead)
-                        ->setCreatedAt($createdAt)
-                        ->setUpdatedAt($updatedAt);
-                    $info->addSharedWith($user);
 
+
+                    // traitement dans le cas apres today
+                    elseif ($dueDateDiff > 0) {
+
+                        if ($event->isRecurring()) {
+                            $taskStatut = $this->faker->randomElement([`todo_modified`, 'done', 'pending', "warning"]);
+                        } else {
+                            $taskStatut = $this->faker->randomElement([`todo_modified`, 'done', 'pending']);
+                        }
+                        $this->setEventTask($event, $taskStatut);
+
+
+
+                        // traitement du type Info
+                    } else {
+
+                        $users = $this->retrieveEntities("user", $this);
+                        $usersCount = count($users);
+                        $randomNumOfUsers = $this->faker->numberBetween(1, $usersCount);
+                        $randomUsers = [];
+                        $randomUsers[] = $randomUsers[array_rand($users, $randomNumOfUsers)];
+
+                        $info = new EventInfo();
+                        $inforeadCounter = 0;
+
+                        foreach ($randomUsers as $user) {
+                            $eventSharedInfo = new EventSharedInfo();
+                            $isRead = $this->faker->boolean;
+                            if (!$isRead) {
+                                $info->setFullyRead(false);
+                            } else {
+                                $inforeadCounter++;
+                            }
+                            $eventSharedInfo
+                                ->setUser($user)
+                                ->setIsRead($isRead)
+                                ->setCreatedAt($createdAt)
+                                ->setUpdatedAt($updatedAt);
+                            $info->addSharedWith($user);
+
+                        }
+                        $info
+                            ->setCreatedAt($createdAt)
+                            ->setUpdatedAt($updatedAt)
+                            ->setUserReadInfoCount($inforeadCounter)
+                            ->setSharedWithCount($randomNumOfUsers);
+                    }
                 }
-                $info
-                    ->setCreatedAt($createdAt)
-                    ->setUpdatedAt($updatedAt)
-                    ->setUserReadInfoCount($inforeadCounter)
-                    ->setSharedWithCount($randomNumOfUsers);
+
             }
         }
-
+        ;
     }
-
     public function createEvents($numEvents): void
     {
 
