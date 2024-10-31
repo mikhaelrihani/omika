@@ -36,8 +36,11 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         // Créer les sections d'événements
         $this->createSections();
         $this->em->flush();
-        // Créer les événements récurrence
-        $this->createEventRecurring();
+        // Créer les événements récurrence parents
+        $this->createEventRecurringParent();
+        $this->em->flush();
+        // Créer les événements enfants pour chaque événement récurrence parent
+        $this->createEventsChildrenforEachEventRecurringParent();
         $this->em->flush();
         // Créer les événements
         $this->createEvents(200);
@@ -84,8 +87,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     }
 
+
+
     public function setEventType(Event $event): void
-    { // on va devoir gerer le cas ou un evnt est unrealisede t duplique le lendemain et eviter un doublon si la recurrence avait prévu un event similaire le lendemain.
+    {
         $createdAt = $event->getCreatedAt();
         $updatedAt = $event->getUpdatedAt();
         $activeDay = $event->getActiveDay();
@@ -98,7 +103,9 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             if ($activeDay < 0 && !null) {
                 $taskStatut = $this->faker->randomElement(['done', 'unrealised']);
                 // si l event est marqué comme unrealised, la logique veut que le lendemain on est le meme event(duplicate) avec un task status = "late" si nous sommes today, sinon le status reste unrealised.
-                if ($taskStatut === 'unrealised') {
+                // une tache ne peut être signalée et inscrite en bdd comme unrealised que si son activeDay est compris entre -3 et -1 inclus.
+                if ($taskStatut === 'unrealised' && !$event->isRecurring()) {
+
                     for ($i = $activeDay; $i < 0; $i++) {
                         if ($i === -1) {
                             $createdAt = $updatedAt = $now;
@@ -134,125 +141,216 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                             // ajout des relations
                             $newTask = new EventTask();
                             $newTask
-                                ->setTaskStatus('unrealised')
+                                ->setTaskStatus($taskStatut)
                                 ->setCreatedAt($createdAt)
                                 ->setUpdatedAt($updatedAt);
                             $newEvent->setTask($newTask);
                         }
                     }
-                }
-            } elseif ($activeDay >= 0 && !null) {
-                if ($event->isRecurring()) {
-                    $taskStatut = $this->faker->randomElement(['todo', `todo_modified`, 'done', 'pending', "warning"]);
-                } else {
-                    $taskStatut = $this->faker->randomElement(['todo', `todo_modified`, 'done', 'pending']);
-                }
-                $task = new EventTask();
-                $task
-                    ->setTaskStatus($this->faker->randomElement($taskStatut))
-                    ->setCreatedAt($createdAt)
-                    ->setUpdatedAt($updatedAt);
-                $event->setTask($task);
+                    if ($taskStatut === 'unrealised' && $event->isRecurring()) {
+//! narrative :
+// But: créer un nouvel événement récurrent pour aujourd'hui si l'événement d'hier est "unrealised" et qu'aucun autre événement n'est prévu pour aujourd'hui.
+// Filtrer les événements frères : Le code récupère uniquement les événements frères "unrealised" situés entre -3 et -1 jours par rapport au activeDay.
+// Vérification d'événement pour aujourd'hui : Le code vérifie si un événement frère existe déjà pour le jour actuel ($activeDay).
+// S’il y en a, cela signifie qu’on n’a pas besoin de représenter cet événement aujourd’hui.
+// Vérification d'un frère "unrealised" la veille : Si un événement frère avec activeDay de -1 est "unrealised", cela indique qu'on doit représenter l'événement actuel.
+// Création d'un nouvel événement : Si aucun frère n’existe pour le jour actuel et qu’il y a un frère "unrealised" la veille, un nouvel événement est créé,
+// ses propriétés sont configurées, et son statut de tâche est défini à "late".
 
-                // traitement dans le cas ou Le dateStatus est "future" 
-            } elseif ($event->getDateStatus() === "future") {
-                if ($event->isRecurring()) {
-                    $taskStatut = $this->faker->randomElement([`todo_modified`, 'done', 'pending', "warning"]);
-                } else {
-                    $taskStatut = $this->faker->randomElement([`todo_modified`, 'done', 'pending']);
-                }
-                $task = new EventTask();
-                $task
-                    ->setTaskStatus($this->faker->randomElement($taskStatut))
-                    ->setCreatedAt($createdAt)
-                    ->setUpdatedAt($updatedAt);
-                $event->setTask($task);
 
-                // traitement dans le cas ou Le dateStatus est "past"
-            } else if ($event->getDateStatus() === "past") {
-                $task = new EventTask();
-                $task
-                    ->setTaskStatus($this->faker->randomElement(['done', 'unrealised']));
-                if ($task->getTaskStatus() === 'unrealised') {
-                    // cela veut dire qu'au moin un event a été créé le jour suivant.
-                    // on va donc récupérer le nombre de jour entre le dueDate du premier event child, et le comparer avec la derniere date future(max= today-4days),
-                    // puis prendre un nombre au hasard entre 1 et ce nombre de jours, et créer un event pour chaque jour.
-                    // donc l'event du lendemain est aussi unrealised jusquàu dernier qui aura le status done.
-                    $dueDate = $event->getDueDate();
-                    $latestPastDate = $now->modify('-4 days');
-                    $randomUnrealisedDays = $this->faker->numberBetween(1, $dueDate->diff($latestPastDate)->format('%r%a'));
+                        $eventParent = $event->getEventRecurring();
+                        $eventsBrothers = $eventParent->getEvents();
+                        
+                        // Filtrer les frères avec statut "unrealised" dans la plage active (-3 à -1 jours)
+                        $eventsBrothersInRange = $eventsBrothers->filter(function ($eventBrother) use ($activeDay) {
+                            return $eventBrother->getTask()->getTaskStatus() === "unrealised"
+                                && $eventBrother->getActiveDay() >= $activeDay - 3
+                                && $eventBrother->getActiveDay() <= $activeDay - 1;
+                        })->toArray();
+                        
+                        foreach ($eventsBrothersInRange as $eventBrother) {
+                            $currentActiveDay = $eventBrother->getActiveDay();
+                        
+                            // Vérifier s'il existe un événement frère pour aujourd'hui (même activeDay que l'événement en cours)
+                            $hasBrotherToday = $eventsBrothers->exists(function ($key, $todayEventBrother) use ($activeDay) {
+                                return $todayEventBrother->getActiveDay() === $activeDay;
+                            });
+                        
+                            // Vérifier si l'événement frère de la veille est "unrealised"
+                            $hasUnrealisedBrotherYesterday = $eventsBrothers->exists(function ($key, $yesterdayEventBrother) use ($currentActiveDay) {
+                                return $yesterdayEventBrother->getActiveDay() === $currentActiveDay - 1
+                                    && $yesterdayEventBrother->getTask()->getTaskStatus() === "unrealised";
+                            });
+                        
+                            // Si aucun frère n'existe aujourd'hui et qu'il y a un frère "unrealised" hier, créer un nouvel événement
+                            if (!$hasBrotherToday && $hasUnrealisedBrotherYesterday) {
+                                $newEvent = $this->eventDuplicationService->duplicateEventProperties($eventBrother);
+                                
+                                // Ajouter les propriétés
+                                $newEvent
+                                    ->setActiveDay($activeDay)
+                                    ->setDateStatus('activeDayRange')
+                                    ->setDueDate(new \DateTimeImmutable('now'))  // ou la date due spécifique
+                                    ->setCreatedAt(new \DateTimeImmutable('now'))
+                                    ->setUpdatedAt(new \DateTimeImmutable('now'));
+                        
+                                // Créer une nouvelle tâche pour cet événement avec statut "late"
+                                $newTask = new EventTask();
+                                $newTask
+                                    ->setTaskStatus('late')
+                                    ->setCreatedAt(new \DateTimeImmutable('now'))
+                                    ->setUpdatedAt(new \DateTimeImmutable('now'));
+                                
+                                $newEvent->setTask($newTask);
+                                
+                                // Ajouter et persister l'événement
+                                $eventParent->addEvent($newEvent);
+                                $this->em->persist($newEvent);
+                                $this->em->persist($newTask);
+                            }
+                        }
+                        
 
-                    for ($i = 0; $i <= $randomUnrealisedDays; $i++) {
-
-                        $newEvent = $this->eventDuplicationService->duplicateEventProperties($event);
-                        $dueDate = $event->getDueDate()->modify("+{$i} days");
-                        $createdAt = $event->getCreatedAt()->modify("+{$i} days");
-                        $updatedAt = $event->getUpdatedAt()->modify("+{$i} days");
-
-                        // ajout des timestamps
-                        $newEvent
-                            ->setActiveDay(null)
-                            ->setDateStatus('past')
-                            ->setDueDate($dueDate)
-                            ->setCreatedAt($createdAt)
-                            ->setUpdatedAt($updatedAt);
-
-                        // ajout des relations
-                        $newTask = new EventTask();
-                        ($i === $randomUnrealisedDays) ? $taskStatut = "done" : $taskStatut = "unrealised";
-                        $newTask
-                            ->setTaskStatus($taskStatut)
-                            ->setCreatedAt($createdAt)
-                            ->setUpdatedAt($updatedAt);
-                        $newEvent->setTask($newTask);
 
                     }
-                } else {
+
+                } elseif ($activeDay >= 0 && !null) {
+                    if ($event->isRecurring()) {
+
+
+
+                            // Définir le statut de tâche en conséquence
+                            $taskStatus = $this->faker->randomElement(['todo', 'todo_modified', 'done', 'pending', 'warning', 'late']);
+                        } else {
+                            // Définir le statut de tâche si aucun frère "unrealised" n'existe ou si un frère existe le jour suivant
+                            $taskStatus = $this->faker->randomElement(['todo', 'todo_modified', 'done', 'pending', 'warning']);
+                        }
+
+
+                        // si pas d'event freer alors il faut dupliquer un event avec un statut unrealsied ou done pour terminer le process,
+                        // et ceux jusqu'a la date de son frere le plus proche dans le futur de cette plage  -3 -1.
+
+                        // on vérifie que l'event frere de la veille n'a pas un task status = unrealised, car dans ce cas l'event d'aujourdhui pourrait aussi avoir un status late.
+                        $eventBrotherYesterday = $eventsBrothers->filter(function ($eventBrother) use ($activeDay) {
+                            // Vérifie que l'événement frère est "unrealised" et a un activeDay égal à $activeDay - 1
+                            return ($eventBrother->getTask()->getTaskStatus() === "unrealised")
+                                && ($eventBrother->getActiveDay() === $activeDay - 1);
+                        });
+
+                        if ($eventBrotherYesterday) {
+                            $taskStatut = $this->faker->randomElement(['todo', `todo_modified`, 'done', 'pending', "warning", 'late']);
+                        } else {
+                            $taskStatut = $this->faker->randomElement(['todo', `todo_modified`, 'done', 'pending', "warning"]);
+                        }
+                    } else {
+                        $taskStatut = $this->faker->randomElement(['todo', `todo_modified`, 'done', 'pending']);
+                    }
+                    $task = new EventTask();
                     $task
+                        ->setTaskStatus($this->faker->randomElement($taskStatut))
                         ->setCreatedAt($createdAt)
                         ->setUpdatedAt($updatedAt);
                     $event->setTask($task);
+
+                    // traitement dans le cas ou Le dateStatus est "future" 
+                } elseif ($event->getDateStatus() === "future") {
+                    if ($event->isRecurring()) {
+                        $taskStatut = $this->faker->randomElement([`todo_modified`, 'done', 'pending', "warning"]);
+                    } else {
+                        $taskStatut = $this->faker->randomElement([`todo_modified`, 'done', 'pending']);
+                    }
+                    $task = new EventTask();
+                    $task
+                        ->setTaskStatus($this->faker->randomElement($taskStatut))
+                        ->setCreatedAt($createdAt)
+                        ->setUpdatedAt($updatedAt);
+                    $event->setTask($task);
+
+                    // traitement dans le cas ou Le dateStatus est "past"
+                } else if ($event->getDateStatus() === "past") {
+                    $task = new EventTask();
+                    $task
+                        ->setTaskStatus($this->faker->randomElement(['done', 'unrealised']));
+                    if ($task->getTaskStatus() === 'unrealised') {
+                        // cela veut dire qu'au moin un event a été créé le jour suivant.
+                        // on va donc récupérer le nombre de jour entre le dueDate du premier event child, et le comparer avec la derniere date future(max= today-4days),
+                        // puis prendre un nombre au hasard entre 1 et ce nombre de jours, et créer un event pour chaque jour.
+                        // donc l'event du lendemain est aussi unrealised jusquàu dernier qui aura le status done.
+                        $dueDate = $event->getDueDate();
+                        $latestPastDate = $now->modify('-4 days');
+                        $randomUnrealisedDays = $this->faker->numberBetween(1, $dueDate->diff($latestPastDate)->format('%r%a'));
+
+                        for ($i = 0; $i <= $randomUnrealisedDays; $i++) {
+
+                            $newEvent = $this->eventDuplicationService->duplicateEventProperties($event);
+                            $dueDate = $event->getDueDate()->modify("+{$i} days");
+                            $createdAt = $event->getCreatedAt()->modify("+{$i} days");
+                            $updatedAt = $event->getUpdatedAt()->modify("+{$i} days");
+
+                            // ajout des timestamps
+                            $newEvent
+                                ->setActiveDay(null)
+                                ->setDateStatus('past')
+                                ->setDueDate($dueDate)
+                                ->setCreatedAt($createdAt)
+                                ->setUpdatedAt($updatedAt);
+
+                            // ajout des relations
+                            $newTask = new EventTask();
+                            ($i === $randomUnrealisedDays) ? $taskStatut = "done" : $taskStatut = "unrealised";
+                            $newTask
+                                ->setTaskStatus($taskStatut)
+                                ->setCreatedAt($createdAt)
+                                ->setUpdatedAt($updatedAt);
+                            $newEvent->setTask($newTask);
+
+                        }
+                    } else {
+                        $task
+                            ->setCreatedAt($createdAt)
+                            ->setUpdatedAt($updatedAt);
+                        $event->setTask($task);
+                    }
+
                 }
 
-            }
+                // traitement du type Info
+            } else {
 
-            // traitement du type Info
-        } else {
+                $users = $this->retrieveEntities("user", $this);
+                $usersCount = count($users);
+                $randomNumOfUsers = $this->faker->numberBetween(1, $usersCount);
+                $randomUsers = [];
+                $randomUsers[] = $randomUsers[array_rand($users, $randomNumOfUsers)];
 
-            $users = $this->retrieveEntities("user", $this);
-            $usersCount = count($users);
-            $randomNumOfUsers = $this->faker->numberBetween(1, $usersCount);
-            $randomUsers = [];
-            $randomUsers[] = $randomUsers[array_rand($users, $randomNumOfUsers)];
+                $info = new EventInfo();
+                $inforeadCounter = 0;
 
-            $info = new EventInfo();
-            $inforeadCounter = 0;
+                foreach ($randomUsers as $user) {
+                    $eventSharedInfo = new EventSharedInfo();
+                    $isRead = $this->faker->boolean;
+                    if (!$isRead) {
+                        $info->setFullyRead(false);
+                    } else {
+                        $inforeadCounter++;
+                    }
+                    $eventSharedInfo
+                        ->setUser($user)
+                        ->setIsRead($isRead)
+                        ->setCreatedAt($createdAt)
+                        ->setUpdatedAt($updatedAt);
+                    $info->addSharedWith($user);
 
-            foreach ($randomUsers as $user) {
-                $eventSharedInfo = new EventSharedInfo();
-                $isRead = $this->faker->boolean;
-                if (!$isRead) {
-                    $info->setFullyRead(false);
-                } else {
-                    $inforeadCounter++;
                 }
-                $eventSharedInfo
-                    ->setUser($user)
-                    ->setIsRead($isRead)
+                $info
                     ->setCreatedAt($createdAt)
-                    ->setUpdatedAt($updatedAt);
-                $info->addSharedWith($user);
-
+                    ->setUpdatedAt($updatedAt)
+                    ->setUserReadInfoCount($inforeadCounter)
+                    ->setSharedWithCount($randomNumOfUsers);
             }
-            $info
-                ->setCreatedAt($createdAt)
-                ->setUpdatedAt($updatedAt)
-                ->setUserReadInfoCount($inforeadCounter)
-                ->setSharedWithCount($randomNumOfUsers);
         }
-    }
 
-   
+    }
 
     public function createEvents($numEvents): void
     {
