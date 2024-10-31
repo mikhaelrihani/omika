@@ -188,6 +188,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     public function setEventType(Event $event): void
     {
+
         $createdAt = $event->getCreatedAt();
         $updatedAt = $event->getUpdatedAt();
         $activeDay = $event->getActiveDay();
@@ -195,58 +196,79 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $eventParent = $event->getEventRecurring();
         $eventsBrothers = $eventParent->getEvents();
 
-        $randomType = $this->faker->boolean;
+        $randomType = $this->faker->boolean; //if ($taskStatut === 'unrealised' && $event->isRecurring()) 
         // traitement du type Task
         if ($randomType) {
+            // traitement dans le cas ou L'event a une dueDate dans la plage active (-30 jours inclus à aujourd'hui non inclus)
+
+            $dueDate = $event->getDueDate();
+            $dueDateDiff = $dueDate->diff($now)->format('%r%a');
+            // si l'event est marqué comme unrealised,on duplique l'event avec un task status = "late" pour aujourdhui, unrealised ou done sinon.
+            // la duplication s'arrete qd le task status est done.
+            // une tache ne peut être signalée et inscrite en bdd comme unrealised que si dueDate est entre -30 et -1 inclus.
+
+            // Traitement dans le cas où l'événement est non récurrent et a une dueDate dans la plage active (-30 jours inclus à aujourd'hui non inclus)
+            if (!$event->isRecurring() && $dueDateDiff >= -30 && $dueDateDiff < 0) {
+                $taskStatut = $this->faker->randomElement(['done', 'unrealised']);
+
+                // Cas particulier : si la dueDate est hier (-1 jour), on crée un événement avec le statut "late"
+                if ($dueDateDiff === -1) {
+                    $newEvent = $this->duplicateEvent($event);
+                    $this->setTask($newEvent, 'late');
+                }
+                // Si l'événement a un statut "unrealised"
+                elseif ($taskStatut === 'unrealised') {
+
+                    do {
+                        $newEvent = $this->duplicateEvent($event);
+
+                        // Vérifie si la date d'échéance du nouvel événement est hier et définit le statut sur "done" si c'est le cas
+                        if ($newEvent->getDueDate() === $now->modify('-1 day')) {
+                            $this->setTask($newEvent, 'done');
+                            $taskStatus = 'done';  // Met à jour taskStatus pour arrêter la boucle
+                        } else {
+                            $taskStatus = $this->faker->randomElement(['unrealised', 'done']);
+                            $this->setTask($newEvent, $taskStatus);
+                        }
+
+                        // Met à jour l'événement courant pour la prochaine itération
+                        $event = $newEvent;
+
+                    } while ($taskStatus === 'unrealised');
+                }
+            }
+
+
+
+        } elseif ($activeDay >= 0 && !null) {
+            if ($event->isRecurring()) {
+
+
+            }
+
+
             // traitement dans le cas ou Le dateStatus est "activeDayRange"
             if ($activeDay < 0 && !null) {
                 $taskStatut = $this->faker->randomElement(['done', 'unrealised']);
-                // si l event est marqué comme unrealised, la logique veut que le lendemain on est le meme event(duplicate) avec un task status = "late" si nous sommes today, sinon le status reste unrealised.
-                // une tache ne peut être signalée et inscrite en bdd comme unrealised que si son activeDay est compris entre -3 et -1 inclus.
+
                 if ($taskStatut === 'unrealised' && !$event->isRecurring()) {
 
                     for ($i = $activeDay; $i < 0; $i++) {
                         if ($i === -1) {
-                            $createdAt = $updatedAt = $now;
+                            $newEvent = $this->duplicateEvent($event);
+                            $this->setTask($newEvent, 'late');
 
-                            $newEvent = $this->eventDuplicationService->duplicateEventProperties($event);
-                            // ajout des timestamps
-                            $newEvent
-                                ->setActiveDay(0)
-                                ->setDateStatus('activeDayRange')
-                                ->setDueDate($now)
-                                ->setCreatedAt($createdAt)
-                                ->setUpdatedAt($updatedAt);
-
-                            // ajout des relations
-                            $newTask = new EventTask();
-                            $newTask
-                                ->setTaskStatus('late')
-                                ->setCreatedAt($createdAt)
-                                ->setUpdatedAt($updatedAt);
-                            $newEvent->setTask($newTask);
-
-                        } elseif ($activeDay === -2 || $activeDay === -3) {
-                            $newEvent = $this->eventDuplicationService->duplicateEventProperties($event);
-                            $createdAt = $updatedAt = $dueDate = $event->getCreatedAt()->modify("+1 days");
-                            // ajout des timestamps
-                            $newEvent
-                                ->setActiveDay(-1)
-                                ->setDateStatus('activeDayRange')
-                                ->setDueDate($dueDate)
-                                ->setCreatedAt($createdAt)
-                                ->setUpdatedAt($updatedAt);
-
-                            // ajout des relations
-                            $newTask = new EventTask();
-                            $newTask
-                                ->setTaskStatus($taskStatut)
-                                ->setCreatedAt($createdAt)
-                                ->setUpdatedAt($updatedAt);
-                            $newEvent->setTask($newTask);
+                        } else {
+                            do {
+                                $newEvent = $this->duplicateEvent($event);
+                                $taskStatus = $this->faker->randomElement(['unrealised', 'done']);
+                                $this->setTask($newEvent, $taskStatus);
+                                // Met à jour les variables pour la prochaine itération ou pour arrêter la boucle
+                                $event = $newEvent;
+                                $i++;
+                                // La boucle continue tant que le statut de la tâche du nouvel événement est 'unrealised'
+                            } while ($taskStatus === 'unrealised');
                         }
-                    }
-                    if ($taskStatut === 'unrealised' && $event->isRecurring()) {
 
                     }
 
