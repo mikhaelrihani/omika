@@ -112,7 +112,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     {
         $eventParent = $event->getEventRecurring();
         $eventsBrothers = $eventParent->getEvents();
-        $now = new DateTimeImmutable('now');
 
         $dateRangeStart = new DateTimeImmutable($RangeStart);
         $dateRangeEnd = new DateTimeImmutable($RangeEnd);
@@ -155,9 +154,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $hasBrotherNextDay = $eventsBrothers->exists(function ($key, $eventBrotherNextDay) use ($nextDueDate) {
                     return $eventBrotherNextDay->getDueDate() == $nextDueDate;
                 });
-
-                // Arrête la boucle dès qu'un frère est trouvé pour le jour suivant
-                if ($hasBrotherNextDay) {
+                // Arrête la duplication si le nouvel événement est marqué comme "done"
+                if ($taskStatus === 'done') {
                     break;
                 }
             }
