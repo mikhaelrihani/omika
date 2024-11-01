@@ -14,6 +14,8 @@ use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Uid\Uuid;
 
+
+
 /**
  * Class UserFixtures
  *
@@ -21,6 +23,8 @@ use Symfony\Component\Uid\Uuid;
  */
 class UserFixtures extends BaseFixtures
 {
+   
+
     private array $businessEntities;
     /**
      * @var array $pictures Array of pictures retrieved for setting user avatars.

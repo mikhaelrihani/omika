@@ -79,6 +79,11 @@ services:
             $from: '%env(TWILIO_FROM_NUMBER)%' 
 
     App\Service\EventDuplicationService:
+        autowire: true
+        autoconfigure: true
+        public: true # Or omit this line for default behavior
+
+
       
 
     # add more service definitions when explicit configuration is needed
