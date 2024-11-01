@@ -14,7 +14,6 @@ use App\Entity\event\Issue;
 use App\Entity\Event\MonthDay;
 use App\Entity\Event\PeriodDate;
 use App\Entity\Event\WeekDay;
-use App\Service\EventDuplicationService;
 use DateTimeImmutable;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
@@ -23,11 +22,6 @@ use Doctrine\Persistence\ObjectManager;
 class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 {
 
-
-    public function __construct(protected EventDuplicationService $eventDuplicationService)
-    {
-
-    }
 
     public function load(ObjectManager $manager): void
     {
@@ -50,7 +44,18 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->em->flush();
 
     }
-
+    /**
+     * Crée des incidents (issues) et les enregistre dans la base de données.
+     *
+     * Cette méthode génère une liste de 30 incidents en assignant des valeurs aléatoires aux propriétés
+     * de chaque incident, y compris l'auteur, les techniciens concernés, les dates, et d'autres détails.
+     * Chaque incident est créé avec des informations de suivi et un numéro d'identification unique.
+     * 
+     * La méthode utilise un utilisateur aléatoire comme auteur et attribue des techniciens ayant
+     * le titre "technicien" aux rôles de technicien contacté et technicien à venir.
+     *
+     * @return void
+     */
     public function createIssues()
     {
         $users = $this->retrieveEntities("user", $this);
@@ -104,12 +109,21 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         }
 
     }
-
+    /**
+     * Crée des sections et les enregistre dans la base de données.
+     *
+     * Cette méthode génère plusieurs sections, chaque section ayant un nom défini dans la liste
+     * retournée par `getSectionList`. Chaque section reçoit également des timestamps de création et
+     * de mise à jour aléatoires. Un identifiant de référence unique est ajouté pour chaque section
+     * pour une utilisation ultérieure.
+     *
+     * @return void
+     */
     public function createSections(): void
     {
         $timestamps = $this->faker->createTimeStamps();
 
-        $Sections = $this->faker->getSectionList()();
+        $Sections = $this->faker->getSectionList();
         $s = 0;
         foreach ($Sections as $section) {
             $Section = new Section();
@@ -123,7 +137,19 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     }
 
-
+    /**
+     * Crée un certain nombre d'événements dont le statut est "activeDayRange".
+     *
+     * Cette méthode génère des événements en utilisant des timestamps aléatoires
+     * pour les dates de création et de mise à jour. Les événements créés auront
+     * une date d'échéance située entre la date de création et la date de mise à jour.
+     * Le statut de l'événement est défini en fonction de l'intervalle de jours
+     * par rapport à la date actuelle.
+     *
+     * @param int $numEvents Le nombre d'événements à créer.
+     *
+     * @return void
+     */
     public function createEventsActiveDayRange($numEvents): void
     {
         for ($e = 0; $e < $numEvents; $e++) {
@@ -131,8 +157,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $createdAt = $timestamps[ 'createdAt' ];
             $updatedAt = $timestamps[ 'updatedAt' ];
             $dueDate = $this->faker->dateTimeImmutableBetween(
-                $createdAt,
-                $updatedAt
+                $createdAt->format('Y-m-d H:i:s'), $updatedAt->format('Y-m-d H:i:s'),
+                $updatedAt->format('Y-m-d H:i:s'), $updatedAt->format('Y-m-d H:i:s')
             );
             $activeDayInt = (int) $dueDate->diff(new DateTimeImmutable('now'))->format('%r%a');
             // Limite $activeDayInt entre -3 et 7
@@ -151,7 +177,17 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $this->em->persist($event);
         }
     }
-
+    /**
+     * Crée des événements récurrents parent.
+     *
+     * Cette méthode génère des événements récurrents en simulant un environnement de test
+     * réaliste, en tenant compte des fenêtres temporelles définies par les statuts
+     * `past`, `activeDayRange`, et `future`. Chaque événement récurrent est créé avec
+     * des dates de début et de fin de période, et des types de récurrence aléatoires sont
+     * attribués.
+     *
+     * @return void
+     */
     public function createEventRecurringParent(): void
     {
         // The goal of the fixtures is to simulate a realistic test environment close to production.
@@ -240,7 +276,17 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         }
     }
 
-
+    /**
+     * Crée des événements enfants pour chaque événement récurrent parent.
+     *
+     * Cette méthode génère des événements enfants pour chaque événement récurrent en
+     * récupérant les propriétés de l'événement parent. Les événements enfants sont créés
+     * selon les dates de récurrence définies, y compris les jours de la semaine, les jours
+     * du mois et les dates spécifiques. Les événements sont filtrés en fonction de
+     * l'intervalle de création actif.
+     *
+     * @return void
+     */
     public function createEventsChildrenforEachEventRecurringParent(): void
     {
         $eventsRecurring = $this->retrieveEntities("eventRecurring", $this);
@@ -302,9 +348,59 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             }
         }
     }
+    /**
+     * Duplique les propriétés d'un événement existant.
+     *
+     * Cette méthode crée une nouvelle instance d'Event et copie les propriétés pertinentes
+     * de l'événement original, y compris le titre, la description, le type, et d'autres
+     * propriétés. Une nouvelle section est également créée pour le nouvel événement.
+     *
+     * @param Event $originalEvent L'événement original dont les propriétés doivent être dupliquées.
+     *
+     * @return Event Le nouvel événement contenant les propriétés copiées de l'événement original.
+     */
+    public function duplicateEventProperties(Event $originalEvent): Event
+    {
+        // Create a new instance of Section for the duplicated event
+        $newSection = new Section();
 
+        // Retrieve the section name from the original event
+        $sectionName = $originalEvent->getSection() ? $originalEvent->getSection()->getName() : null;
 
+        // Create a new Event instance
+        $newEvent = new Event();
 
+        // Copy properties from the original event to the new event
+        $newEvent->setIsRecurring($originalEvent->isRecurring());
+        $newEvent->setSide($originalEvent->getSide());
+        $newEvent->setType($originalEvent->getType());
+        $newEvent->setTitle($originalEvent->getTitle());
+        $newEvent->setDescription($originalEvent->getDescription());
+        $newEvent->setCreatedBy($originalEvent->getCreatedBy());
+        $newEvent->setUpdatedBy($originalEvent->getUpdatedBy());
+        $newEvent->setIsImportant($originalEvent->isImportant());
+
+        // Set the new section with the name from the original event
+        if ($sectionName) {
+            $newSection->setName($sectionName);
+            $newEvent->setSection($newSection);
+        }
+
+        return $newEvent;
+    }
+
+    /**
+     * Duplique un événement en ajustant les dates et le statut.
+     *
+     * Cette méthode crée un nouvel événement basé sur un événement existant, en ajustant
+     * la date d'échéance, les dates de création et de mise à jour. Elle définit également
+     * le statut de date de l'événement basé sur la différence entre la date d'échéance
+     * et la date actuelle.
+     *
+     * @param Event $event L'événement à dupliquer.
+     *
+     * @return Event Le nouvel événement dupliqué avec les propriétés ajustées.
+     */
     public function duplicateEvent($event): Event
     {
         $dueDate = $event->getDueDate()->modify('+1 day');
@@ -323,7 +419,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $dateStatus = "activeDayRange";
             $activeDay = (int) $dueDateDiff;
         }
-        $newEvent = $this->eventDuplicationService->duplicateEventProperties($event);
+        $newEvent = $this->duplicateEventProperties($event);
         $newEvent
             ->setDateStatus($dateStatus)
             ->setActiveDay($activeDay)
@@ -335,6 +431,17 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         return $newEvent;
     }
 
+    /**
+     * Duplique un événement en attente pour un certain nombre de jours.
+     *
+     * Cette méthode crée plusieurs duplicatas d'un événement en attente pour un nombre
+     * de jours déterminé aléatoirement. Le statut de l'événement final est défini sur "done"
+     * si c'est le dernier jour de duplication, sinon il est défini sur "pending".
+     *
+     * @param Event $event L'événement à dupliquer en attente.
+     *
+     * @return void
+     */
     public function duplicatePendingEvent(Event $event): void
     {
         $numberOfPendingDays = $this->faker->numberBetween(1, 7);
@@ -359,7 +466,18 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         }
     }
 
-
+    /**
+     * Duplique un événement récurrent en attente en vérifiant les événements frères.
+     *
+     * Cette méthode duplique un événement récurrent en attente, en vérifiant si un frère
+     * existe le jour suivant. Si un frère est trouvé, l'événement actuel est marqué comme
+     * "unrealised". Sinon, plusieurs duplicatas sont créés, en ajustant les statuts
+     * en fonction de la présence d'événements frères.
+     *
+     * @param Event $event L'événement récurrent à dupliquer.
+     *
+     * @return void
+     */
     public function duplicatePendingRecurringEvent(Event $event)
     {
         $eventParent = $event->getEventRecurring();
@@ -420,7 +538,21 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     }
 
-
+    /**
+     * Duplique les événements récurrents non réalisés dans une plage de dates spécifiée.
+     *
+     * Cette méthode parcourt les événements frères d'un événement récurrent donné et duplique ceux qui sont marqués
+     * comme non réalisés (status "unrealised") dans une plage de dates définie par les paramètres $RangeStart et 
+     * $RangeEnd. Si un événement frère existe le jour suivant, aucun nouvel événement ne sera créé pour combler 
+     * l'écart. Si le jour précédent d'un événement est marqué comme fait (status "done"), aucun événement ne sera créé 
+     * pour ce jour-là.
+     *
+     * @param Event $event L'événement dont on souhaite dupliquer les événements récurrents non réalisés.
+     * @param string $RangeStart La date de début de la plage de dates (par défaut: "-30days").
+     * @param string $RangeEnd La date de fin de la plage de dates (par défaut: "-1day").
+     *
+     * @return void
+     */
     public function duplicateUnrealisedRecurringEvent($event, $RangeStart = "-30days", $RangeEnd = "-1day")
     {
         $eventParent = $event->getEventRecurring();
@@ -490,7 +622,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     }
 
 
-
+    /**
+     * Crée une instance d'Event avec des propriétés de base.
+     *
+     * Cette méthode initialise un nouvel événement avec des valeurs aléatoires pour la description,
+     * l'importance et le côté (kitchen ou office). Elle assigne également une section aléatoire
+     * à l'événement à partir de celles disponibles dans la base de données.
+     *
+     * @return Event L'objet Event nouvellement créé avec des propriétés de base.
+     */
     public function setEventBase(): Event
     {
         $sections = $this->retrieveEntities("section", $this);
@@ -502,7 +642,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setSide($this->faker->randomElement(['kitchen', 'office']));
 
         $section = new Section();
-        $section->setName($sections[array_rand($sections)]);
+        $section->setName($sections[array_rand($sections)]->getName());
         $event
             ->setSection($section);
 
@@ -511,7 +651,13 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     }
 
-
+    /**
+     * Set the event type based on random conditions and the event's due date.
+     *
+     * @param Event $event The event entity to set the type for.
+     *
+     * @return void
+     */
     public function setEventType(Event $event): void
     {
         $createdAt = $event->getCreatedAt();
@@ -551,7 +697,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 } else {
                     $this->setEventTask($event, 'done');
                 }
-                ;
 
                 // Cas des événements récurrents dans la plage active (-30 jours à aujourd'hui non inclus)
             } elseif ($event->isRecurring() && $dueDateDiff >= -30 && $dueDateDiff < 0) {
@@ -572,7 +717,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 // Cas où la dueDate est aujourd'hui
             } elseif ($dueDateDiff === 0) {
                 $this->processEvent($event, $now);
-
 
                 // Cas des événements futurs (dueDate dans le futur)
             } elseif ($dueDateDiff > 0) {
@@ -632,9 +776,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         }
     }
 
-
-
-    public function setEventTask($event, $taskStatus)
+    /**
+     * Set the task for the event with the given status.
+     *
+     * @param Event $event The event entity to set the task for.
+     * @param string $taskStatus The status of the task to set.
+     *
+     * @return void
+     */
+    public function setEventTask($event, $taskStatus): void
     {
         $newTask = new EventTask();
         $newTask
@@ -645,7 +795,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $event->setTask($newTask);
     }
 
-    // Fonction pour définir le statut et gérer la duplication en fonction du type d'événement
+    /**
+     * Handle the event status based on the given task statuses and whether it is recurring.
+     *
+     * @param Event $event The event entity to process.
+     * @param array $taskStatuses The possible task statuses to assign.
+     * @param bool $isRecurring Indicates if the event is recurring.
+     *
+     * @return void
+     */
     private function handleEventStatus(Event $event, array $taskStatuses, bool $isRecurring): void
     {
         $taskStatut = $this->faker->randomElement($taskStatuses);
@@ -660,7 +818,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         }
     }
 
-    public function processEvent(Event $event, DateTimeImmutable $now)
+    /**
+     * Process the event based on its due date and current time.
+     *
+     * @param Event $event The event entity to process.
+     * @param DateTimeImmutable $now The current date and time.
+     *
+     * @return void
+     */
+    public function processEvent(Event $event, DateTimeImmutable $now): void
     {
         $dueDateDiff = $event->getDueDate()->diff($now)->days;
         $isRecurring = $event->isRecurring();
@@ -679,10 +845,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         }
     }
 
-
-
     /**
      * Calculate the number of everyday child events.
+     *
+     * @param DateTimeImmutable $firstDueDate The first due date for the child events.
+     * @param DateTimeImmutable|null $lastDueDate The last due date for the child events, if any.
+     * @param DateTimeImmutable $latestCreationDate The latest date of creation to consider.
+     * @param DateTimeImmutable|null $endDate The end date for the calculations, if applicable.
+     *
+     * @return int The number of everyday child events calculated.
      */
     private function calculateEverydayChildren(DateTimeImmutable $firstDueDate, ?DateTimeImmutable $lastDueDate, DateTimeImmutable $latestCreationDate, ?DateTimeImmutable $endDate): int
     {
@@ -695,6 +866,14 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     /**
      * Create child events for everyday cases.
+     *
+     * @param mixed $eventRecurring The parent recurring event to associate with the child events.
+     * @param DateTimeImmutable $firstDueDate The first due date for the child events.
+     * @param int $numberOfEventsChildren The number of child events to create.
+     * @param DateTimeImmutable $createdAtParent The creation date of the parent event.
+     * @param DateTimeImmutable $now The current date and time.
+     *
+     * @return void
      */
     private function createChildEvents($eventRecurring, DateTimeImmutable $firstDueDate, int $numberOfEventsChildren, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
     {
@@ -707,8 +886,17 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         }
     }
 
+
+
     /**
      * Handle a period date and create the corresponding child event.
+     *
+     * @param EventRecurring $eventRecurring The parent recurring event entity.
+     * @param DateTimeImmutable $dueDate The due date for the child event.
+     * @param DateTimeImmutable $createdAtParent The creation date of the parent event.
+     * @param DateTimeImmutable $now The current date.
+     *
+     * @return void
      */
     private function handlePeriodDate($eventRecurring, DateTimeImmutable $dueDate, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
     {
@@ -727,6 +915,13 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     /**
      * Handle a month day and create the corresponding child event.
+     *
+     * @param EventRecurring $eventRecurring The parent recurring event entity.
+     * @param DateTimeImmutable $date The target month day date for the child event.
+     * @param DateTimeImmutable $createdAtParent The creation date of the parent event.
+     * @param DateTimeImmutable $now The current date.
+     *
+     * @return void
      */
     private function handleMonthDay($eventRecurring, DateTimeImmutable $date, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
     {
@@ -739,6 +934,13 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     /**
      * Handle a week day and create the corresponding child event.
+     *
+     * @param EventRecurring $eventRecurring The parent recurring event entity.
+     * @param DateTimeImmutable $date The target week day date for the child event.
+     * @param DateTimeImmutable $createdAtParent The creation date of the parent event.
+     * @param DateTimeImmutable $now The current date.
+     *
+     * @return void
      */
     private function handleWeekDay($eventRecurring, DateTimeImmutable $date, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
     {
@@ -751,6 +953,11 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     /**
      * Calculate createdAt and updatedAt dates based on due date and parent's createdAt.
+     *
+     * @param DateTimeImmutable $dueDate The due date for the child event.
+     * @param DateTimeImmutable $createdAtParent The creation date of the parent event.
+     *
+     * @return array An array containing the calculated [createdAt, updatedAt] dates.
      */
     private function calculateCreatedUpdatedDates(DateTimeImmutable $dueDate, DateTimeImmutable $createdAtParent): array
     {
@@ -764,7 +971,12 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     }
 
     /**
-     * Calculate the status of the date based on current time.
+     * Calculate the status of the date based on the current time.
+     *
+     * @param DateTimeImmutable $date The date to evaluate.
+     * @param DateTimeImmutable $now The current date.
+     *
+     * @return array An array containing the calculated [dateStatus, activeDay].
      */
     private function calculateDateStatus(DateTimeImmutable $date, DateTimeImmutable $now): array
     {
@@ -776,7 +988,16 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     }
 
     /**
-     * Persist an event to the database/ without the event having Type and taskStatus set 
+     * Persist an event to the database without the event having a Type and taskStatus set.
+     *
+     * @param EventRecurring $eventRecurring The parent recurring event entity.
+     * @param DateTimeImmutable $dueDate The due date for the child event.
+     * @param DateTimeImmutable $createdAt The creation date for the child event.
+     * @param DateTimeImmutable $updatedAt The updated date for the child event.
+     * @param string $dateStatus The status of the date for the child event.
+     * @param int|null $activeDay The active day for the child event.
+     *
+     * @return void
      */
     private function persistEvent($eventRecurring, DateTimeImmutable $dueDate, DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt, string $dateStatus, ?int $activeDay): void
     {
@@ -791,13 +1012,12 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->em->persist($event);
         $this->setEventType($event);
         $this->em->persist($event);
-
     }
-
-
 
     /**
      * Get the dependencies for this fixture.
+     *
+     * @return array An array of classes that this fixture depends on.
      */
     public function getDependencies(): array
     {
@@ -806,4 +1026,5 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             UserFixtures::class,
         ];
     }
+
 }
