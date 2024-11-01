@@ -22,7 +22,7 @@ class Event extends BaseEntity
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
-  
+
     #[ORM\Column(type: 'boolean', nullable: false)]
     private ?bool $isRecurring = false;
 
@@ -32,7 +32,7 @@ class Event extends BaseEntity
     #[ORM\OneToOne(targetEntity: EventTask::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private ?EventTask $task = null;
 
-    #[ORM\OneToOne(targetEntity:EventInfo::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToOne(targetEntity: EventInfo::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private ?EventInfo $info = null;
 
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: false)]
@@ -55,7 +55,7 @@ class Event extends BaseEntity
     #[Assert\NotBlank(message: "Type should not be blank.")]
     private ?string $type = null;
 
-    #[ORM\ManyToOne(targetEntity: Section::class)]
+    #[ORM\ManyToOne(targetEntity: Section::class, cascade: ["persist"])]
     #[ORM\JoinColumn(nullable: true)]
     private ?Section $section = null;
 
@@ -87,7 +87,7 @@ class Event extends BaseEntity
     #[ORM\JoinTable(name: 'user_favoriteEvents')]
     private Collection $favoritedBy;
 
-   
+
     public function __construct()
     {
         parent::__construct();

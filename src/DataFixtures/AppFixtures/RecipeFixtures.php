@@ -44,6 +44,7 @@ class RecipeFixtures extends BaseFixtures implements DependentFixtureInterface
             $timestamps = $this->faker->createTimeStamps();
             $recipe = new Recipe();
             $recipe->setName($this->faker->unique()->text(30));
+            $recipe->setPath($this->faker->url());
             $recipe->setCreatedAt($timestamps[ 'createdAt' ]);
             $recipe->setUpdatedAt($timestamps[ 'updatedAt' ]);
 

@@ -17,14 +17,11 @@ class EventInfo extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    public function getId(): ?int
-    {
-        return $this->id;
-    }
     #[ORM\ManyToMany(targetEntity: User::class)]
-    #[ORM\OneToMany(mappedBy: 'eventInfo', targetEntity: EventSharedInfo::class, cascade: ['persist', 'remove'])]
-
     private Collection $sharedWith;
+
+    #[ORM\OneToMany(mappedBy: 'eventInfo', targetEntity: EventSharedInfo::class, cascade: ['persist', 'remove'])]
+    private Collection $eventSharedInfo;
 
     #[ORM\Column]
     private ?int $userReadInfoCount = null;
@@ -39,6 +36,12 @@ class EventInfo extends BaseEntity
     {
         parent::__construct();
         $this->sharedWith = new ArrayCollection();
+        $this->eventSharedInfo = new ArrayCollection();
+    }
+
+    public function getId(): ?int
+    {
+        return $this->id;
     }
 
     public function addSharedWith(User $user): self
@@ -54,6 +57,36 @@ class EventInfo extends BaseEntity
         $this->sharedWith->removeElement($user);
         return $this;
     }
+
+    public function getSharedWith(): Collection
+    {
+        return $this->sharedWith;
+    }
+
+    public function addEventSharedInfo(EventSharedInfo $eventSharedInfo): self
+    {
+        if (!$this->eventSharedInfo->contains($eventSharedInfo)) {
+            $this->eventSharedInfo->add($eventSharedInfo);
+            $eventSharedInfo->setEventInfo($this);
+        }
+        return $this;
+    }
+
+    public function removeEventSharedInfo(EventSharedInfo $eventSharedInfo): self
+    {
+        if ($this->eventSharedInfo->removeElement($eventSharedInfo)) {
+            if ($eventSharedInfo->getEventInfo() === $this) {
+                $eventSharedInfo->setEventInfo(null);
+            }
+        }
+        return $this;
+    }
+
+    public function getEventSharedInfo(): Collection
+    {
+        return $this->eventSharedInfo;
+    }
+
     public function getUserReadInfoCount(): ?int
     {
         return $this->userReadInfoCount;
@@ -62,7 +95,6 @@ class EventInfo extends BaseEntity
     public function setUserReadInfoCount(int $userReadInfoCount): static
     {
         $this->userReadInfoCount = $userReadInfoCount;
-
         return $this;
     }
 
@@ -74,7 +106,6 @@ class EventInfo extends BaseEntity
     public function setSharedWithCount(int $sharedWithCount): static
     {
         $this->sharedWithCount = $sharedWithCount;
-
         return $this;
     }
 
@@ -86,8 +117,6 @@ class EventInfo extends BaseEntity
     public function setFullyRead(bool $isFullyRead): static
     {
         $this->isFullyRead = $isFullyRead;
-
         return $this;
     }
-
 }

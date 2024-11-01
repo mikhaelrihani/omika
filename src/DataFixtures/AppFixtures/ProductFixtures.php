@@ -131,7 +131,8 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
             $days = [1, 2, 3, 4, 5, 6, 7];
 
             // Récupérer des indices de jours de commande aléatoires
-            $orderDaysEntries = array_rand($days, rand(1, 3));
+            // Récupérer des indices de jours de commande aléatoires
+            $orderDaysEntries = (array) array_rand($days, rand(1, 3));
             $orderDays = [];
 
             // Récupérer les jours de commande à partir des indices
@@ -151,8 +152,8 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
             }
 
             // Choisir des jours de livraison parmi les jours disponibles
-            $deliveryDaysEntries = array_rand($deliveryAvailableDays, $deliveryDaysCount);
-            $deliveryDays = []; 
+            $deliveryDaysEntries = (array) array_rand($deliveryAvailableDays, $deliveryDaysCount);
+            $deliveryDays = [];
 
             // Récupérer les jours de livraison à partir des indices
             foreach ($deliveryDaysEntries as $index) {

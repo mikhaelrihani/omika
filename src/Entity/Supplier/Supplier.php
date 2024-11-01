@@ -65,13 +65,13 @@ class Supplier extends BaseEntity
     /**
      * @var Collection<int, OrderDay>
      */
-    #[ORM\ManyToMany(targetEntity: OrderDay::class, inversedBy: 'suppliers')]
+    #[ORM\ManyToMany(targetEntity: OrderDay::class, inversedBy: 'suppliers',cascade: ['persist'])]
     private Collection $orderDays;
 
     /**
      * @var Collection<int, DeliveryDay>
      */
-    #[ORM\ManyToMany(targetEntity: DeliveryDay::class, inversedBy: 'suppliers')]
+    #[ORM\ManyToMany(targetEntity: DeliveryDay::class, inversedBy: 'suppliers',cascade: ['persist'])]
     private Collection $deliveryDays;
 
    

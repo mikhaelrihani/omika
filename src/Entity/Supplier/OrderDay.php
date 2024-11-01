@@ -21,7 +21,7 @@ class OrderDay
     /**
      * @var Collection<int, Supplier>
      */
-    #[ORM\ManyToMany(targetEntity: Supplier::class, mappedBy: 'orderDays')]
+    #[ORM\ManyToMany(targetEntity: Supplier::class, mappedBy: 'orderDays', cascade: ['persist'])]
     private Collection $suppliers;
 
     public function __construct()

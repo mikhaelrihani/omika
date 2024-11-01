@@ -34,7 +34,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->createSections();
         $this->em->flush();
         // Créer les événements
-        $this->createEventsActiveDayRange(200);
+        $this->createEventsActiveDayRange(20);
         $this->em->flush();
         // Créer les événements récurrence parents
         $this->createEventRecurringParent();
@@ -157,8 +157,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $createdAt = $timestamps[ 'createdAt' ];
             $updatedAt = $timestamps[ 'updatedAt' ];
             $dueDate = $this->faker->dateTimeImmutableBetween(
-                $createdAt->format('Y-m-d H:i:s'), $updatedAt->format('Y-m-d H:i:s'),
-                $updatedAt->format('Y-m-d H:i:s'), $updatedAt->format('Y-m-d H:i:s')
+                $createdAt->format('Y-m-d H:i:s'),
+                $updatedAt->format('Y-m-d H:i:s'),
+                $updatedAt->format('Y-m-d H:i:s'),
+                $updatedAt->format('Y-m-d H:i:s')
             );
             $activeDayInt = (int) $dueDate->diff(new DateTimeImmutable('now'))->format('%r%a');
             // Limite $activeDayInt entre -3 et 7
@@ -173,7 +175,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 ->setDueDate($dueDate)
                 ->setDateStatus("activeDayRange");
 
-            $this->setEventType($event);
+            $this->setEventTypeProperties($event);
             $this->em->persist($event);
         }
     }
@@ -202,7 +204,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         // However, the further the loading of fixtures is from the current date, the less relevant the active day range data will be.
         // It is recommended to regularly reload the fixtures or create a cron job to reload them, for example every three days.
 
-        for ($e = 0; $e < 10; $e++) {
+        for ($e = 0; $e < 5; $e++) {
             $timeStamps = $this->faker->createTimeStamps();
             $createdAt = $timeStamps[ 'createdAt' ];
             $updatedAt = $timeStamps[ 'updatedAt' ];
@@ -224,6 +226,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $eventRecurring->resetRecurringDays();
                 $eventRecurring->setEveryday(true);
             } else {
+                $eventRecurring->setEveryday(False);
                 // Randomly choose one of three recurrence types: month days, week days, specific dates
                 $recurrenceType = rand(1, 3);
                 $randomIndex = rand(1, 4);
@@ -366,7 +369,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
         // Retrieve the section name from the original event
         $sectionName = $originalEvent->getSection() ? $originalEvent->getSection()->getName() : null;
-
+        $this->em->persist($newSection);
         // Create a new Event instance
         $newEvent = new Event();
 
@@ -427,7 +430,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setCreatedAt($createdAt)
             ->setUpdatedAt($updatedAt);
 
-
+        $this->em->persist($newEvent);
         return $newEvent;
     }
 
@@ -444,6 +447,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function duplicatePendingEvent(Event $event): void
     {
+
         $numberOfPendingDays = $this->faker->numberBetween(1, 7);
         $i = 1;
         while ($i <= $numberOfPendingDays) {
@@ -456,7 +460,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $this->em->persist($newEvent);
 
             }
-            $newEvent->getEventRecurring()->addEvent($newEvent);
+            $this->em->persist($newEvent);
+
             // on flushe a chaque event pour pouvoir traiter les status unrealised de chaque event enfant dans la periode -30 a -1.
             $this->em->flush();
 
@@ -480,6 +485,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function duplicatePendingRecurringEvent(Event $event)
     {
+dd($event);
         $eventParent = $event->getEventRecurring();
         $eventsBrothers = $eventParent->getEvents();
 
@@ -587,7 +593,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $previousDay = $currentDueDate->modify('-1 day');
             $hasDonePreviousDay = $eventsBrothers->exists(function ($key, $eventBrotherPreviousDay) use ($previousDay) {
                 return $eventBrotherPreviousDay->getDueDate() == $previousDay &&
-                    $eventBrotherPreviousDay->getTaskStatus() === 'done';
+                    $eventBrotherPreviousDay->getTask() === 'done';
             });
 
             // Si le jour précédent est `done`, ne crée pas de nouvel événement pour cette date et continue
@@ -633,13 +639,22 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function setEventBase(): Event
     {
+        $users = $this->retrieveEntities("user", $this);
+        $createdByUser = $this->faker->randomElement($users);
+        $updatedByUser = $this->faker->randomElement($users);
+        $createdBy = $createdByUser->getFullName();
+        $updatedBy = $updatedByUser->getFullName();
         $sections = $this->retrieveEntities("section", $this);
 
         $event = new Event();
         $event
             ->setDescription($this->faker->sentence)
             ->setIsImportant($this->faker->boolean)
-            ->setSide($this->faker->randomElement(['kitchen', 'office']));
+            ->setSide($this->faker->randomElement(['kitchen', 'office']))
+            ->setTitle($this->faker->sentence)
+            ->setCreatedBy($createdBy)
+            ->setUpdatedBy($updatedBy)
+            ->setType($this->faker->randomElement(['task', 'info']));
 
         $section = new Section();
         $section->setName($sections[array_rand($sections)]->getName());
@@ -652,22 +667,22 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     }
 
     /**
-     * Set the event type based on random conditions and the event's due date.
+     * set the event type property for the given event depending on the type.
      *
      * @param Event $event The event entity to set the type for.
      *
      * @return void
      */
-    public function setEventType(Event $event): void
+    public function setEventTypeProperties(Event $event): void
     {
         $createdAt = $event->getCreatedAt();
         $updatedAt = $event->getUpdatedAt();
         $now = new DateTimeImmutable('now');
 
-        $randomType = $this->faker->boolean;
+        $type = $event->getType();
 
         // Traitement du type Task
-        if ($randomType) {
+        if ($type === "task") {
             // Obtention de la dueDate et calcul de la différence
             $dueDate = $event->getDueDate();
             $dueDateDiff = $dueDate->diff($now)->format('%r%a');
@@ -702,16 +717,17 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             } elseif ($event->isRecurring() && $dueDateDiff >= -30 && $dueDateDiff < 0) {
                 $taskStatut = $this->faker->randomElement(['done', 'unrealised']);
                 if ($taskStatut === 'unrealised') {
+                    $this->setEventTask($event, 'unrealised');
                     $this->em->persist($event);
-                    $event->getEventRecurring()->addEvent($event);
                     $this->em->flush();
+                
                     $this->duplicateUnrealisedRecurringEvent($event);
 
                 } else {
                     $this->setEventTask($event, 'done');
                     $this->em->persist($event);
-                    $event->getEventRecurring()->addEvent($event);
                     $this->em->flush();
+    
                 }
 
                 // Cas où la dueDate est aujourd'hui
@@ -720,6 +736,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
                 // Cas des événements futurs (dueDate dans le futur)
             } elseif ($dueDateDiff > 0) {
+
                 $taskStatut = $this->faker->randomElement(
                     $event->isRecurring() ?
                     ['todo_modified', 'done', 'pending', 'warning'] :
@@ -727,54 +744,60 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 );
 
                 $this->setEventTask($event, $taskStatut);
+                $this->em->persist($event);
+               
                 if ($taskStatut === 'pending') {
                     if ($event->isRecurring()) {
+                    
                         $this->duplicatePendingRecurringEvent($event);
                     } else {
                         $this->duplicatePendingEvent($event);
                     }
                 }
+            }
+            // Traitement du type Info
+        } elseif ($type === "info") {
+            $users = $this->retrieveEntities("user", $this);
+            $usersCount = count($users);
+            $randomNumOfUsers = $this->faker->numberBetween(1, $usersCount);
+            $randomUsers = $this->faker->randomElements($users, $randomNumOfUsers);
 
-                // Traitement du type Info
-            } else {
-                $users = $this->retrieveEntities("user", $this);
-                $usersCount = count($users);
-                $randomNumOfUsers = $this->faker->numberBetween(1, $usersCount);
-                $randomUsers = $this->faker->randomElements($users, $randomNumOfUsers);
+            $info = new EventInfo();
+            $inforeadCounter = 0;
 
-                $info = new EventInfo();
-                $inforeadCounter = 0;
+            foreach ($randomUsers as $user) {
+                $eventSharedInfo = new EventSharedInfo();
+                $isRead = $this->faker->boolean;
 
-                foreach ($randomUsers as $user) {
-                    $eventSharedInfo = new EventSharedInfo();
-                    $isRead = $this->faker->boolean;
-
-                    if (!$isRead) {
-                        $info->setFullyRead(false);
-                    } else {
-                        $inforeadCounter++;
-                    }
-
-                    $eventSharedInfo
-                        ->setUser($user)
-                        ->setIsRead($isRead)
-                        ->setCreatedAt($createdAt)
-                        ->setUpdatedAt($updatedAt);
-
-                    $this->em->persist($eventSharedInfo);
-                    $info->addSharedWith($user);
+                if (!$isRead) {
+                    $info->setFullyRead(false);
+                } else {
+                    $info->setFullyRead(true);
+                    $inforeadCounter++;
                 }
 
-                $info
+                $eventSharedInfo
+                    ->setUser($user)
+                    ->setEventInfo($info)
+                    ->setIsRead($isRead)
                     ->setCreatedAt($createdAt)
-                    ->setUpdatedAt($updatedAt)
-                    ->setUserReadInfoCount($inforeadCounter)
-                    ->setSharedWithCount($randomNumOfUsers);
-
-                $this->em->persist($info);
+                    ->setUpdatedAt($updatedAt);
+                $this->em->persist($eventSharedInfo);
+                $info->addSharedWith($user);
             }
+
+            $info
+                ->setCreatedAt($createdAt)
+                ->setUpdatedAt($updatedAt)
+                ->setUserReadInfoCount($inforeadCounter)
+                ->setSharedWithCount($randomNumOfUsers);
+
+            $this->em->persist($info);
+           
+
         }
     }
+
 
     /**
      * Set the task for the event with the given status.
@@ -1001,6 +1024,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     private function persistEvent($eventRecurring, DateTimeImmutable $dueDate, DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt, string $dateStatus, ?int $activeDay): void
     {
+
         $event = $this->setEventBase();
         $event
             ->setIsRecurring(true)
@@ -1010,8 +1034,11 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setActiveDay($activeDay)
             ->setDueDate($dueDate);
         $this->em->persist($event);
-        $this->setEventType($event);
+        $this->setEventTypeProperties($event);
         $this->em->persist($event);
+        $eventRecurring->addEvent($event);
+        $this->em->persist($eventRecurring);
+        $this->em->flush();
     }
 
     /**
