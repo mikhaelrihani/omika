@@ -14,6 +14,7 @@ use App\Entity\event\Issue;
 use App\Entity\Event\MonthDay;
 use App\Entity\Event\PeriodDate;
 use App\Entity\Event\WeekDay;
+use DateInterval;
 use DateTimeImmutable;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
@@ -37,8 +38,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->createEvents(50);
         $this->em->flush();
         // // Créer les événements récurrence parents
-        // $this->createEventRecurringParent();
-        // $this->em->flush();
+        $this->createEventRecurringParent();
+        $this->em->flush();
         // // Créer les événements enfants pour chaque événement récurrence parent
         // $this->createEventsChildrenforEachEventRecurringParent();
         // $this->em->flush();
@@ -223,10 +224,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         // However, the further the loading of fixtures is from the current date, the less relevant the active day range data will be.
         // It is recommended to regularly reload the fixtures or create a cron job to reload them, for example every three days.
 
-        for ($e = 0; $e < 5; $e++) {
-            $timeStamps = $this->faker->createTimeStamps();
-            $createdAt = $timeStamps[ 'createdAt' ];
-            $updatedAt = $timeStamps[ 'updatedAt' ];
+        for ($e = 0; $e < 10; $e++) {
+            $timestamps = $this->faker->createTimeStamps('-15 days', 'now');
+            $createdAt = $timestamps[ 'createdAt' ];
+            $updatedAt = $timestamps[ 'updatedAt' ];
 
             // Generate start and end period dates
             $periodeStart = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $updatedAt->format('Y-m-d H:i:s'));
@@ -280,15 +281,23 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                     case 3: // Specific dates
                         $periodDates = [];
                         $randomIndex = rand(3, 10);
+                        $baseDate = $eventRecurring->getCreatedAt();// Date minimale autorisée
+                        $latestDate = $eventRecurring->getPeriodeEnd(); // Date maximale autorisée
+
                         for ($i = 0; $i < $randomIndex; $i++) {
-                            $randomDate = new DateTimeImmutable();
-                            if (!in_array($randomDate, $periodDates)) {
-                                $periodDate = new PeriodDate();
-                                $periodDate->setDate($randomDate);
-                                $eventRecurring->addPeriodDate($periodDate);
-                                $periodDates[] = $randomDate;
-                            }
+                            do {
+                                // Génère un intervalle aléatoire de jours à ajouter
+                                $interval = new DateInterval('P' . rand(1, 30) . 'D'); // jusqu'à 30 jours de différence
+                                $randomDate = $baseDate->add($interval);
+                            } while ($randomDate < $baseDate || $randomDate > $latestDate || in_array($randomDate, $periodDates, false));
+
+                            // Ajouter la date unique à la collection
+                            $periodDate = new PeriodDate();
+                            $periodDate->setDate($randomDate);
+                            $eventRecurring->addPeriodDate($periodDate);
+                            $periodDates[] = $randomDate;
                         }
+
                         break;
                 }
             }
@@ -825,11 +834,11 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 ->setUserReadInfoCount($inforeadCounter)
                 ->setSharedWithCount($randomNumOfUsers);
 
-                if ($inforeadCounter === $randomNumOfUsers) {
-                    $info->setIsFullyRead(true);
-                } else {
-                    $info->setIsFullyRead(false);
-                }
+            if ($inforeadCounter === $randomNumOfUsers) {
+                $info->setIsFullyRead(true);
+            } else {
+                $info->setIsFullyRead(false);
+            }
 
             $this->em->persist($info);
             $event->setInfo($info);
