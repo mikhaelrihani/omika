@@ -27,12 +27,13 @@ class AppProvider extends Base
      *
      * @return array An associative array with 'createdAt' and 'updatedAt' keys.
      */
-    public function createTimeStamps(): array
-    {
-        $createdAt = $this->dateTimeImmutableBetween('-5 years', 'now');
-        $updatedAt = $this->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), 'now');
-        return compact('createdAt', 'updatedAt');
-    }
+    public function createTimeStamps($startDate = '-5 years', $endDate = 'now'): array
+{
+    $createdAt = $this->dateTimeImmutableBetween($startDate, $endDate);
+    $updatedAt = $this->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $endDate);
+    return compact('createdAt', 'updatedAt');
+}
+
 
     //! Role property
 

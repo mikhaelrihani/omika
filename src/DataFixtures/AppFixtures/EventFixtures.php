@@ -34,14 +34,14 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->createSections();
         $this->em->flush();
         // Créer les événements
-        $this->createEventsActiveDayRange(20);
+        $this->createEvents(50);
         $this->em->flush();
-        // Créer les événements récurrence parents
-        $this->createEventRecurringParent();
-        $this->em->flush();
-        // Créer les événements enfants pour chaque événement récurrence parent
-        $this->createEventsChildrenforEachEventRecurringParent();
-        $this->em->flush();
+        // // Créer les événements récurrence parents
+        // $this->createEventRecurringParent();
+        // $this->em->flush();
+        // // Créer les événements enfants pour chaque événement récurrence parent
+        // $this->createEventsChildrenforEachEventRecurringParent();
+        // $this->em->flush();
 
     }
     /**
@@ -150,21 +150,38 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return void
      */
-    public function createEventsActiveDayRange($numEvents): void
+    public function createEvents($numEvents): void
     {
         for ($e = 0; $e < $numEvents; $e++) {
-            $timestamps = $this->faker->createTimeStamps();
+            $timestamps = $this->faker->createTimeStamps('-15 days', 'now');
             $createdAt = $timestamps[ 'createdAt' ];
             $updatedAt = $timestamps[ 'updatedAt' ];
+            $now = new DateTimeImmutable('now');
+            $randomDay = rand(1, 30);
             $dueDate = $this->faker->dateTimeImmutableBetween(
-                $createdAt->format('Y-m-d H:i:s'),
+
                 $updatedAt->format('Y-m-d H:i:s'),
-                $updatedAt->format('Y-m-d H:i:s'),
-                $updatedAt->format('Y-m-d H:i:s')
+                $updatedAt->modify("+{$randomDay} days")->format('Y-m-d H:i:s')
             );
-            $activeDayInt = (int) $dueDate->diff(new DateTimeImmutable('now'))->format('%r%a');
+            // Créer une version sans heure de $dueDate et $now
+            $dueDateDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', $dueDate->format('Y-m-d'));
+            $nowDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', $now->format('Y-m-d'));
+
+            // Calculer la différence en jours entiers
+            $activeDayInt = (int) $nowDayOnly->diff($dueDateDayOnly)->format('%r%a');
             // Limite $activeDayInt entre -3 et 7
             $activeDay = ($activeDayInt >= -3 && $activeDayInt <= 7) ? $activeDayInt : null;
+
+            // Calculer la différence pour déterminer le statut de la date
+            $dueDateDiff = (int) $nowDayOnly->diff($dueDateDayOnly)->format('%r%a'); // Convertir en entier
+
+            if ($dueDateDiff >= -3 && $dueDateDiff <= 7) {
+                $dateStatus = "activeDayRange";
+            } elseif ($dueDateDiff >= -30 && $dueDateDiff < -3) {
+                $dateStatus = "past";
+            } else {
+                $dateStatus = "future";
+            }
 
             $event = $this->setEventBase();
             $event
@@ -173,9 +190,11 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 ->setUpdatedAt($updatedAt)
                 ->setActiveDay($activeDay)
                 ->setDueDate($dueDate)
-                ->setDateStatus("activeDayRange");
+                ->setDateStatus(
+                    $dateStatus
+                );
 
-            $this->setEventTypeProperties($event);
+            $this->setEventRelations($event);
             $this->em->persist($event);
         }
     }
@@ -412,7 +431,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $now = new DateTimeImmutable('now');
         $dueDateDiff = $dueDate->diff($now)->format('%r%a');
 
-        if ($dueDateDiff >= 30 && $dueDateDiff < -3) {
+        if ($dueDateDiff >= -30 && $dueDateDiff < -3) {
             $dateStatus = "past";
             $activeDay = null;
         } elseif ($dueDateDiff > 7) {
@@ -485,7 +504,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function duplicatePendingRecurringEvent(Event $event)
     {
-dd($event);
+        dd($event);
         $eventParent = $event->getEventRecurring();
         $eventsBrothers = $eventParent->getEvents();
 
@@ -673,7 +692,7 @@ dd($event);
      *
      * @return void
      */
-    public function setEventTypeProperties(Event $event): void
+    public function setEventRelations(Event $event): void
     {
         $createdAt = $event->getCreatedAt();
         $updatedAt = $event->getUpdatedAt();
@@ -720,14 +739,14 @@ dd($event);
                     $this->setEventTask($event, 'unrealised');
                     $this->em->persist($event);
                     $this->em->flush();
-                
+
                     $this->duplicateUnrealisedRecurringEvent($event);
 
                 } else {
                     $this->setEventTask($event, 'done');
                     $this->em->persist($event);
                     $this->em->flush();
-    
+
                 }
 
                 // Cas où la dueDate est aujourd'hui
@@ -745,10 +764,10 @@ dd($event);
 
                 $this->setEventTask($event, $taskStatut);
                 $this->em->persist($event);
-               
+
                 if ($taskStatut === 'pending') {
                     if ($event->isRecurring()) {
-                    
+
                         $this->duplicatePendingRecurringEvent($event);
                     } else {
                         $this->duplicatePendingEvent($event);
@@ -793,7 +812,7 @@ dd($event);
                 ->setSharedWithCount($randomNumOfUsers);
 
             $this->em->persist($info);
-           
+
 
         }
     }
@@ -1034,7 +1053,7 @@ dd($event);
             ->setActiveDay($activeDay)
             ->setDueDate($dueDate);
         $this->em->persist($event);
-        $this->setEventTypeProperties($event);
+        $this->setEventRelations($event);
         $this->em->persist($event);
         $eventRecurring->addEvent($event);
         $this->em->persist($eventRecurring);
