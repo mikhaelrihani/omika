@@ -717,7 +717,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return void
      */
-    public function setEventRelations(Event $event): void
+    public function setEventRelations(Event $event, EventRecurring $eventRecurring = null): void
     {
         $createdAt = $event->getCreatedAt();
         $updatedAt = $event->getUpdatedAt();
@@ -773,8 +773,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 if ($taskStatut === 'unrealised') {
                     $this->setEventTask($event, 'unrealised');
                     $this->em->persist($event);
+                    $eventRecurring->addEvent($event);
                     $this->em->flush();
-
                     $this->duplicateUnrealisedRecurringEvent($event);
 
                 } else {
@@ -801,9 +801,14 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $this->em->persist($event);
                 $this->em->flush();
 
+
                 if ($taskStatut === 'pending') {
                     if ($event->isRecurring()) {
-
+                        $this->setEventTask($event, 'pending');
+                        $this->em->persist($event);
+                        $eventRecurring->addEvent($event);
+                        $this->em->flush();
+                       
                         $this->duplicatePendingRecurringEvent($event);
                     } else {
                         $this->duplicatePendingEvent($event);
@@ -1070,17 +1075,17 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     /**
      * Calculate the status of the date based on the current time.
      *
-     * @param DateTimeImmutable $date The date to evaluate.
+     * @param DateTimeImmutable $date The date to evaluate, soit due date
      * @param DateTimeImmutable $now The current date.
      *
      * @return array An array containing the calculated [dateStatus, activeDay].
      */
     private function calculateDateStatus(DateTimeImmutable $date, DateTimeImmutable $now): array
     {
-        $isActiveDayInt = (int) $date->diff($now)->format('%r%a');
-        $dateStatus = ($isActiveDayInt >= -3) ? "activeDayRange" : "past";
-        $activeDay = ($isActiveDayInt >= -3) ? $isActiveDayInt : null;
-
+        $activeDayInt = (int) $date->diff($now)->format('%r%a');
+        $dateStatus = ($activeDayInt >= -3) ? "activeDayRange" : "past";
+        $activeDay = ($activeDayInt >= -3) ? $activeDayInt : null;
+        // ici on ne prend pas en compte les dates futures, car on ne peut pas savoir si elles seront actives ou non, cad si l'event sera visible ou non car user les a modifie depuis interface
         return [$dateStatus, $activeDay];
     }
 
@@ -1107,11 +1112,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setDateStatus($dateStatus)
             ->setActiveDay($activeDay)
             ->setDueDate($dueDate);
+
         $this->em->persist($event);
-        $this->setEventRelations($event);
+
+        $this->setEventRelations($event, $eventRecurring);
         $this->em->persist($event);
+
         $eventRecurring->addEvent($event);
         $this->em->persist($eventRecurring);
+
         $this->em->flush();
     }
 
