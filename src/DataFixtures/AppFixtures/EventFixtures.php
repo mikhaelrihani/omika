@@ -425,21 +425,27 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function duplicateEvent($event): Event
     {
-        $dueDate = $event->getDueDate()->modify('+1 day');
-        $createdAt = $event->getCreatedAt()->modify('+1 day');
-        $updatedAt = $event->getUpdatedAt()->modify('+1 day');
-        $now = new DateTimeImmutable('now');
-        $dueDateDiff = $dueDate->diff($now)->format('%r%a');
+        $dueDate = $createdAt = $updatedAt = $event->getDueDate()->modify('+1 day');
 
-        if ($dueDateDiff >= -30 && $dueDateDiff < -3) {
-            $dateStatus = "past";
-            $activeDay = null;
-        } elseif ($dueDateDiff > 7) {
-            $dateStatus = "future";
-            $activeDay = null;
-        } else {
+        $now = new DateTimeImmutable('now');
+        // Créer une version sans heure de $dueDate et $now
+        $dueDateDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', $dueDate->format('Y-m-d'));
+        $nowDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', $now->format('Y-m-d'));
+
+        // Calculer la différence en jours entiers
+        $activeDayInt = (int) $nowDayOnly->diff($dueDateDayOnly)->format('%r%a');
+        // Limite $activeDayInt entre -3 et 7
+        $activeDay = ($activeDayInt >= -3 && $activeDayInt <= 7) ? $activeDayInt : null;
+
+        // Calculer la différence pour déterminer le statut de la date
+        $dueDateDiff = (int) $nowDayOnly->diff($dueDateDayOnly)->format('%r%a'); // Convertir en entier
+
+        if ($dueDateDiff >= -3 && $dueDateDiff <= 7) {
             $dateStatus = "activeDayRange";
-            $activeDay = (int) $dueDateDiff;
+        } elseif ($dueDateDiff >= -30 && $dueDateDiff < -3) {
+            $dateStatus = "past";
+        } else {
+            $dateStatus = "future";
         }
         $newEvent = $this->duplicateEventProperties($event);
         $newEvent
@@ -452,6 +458,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->em->persist($newEvent);
         return $newEvent;
     }
+
 
     /**
      * Duplique un événement en attente pour un certain nombre de jours.
@@ -697,6 +704,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $createdAt = $event->getCreatedAt();
         $updatedAt = $event->getUpdatedAt();
         $now = new DateTimeImmutable('now');
+        $nowDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', $now->format('Y-m-d'));
 
         $type = $event->getType();
 
@@ -704,7 +712,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         if ($type === "task") {
             // Obtention de la dueDate et calcul de la différence
             $dueDate = $event->getDueDate();
-            $dueDateDiff = $dueDate->diff($now)->format('%r%a');
+            $dueDateDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', $dueDate->format('Y-m-d'));
+            $dueDateDiff = (int) $dueDateDayOnly->diff($nowDayOnly)->format('%r%a');
 
             // Cas des événements non récurrents, dans la plage active (-30 jours à aujourd'hui non inclus)
             if (!$event->isRecurring() && $dueDateDiff >= -30 && $dueDateDiff < 0) {
@@ -712,24 +721,32 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
                 // Si l'événement a un statut "unrealised"
                 if ($taskStatut === 'unrealised') {
+                    $this->setEventTask($event, 'unrealised');
+                    $this->em->persist($event);
+                    $this->em->flush();
                     do {
                         $newEvent = $this->duplicateEvent($event);
-
+                        $newDueDate = $newEvent->getDueDate();
+                        $newDueDateDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', $newDueDate->format('Y-m-d'));
                         // Vérifie si la date d'échéance du nouvel événement est hier et définit le statut sur "done" si c'est le cas
-                        if ($newEvent->getDueDate() === $now->modify('-1 day')) {
-                            $this->setEventTask($newEvent, 'done');
-                            $taskStatus = 'late';  // Met à jour taskStatus pour arrêter la boucle
+                        if ($newDueDateDayOnly === $nowDayOnly->modify('-1 day')) {
+                            $taskStatus = 'late';  // Met à jour taskStatus pour arrêter la boucle 
+                            $this->setEventTask($newEvent, $taskStatus);
                         } else {
                             $taskStatus = $this->faker->randomElement(['unrealised', 'done']);
                             $this->setEventTask($newEvent, $taskStatus);
                         }
                         $this->em->persist($newEvent);
+                        $this->em->flush();
                         // Met à jour l'événement courant pour la prochaine itération
                         $event = $newEvent;
 
                     } while ($taskStatus === 'unrealised');
                 } else {
                     $this->setEventTask($event, 'done');
+                    $this->em->persist($event);
+                    $this->em->flush();
+
                 }
 
                 // Cas des événements récurrents dans la plage active (-30 jours à aujourd'hui non inclus)
@@ -764,6 +781,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
                 $this->setEventTask($event, $taskStatut);
                 $this->em->persist($event);
+                $this->em->flush();
 
                 if ($taskStatut === 'pending') {
                     if ($event->isRecurring()) {
@@ -788,13 +806,9 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $eventSharedInfo = new EventSharedInfo();
                 $isRead = $this->faker->boolean;
 
-                if (!$isRead) {
-                    $info->setFullyRead(false);
-                } else {
-                    $info->setFullyRead(true);
+                if ($isRead) {
                     $inforeadCounter++;
                 }
-
                 $eventSharedInfo
                     ->setUser($user)
                     ->setEventInfo($info)
@@ -811,7 +825,16 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 ->setUserReadInfoCount($inforeadCounter)
                 ->setSharedWithCount($randomNumOfUsers);
 
+                if ($inforeadCounter === $randomNumOfUsers) {
+                    $info->setIsFullyRead(true);
+                } else {
+                    $info->setIsFullyRead(false);
+                }
+
             $this->em->persist($info);
+            $event->setInfo($info);
+            $this->em->persist($event);
+            $this->em->flush();
 
 
         }
@@ -850,6 +873,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     {
         $taskStatut = $this->faker->randomElement($taskStatuses);
         $this->setEventTask($event, $taskStatut);
+        $this->em->persist($event);
+        $this->em->flush();
 
         if ($taskStatut === 'pending') {
             if ($isRecurring) {
@@ -870,7 +895,11 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function processEvent(Event $event, DateTimeImmutable $now): void
     {
-        $dueDateDiff = $event->getDueDate()->diff($now)->days;
+        $dueDate = $event->getDueDate();
+        // Créer une version sans heure de $dueDate et $now
+        $dueDateDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', $dueDate->format('Y-m-d'));
+        $nowDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', $now->format('Y-m-d'));
+        $dueDateDiff = (int) $dueDateDayOnly->diff($nowDayOnly)->days;
         $isRecurring = $event->isRecurring();
 
         // Statuts en fonction du contexte

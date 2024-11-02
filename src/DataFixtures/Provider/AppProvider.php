@@ -16,6 +16,7 @@ class AppProvider extends Base
      * @param string|\DateTime $endDate The end date of the range.
      * @return \DateTimeImmutable
      */
+   
     public function dateTimeImmutableBetween($startDate = '-30 years', $endDate = 'now'): \DateTimeImmutable
     {
         $dateTime = $this->generator->dateTimeBetween($startDate, $endDate);

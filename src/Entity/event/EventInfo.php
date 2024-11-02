@@ -114,7 +114,7 @@ class EventInfo extends BaseEntity
         return $this->isFullyRead;
     }
 
-    public function setFullyRead(bool $isFullyRead): static
+    public function setIsFullyRead(bool $isFullyRead): static
     {
         $this->isFullyRead = $isFullyRead;
         return $this;
