@@ -41,8 +41,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->createEventRecurringParent();
         $this->em->flush();
         // // Créer les événements enfants pour chaque événement récurrence parent
-        // $this->createEventsChildrenforEachEventRecurringParent();
-        // $this->em->flush();
+        $this->createEventsChildrenforEachEventRecurringParent();
+        $this->em->flush();
 
     }
     /**
@@ -322,6 +322,11 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     {
         $eventsRecurring = $this->retrieveEntities("eventRecurring", $this);
 
+
+
+        //  car dans ce cas on est hors de la periode active en bdd
+        // on verifie si la periodstart du parent est apres +7
+
         foreach ($eventsRecurring as $eventRecurring) {
             // Retrieve properties from the parent event
             $periodDates = $eventRecurring->getPeriodDates();
@@ -334,49 +339,53 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $endDate = $eventRecurring->getPeriodeEnd();
             $createdAtParent = $updatedAtParent = $eventRecurring->getCreatedAt();
 
-            // Filter for events within the active range (+7 to -30 days from now)
+
+            // Skip if the parent event is outside the active period
             $firstDueDate = $startDate;
             $lastDueDate = $endDate;
+            // les events enfants peuvent etre en bdd que entre -30 et +7
+            // la periode entre start et end du parent doit etre entre -30 et +7
             $latestCreationDate = $now->modify('+7 days');
             $earliestCreationDate = $now->modify('-30 days');
 
-            // Skip if no creation is needed
+            // si la periodend du parent est apres -30 ,et si la periodstart du parent est avant +7,cela signifie que nous avons au moins un event enfant a creer
             if ($firstDueDate > $latestCreationDate || $earliestCreationDate > $latestCreationDate) {
                 continue; // No child events to create
             }
 
             // Handle everyday events
             if ($everyday) {
+
                 $numberOfEventsChildren = $this->calculateEverydayChildren($firstDueDate, $lastDueDate, $latestCreationDate, $endDate);
                 $this->createChildEvents($eventRecurring, $firstDueDate, $numberOfEventsChildren, $createdAtParent, $now);
 
             }
 
-            // Handle period dates
-            if ($periodDates) {
-                foreach ($periodDates as $periodDate) {
-                    $dueDate = $periodDate->getDate();
-                    $this->handlePeriodDate($eventRecurring, $dueDate, $createdAtParent, $now);
-                }
-            }
+            //     // Handle period dates
+            //     if ($periodDates) {
+            //         foreach ($periodDates as $periodDate) {
+            //             $dueDate = $periodDate->getDate();
+            //             $this->handlePeriodDate($eventRecurring, $dueDate, $createdAtParent, $now);
+            //         }
+            //     }
 
-            // Handle month days
-            if ($monthDays) {
-                foreach ($monthDays as $monthDay) {
-                    $day = $monthDay->getDay();
-                    $date = (new DateTimeImmutable("now"))->modify("first day of this month")->modify("+{$day} days");
-                    $this->handleMonthDay($eventRecurring, $date, $createdAtParent, $now);
-                }
-            }
+            //     // Handle month days
+            //     if ($monthDays) {
+            //         foreach ($monthDays as $monthDay) {
+            //             $day = $monthDay->getDay();
+            //             $date = (new DateTimeImmutable("now"))->modify("first day of this month")->modify("+{$day} days");
+            //             $this->handleMonthDay($eventRecurring, $date, $createdAtParent, $now);
+            //         }
+            //     }
 
-            // Handle week days
-            if ($weekDays) {
-                foreach ($weekDays as $weekDay) {
-                    $day = $weekDay->getDay();
-                    $date = (new DateTimeImmutable("now"))->modify("this week")->modify("+{$day} days");
-                    $this->handleWeekDay($eventRecurring, $date, $createdAtParent, $now);
-                }
-            }
+            //     // Handle week days
+            //     if ($weekDays) {
+            //         foreach ($weekDays as $weekDay) {
+            //             $day = $weekDay->getDay();
+            //             $date = (new DateTimeImmutable("now"))->modify("this week")->modify("+{$day} days");
+            //             $this->handleWeekDay($eventRecurring, $date, $createdAtParent, $now);
+            //         }
+            //     }
         }
     }
     /**
@@ -520,7 +529,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function duplicatePendingRecurringEvent(Event $event)
     {
-        dd($event);
+
         $eventParent = $event->getEventRecurring();
         $eventsBrothers = $eventParent->getEvents();
 
@@ -930,14 +939,19 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @param DateTimeImmutable $firstDueDate The first due date for the child events.
      * @param DateTimeImmutable|null $lastDueDate The last due date for the child events, if any.
-     * @param DateTimeImmutable $latestCreationDate The latest date of creation to consider.
-     * @param DateTimeImmutable|null $endDate The end date for the calculations, if applicable.
+     * @param DateTimeImmutable $latestCreationDate The latest date of creation to consider// 7 days from now.
+     * @param DateTimeImmutable|null $endDate The period end date for the calculations, if applicable.
      *
      * @return int The number of everyday child events calculated.
      */
     private function calculateEverydayChildren(DateTimeImmutable $firstDueDate, ?DateTimeImmutable $lastDueDate, DateTimeImmutable $latestCreationDate, ?DateTimeImmutable $endDate): int
     {
         if ($lastDueDate > $latestCreationDate || $lastDueDate === null) {
+            // on cherche a determiner quel est la variable qui doit etre prise comme date de fin pour le calcul du nombre d'evenements enfants.
+            // si la date de fin est null(l'event est infini), on prend la date de fin de la periode de creation.
+            // on rajoute 1 pour inclure le premier jour.
+            // la date de depart est forcement le firstDueDate, et everyday signifie un enfant tous les jours.
+            // on cherche donc a inclure en bdd chaque events qui seront visibles dans le futur , ont été visible dans le passé et visible aujourdhui.
             return (int) $firstDueDate->diff($latestCreationDate)->format('%r%a') + 1;
         } else {
             return (int) $firstDueDate->diff($endDate)->format('%r%a') + 1;
@@ -1041,10 +1055,13 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     private function calculateCreatedUpdatedDates(DateTimeImmutable $dueDate, DateTimeImmutable $createdAtParent): array
     {
+        // pour calculer la date de crátion on doit comprendre que un event est créé des lors qu'il rentre dans la periode active.
+        // donc soit il y est déjà a la creation du parent, soit il arrive au jour 7.
         $daysUntilDueDate = (int) $createdAtParent->diff($dueDate)->format('%r%a');
         if ($daysUntilDueDate <= 7) {
             return [$createdAtParent, $createdAtParent]; // Case 1
         } else {
+            // dans ce cas la date de creation est le jour 7 avant la date d'échéance.
             $adjustedDate = $dueDate->modify('-7 days');
             return [$adjustedDate, $adjustedDate]; // Case 2
         }
