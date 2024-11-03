@@ -334,29 +334,26 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
             $now = new DateTimeImmutable('now');
             $startDate = $eventRecurring->getPeriodeStart();
-            $endDate = $eventRecurring->getPeriodeEnd();
-            $createdAtParent = $updatedAtParent = $eventRecurring->getCreatedAt();
-
-
-            // Skip if the parent event is outside the active period
-            $firstDueDate = $startDate;
-            $lastDueDate = $endDate;
+            $createdAtParent = $eventRecurring->getCreatedAt();
             // les events enfants peuvent etre en bdd que entre -30 et +7
             // la periode entre start et end du parent doit etre entre -30 et +7
             $latestCreationDate = $now->modify('+7 days');
-            $earliestCreationDate = $now->modify('-30 days');
+            $earliestCreationDate = max($now->modify('-30 days'), $createdAtParent); // On prend la date la plus récente entre -30 jours et la date de création
+            $endDate = $eventRecurring->getPeriodeEnd() ?? $latestCreationDate;// si l'event est illimité,car dans ce cas la period date est null.
 
-            // si la periodend du parent est apres -30 ,et si la periodstart du parent est avant +7,cela signifie que nous avons au moins un event enfant a creer
-            if ($firstDueDate > $latestCreationDate || $earliestCreationDate > $latestCreationDate) {
-                continue; // No child events to create
+
+            // Vérifier si la période de l'événement parent chevauche la période active
+            if ($endDate < $earliestCreationDate || $startDate > $latestCreationDate) {
+                continue; // Aucun événement enfant à créer pour ce parent
             }
 
             // Handle everyday events
             if ($everyday) {
-
-                $numberOfEventsChildren = $this->calculateEverydayChildren($firstDueDate, $lastDueDate, $latestCreationDate, $endDate);
+                // Ajuster les dates de début et de fin possibles pour les enfants en fonction de la période active
+                $firstDueDate = ($startDate > $earliestCreationDate) ? $startDate : $earliestCreationDate;
+                $lastDueDate = ($endDate < $latestCreationDate) ? $endDate : $latestCreationDate;
+                $numberOfEventsChildren = (int) $firstDueDate->diff($lastDueDate)->format('%r%a') + 1;
                 $this->createChildEvents($eventRecurring, $firstDueDate, $numberOfEventsChildren, $createdAtParent, $now);
-
             }
 
             //     // Handle period dates
@@ -525,7 +522,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return void
      */
-    public function duplicatePendingRecurringEvent(Event $event,EventRecurring $eventRecurring): void 
+    public function duplicatePendingRecurringEvent(Event $event, EventRecurring $eventRecurring): void
     {
         $eventsBrothers = $eventRecurring->getEvents();
 
@@ -572,7 +569,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                     }
                     // Ajoute et persiste le nouvel événement
                     $this->em->persist($newEvent);
-                    $this->em->flush(); 
+                    $this->em->flush();
                     $eventRecurring->addEvent($newEvent);
                 }
                 // Passe au prochain événement
@@ -806,7 +803,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                         $eventRecurring->addEvent($event);
                         $this->em->flush();
 
-                        $this->duplicatePendingRecurringEvent($event,$eventRecurring);
+                        $this->duplicatePendingRecurringEvent($event, $eventRecurring);
                     } else {
                         $this->duplicatePendingEvent($event);
                     }
@@ -899,7 +896,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         if ($taskStatut === 'pending') {
             if ($isRecurring) {
                 $eventRecurring->addEvent($event);
-                $this->duplicatePendingRecurringEvent($event,$eventRecurring);
+                $this->duplicatePendingRecurringEvent($event, $eventRecurring);
             } else {
                 $this->duplicatePendingEvent($event);
             }
@@ -948,19 +945,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return int The number of everyday child events calculated.
      */
-    private function calculateEverydayChildren(DateTimeImmutable $firstDueDate, ?DateTimeImmutable $lastDueDate, DateTimeImmutable $latestCreationDate, ?DateTimeImmutable $endDate): int
-    {
-        if ($lastDueDate > $latestCreationDate || $lastDueDate === null) {
-            // on cherche a determiner quel est la variable qui doit etre prise comme date de fin pour le calcul du nombre d'evenements enfants.
-            // si la date de fin est null(l'event est infini), on prend la date de fin de la periode de creation.
-            // on rajoute 1 pour inclure le premier jour.
-            // la date de depart est forcement le firstDueDate, et everyday signifie un enfant tous les jours.
-            // on cherche donc a inclure en bdd chaque events qui seront visibles dans le futur , ont été visible dans le passé et visible aujourdhui.
-            return (int) $firstDueDate->diff($latestCreationDate)->format('%r%a') + 1;
-        } else {
-            return (int) $firstDueDate->diff($endDate)->format('%r%a') + 1;
-        }
-    }
+
 
     /**
      * Create child events for everyday cases.
@@ -973,11 +958,11 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return void
      */
-    private function createChildEvents($eventRecurring, DateTimeImmutable $firstDueDate, int $numberOfEventsChildren, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void//!
+    private function createChildEvents($eventRecurring, DateTimeImmutable $firstDueDate, int $numberOfEventsChildren, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
     {
         for ($i = 0; $i < $numberOfEventsChildren; $i++) {
             $dueDate = $firstDueDate->modify("+{$i} days");
-            [$createdAt, $updatedAt] = $this->calculateCreatedUpdatedDates($dueDate, $createdAtParent);
+            [$createdAt, $updatedAt] = $this->calculateCreatedUpdatedDates($dueDate, $createdAtParent, $now);
             [$dateStatus, $activeDay] = $this->calculateDateStatus($dueDate, $now);
 
             if ($i === 0) {
@@ -999,17 +984,19 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return void
      */
-    private function handlePeriodDate($eventRecurring, DateTimeImmutable $dueDate, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void//!
+    private function handlePeriodDate($eventRecurring, DateTimeImmutable $dueDate, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
     {
         $dueDateInt = (int) $dueDate->diff($now)->format('%r%a');
 
         // Check active range validity
         if ($dueDateInt > 7 || $dueDateInt < -30) {
             return; // Exclude dates outside of active range
+        } else {
+            [$createdAt, $updatedAt] = $this->calculateCreatedUpdatedDates($dueDate, $createdAtParent, $now);
+            [$dateStatus, $activeDay] = $this->calculateDateStatus($dueDate, $now);
+
         }
 
-        [$createdAt, $updatedAt] = $this->calculateCreatedUpdatedDates($dueDate, $createdAtParent);
-        [$dateStatus, $activeDay] = $this->calculateDateStatus($dueDate, $now);
 
         $this->persistEventRecurrring($eventRecurring, $dueDate, $createdAt, $updatedAt, $dateStatus, $activeDay);
     }
@@ -1024,10 +1011,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return void
      */
-    private function handleMonthDay($eventRecurring, DateTimeImmutable $date, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void//!
+    private function handleMonthDay($eventRecurring, DateTimeImmutable $date, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
     {
         $isActiveDay = (int) $date->diff($now)->format('%r%a');
-        [$createdAt, $updatedAt] = $this->calculateCreatedUpdatedDates($date, $createdAtParent);
+        [$createdAt, $updatedAt] = $this->calculateCreatedUpdatedDates($date, $createdAtParent, $now);
         [$dateStatus, $activeDay] = $this->calculateDateStatus($date, $now);
 
         $this->persistEventRecurrring($eventRecurring, $date, $createdAt, $updatedAt, $dateStatus, $activeDay);
@@ -1043,10 +1030,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return void
      */
-    private function handleWeekDay($eventRecurring, DateTimeImmutable $date, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void//!
+    private function handleWeekDay($eventRecurring, DateTimeImmutable $date, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
     {
         $isActiveDay = (int) $date->diff($now)->format('%r%a');
-        [$createdAt, $updatedAt] = $this->calculateCreatedUpdatedDates($date, $createdAtParent);
+        [$createdAt, $updatedAt] = $this->calculateCreatedUpdatedDates($date, $createdAtParent, $now);
         [$dateStatus, $activeDay] = $this->calculateDateStatus($date, $now);
 
         $this->persistEventRecurrring($eventRecurring, $date, $createdAt, $updatedAt, $dateStatus, $activeDay);
@@ -1060,17 +1047,18 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return array An array containing the calculated [createdAt, updatedAt] dates.
      */
-    private function calculateCreatedUpdatedDates(DateTimeImmutable $dueDate, DateTimeImmutable $createdAtParent): array
+    private function calculateCreatedUpdatedDates(DateTimeImmutable $dueDate, DateTimeImmutable $createdAtParent, $now): array
     {
         // pour calculer la date de crátion on doit comprendre que un event est créé des lors qu'il rentre dans la periode active.
         // donc soit il y est déjà a la creation du parent, soit il arrive au jour 7.
-        $daysUntilDueDate = (int) $createdAtParent->diff($dueDate)->format('%r%a');
-        if ($daysUntilDueDate <= 7) {
+        // Lorsque le parent est crée ,createdParent= $now.
+        // si le parent est crée dans la periode active, alors la date de creation est la date de creation du parent.
+        // sinon la date de creation est egal a $now + (dueDate - now + 7 days)
+        if ($createdAtParent->modify("+7 days") < $dueDate) {
             return [$createdAtParent, $createdAtParent]; // Case 1
         } else {
-            // dans ce cas la date de creation est le jour 7 avant la date d'échéance.
-            $adjustedDate = $dueDate->modify('-7 days');
-            return [$adjustedDate, $adjustedDate]; // Case 2
+            $creationDate = $now->add($dueDate->diff($now))->modify('-7 days');
+            return [$creationDate, $creationDate]; // Case 2
         }
     }
 
@@ -1082,9 +1070,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return array An array containing the calculated [dateStatus, activeDay].
      */
-    private function calculateDateStatus(DateTimeImmutable $date, DateTimeImmutable $now): array
+    private function calculateDateStatus(DateTimeImmutable $dueDate, DateTimeImmutable $now): array
     {
-        $activeDayInt = (int) $date->diff($now)->format('%r%a');
+        // ici on doit comprendre que le cronjob met a jour les events chaque jour, donc on ne peut pas se baser sur la date de creation pour determiner le statut de la date.
+        $activeDayInt = (int) $dueDate->diff($now)->format('%r%a');
         $dateStatus = ($activeDayInt >= -3) ? "activeDayRange" : "past";
         $activeDay = ($activeDayInt >= -3) ? $activeDayInt : null;
         // ici on ne prend pas en compte les dates futures, car on ne peut pas savoir si elles seront actives ou non, cad si l'event sera visible ou non car user les a modifie depuis interface
