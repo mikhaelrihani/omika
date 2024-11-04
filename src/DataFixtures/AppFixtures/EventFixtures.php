@@ -352,7 +352,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             }
 
             // Handle everyday events
-            if ($everyday) {//! ici first due et last due et count sont good.
+            if ($everyday) {
                 // Ajuster les dates de début et de fin possibles pour les enfants en fonction de la période active
                 $firstDueDate = ($startDate > $earliestCreationDate) ? $startDate : $earliestCreationDate;
                 $lastDueDate = ($endDate < $latestCreationDate) ? $endDate : $latestCreationDate;
@@ -440,30 +440,34 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return Event Le nouvel événement dupliqué avec les propriétés ajustées.
      */
-    public function duplicateEvent($event): Event
+    public function duplicateEvent(Event $event): Event
     {
-        $dueDate = $createdAt = $updatedAt = $event->getDueDate()->modify('+1 day');
+        // Définir la nouvelle date d'échéance et les dates de création/mise à jour en ajoutant un jour
+        $dueDate = $event->getDueDate()->modify('+1 day');
+        $createdAt = $dueDate;
+        $updatedAt = $dueDate;
 
+        // Définir le contexte de la date actuelle sans l'heure
         $now = new DateTimeImmutable('now');
-        // Créer une version sans heure de $dueDate et $now
         $dueDateDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', $dueDate->format('Y-m-d'));
         $nowDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', $now->format('Y-m-d'));
 
-        // Calculer la différence en jours entiers
-        $activeDayInt = (int) $nowDayOnly->diff($dueDateDayOnly)->format('%r%a');
-        // Limite $activeDayInt entre -3 et 7
-        $activeDay = ($activeDayInt >= -3 && $activeDayInt <= 7) ? $activeDayInt : null;
+        // Calculer la différence en jours entiers entre la date actuelle et la nouvelle date d'échéance
+        $dueDateDiff = (int) $nowDayOnly->diff($dueDateDayOnly)->format('%r%a');
 
-        // Calculer la différence pour déterminer le statut de la date
-        $dueDateDiff = (int) $nowDayOnly->diff($dueDateDayOnly)->format('%r%a'); // Convertir en entier
-
+        // Déterminer le statut de la date et la valeur d'activeDay en fonction de cette différence
         if ($dueDateDiff >= -3 && $dueDateDiff <= 7) {
             $dateStatus = "activeDayRange";
+            $activeDay = $dueDateDiff;
         } elseif ($dueDateDiff >= -30 && $dueDateDiff < -3) {
             $dateStatus = "past";
+            $activeDay = null; // `activeDay` n'est défini que pour l'intervalle `-3 à 7`
         } else {
             $dateStatus = "future";
+            $activeDay = null;
         }
+
+        // Créer le nouvel événement en copiant les propriétés de l'original et en appliquant les nouvelles valeurs
         $newEvent = $this->duplicateEventProperties($event);
         $newEvent
             ->setDateStatus($dateStatus)
@@ -472,6 +476,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setCreatedAt($createdAt)
             ->setUpdatedAt($updatedAt);
 
+        // Persister l'événement et le retourner
         $this->em->persist($newEvent);
         return $newEvent;
     }
@@ -600,74 +605,90 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return void
      */
-    public function duplicateUnrealisedRecurringEvent(Event $event, EventRecurring $eventRecurring, $RangeStart = "-30days", $RangeEnd = "-1day")
+    public function duplicateUnrealisedRecurringEvent(Event $event, EventRecurring $eventRecurring, $RangeStart = "-30 days", $RangeEnd = "-1 day")
     {
-
-        $eventsBrothers = $eventRecurring->getEvents();
-
         $dateRangeStart = new DateTimeImmutable($RangeStart);
         $dateRangeEnd = new DateTimeImmutable($RangeEnd);
 
-        // Filtrer les événements frères dans la plage en utilisant `dueDate`, et sélectionner ceux avec le statut "unrealised"
-        $eventsBrothersInRange = $eventsBrothers->filter(function ($eventBrother) use ($dateRangeStart, $dateRangeEnd) {
-            return $eventBrother->getTask()->getTaskStatus() === "unrealised"//!  Call to a member function getTaskStatus() on null
-                && $eventBrother->getDueDate() >= $dateRangeStart
-                && $eventBrother->getDueDate() <= $dateRangeEnd;
-        })->toArray();
-
-        // Trier les événements frères par `dueDate` pour faciliter le parcours
-        usort($eventsBrothersInRange, function ($a, $b) {
-            return $a->getDueDate() <=> $b->getDueDate();
+        // Exclure l'événement actuel des frères
+        $eventsBrothers = $eventRecurring->getEvents()->filter(function ($brotherEvent) use ($event) {
+            return $brotherEvent !== $event;
         });
 
-        // Parcourt chaque événement frère dans la plage et vérifie s'il a un frère le jour suivant
-        foreach ($eventsBrothersInRange as $eventBrother) {
-            $currentDueDate = $eventBrother->getDueDate();
-            $nextDueDate = $currentDueDate->modify('+1 day');
+        // Vérifier si, après exclusion, la liste est vide
+        if ($eventsBrothers->isEmpty()) {
+            // Si aucun frère n'existe, dupliquer jusqu'à créer un événement 'done'
+            $nextDueDate = $event->getDueDate()->modify('+1 day');
 
-            // Vérifie si un événement frère existe le jour suivant
-            $hasBrotherNextDay = $eventsBrothers->exists(function ($key, $eventBrotherNextDay) use ($nextDueDate) {
-                return $eventBrotherNextDay->getDueDate() == $nextDueDate;
-            });
-
-            // Vérifier si le jour précédent est marqué comme `done`
-            $previousDay = $currentDueDate->modify('-1 day');
-            $hasDonePreviousDay = $eventsBrothers->exists(function ($key, $eventBrotherPreviousDay) use ($previousDay) {
-                return $eventBrotherPreviousDay->getDueDate() == $previousDay &&
-                    $eventBrotherPreviousDay->getTask() === 'done';
-            });
-
-            // Si le jour précédent est `done`, ne crée pas de nouvel événement pour cette date et continue
-            if ($hasDonePreviousDay) {
-                continue;
-            }
-
-            // Tant qu'il n'y a pas de frère le jour suivant, on crée un nouvel événement pour combler le gap
-            while (!$hasBrotherNextDay) {
-                // Crée un nouvel événement en dupliquant les propriétés de l'événement actuel
-                $newEvent = $this->duplicateEvent($eventBrother);
-
-                // Déterminer un statut pour le nouvel événement et l'ajouter au parent
+            while (true) {
+                $newEvent = $this->duplicateEvent($event);
                 $taskStatus = $this->faker->randomElement(['unrealised', 'done']);
                 $this->setEventTask($newEvent, $taskStatus);
+                $newEvent->setDueDate($nextDueDate);
                 $this->em->persist($newEvent);
-                $this->em->flush(); // Flush pour persister chaque nouvel événement créé
+                $this->em->flush();
+
                 $eventRecurring->addEvent($newEvent);
 
-                // Met à jour les variables pour la boucle suivante
+                if ($taskStatus === 'done') {
+                    break;
+                }
+
+                // Préparer la prochaine date pour le prochain événement à dupliquer
                 $nextDueDate = $nextDueDate->modify('+1 day');
+            }
+        } else {
+            // Si des frères existent, filtrer et gérer selon la plage donnée
+            $eventsBrothersInRange = $eventsBrothers->filter(function ($eventBrother) use ($dateRangeStart, $dateRangeEnd) {
+                return $eventBrother->getTask()->getTaskStatus() === "unrealised"
+                    && $eventBrother->getDueDate() >= $dateRangeStart
+                    && $eventBrother->getDueDate() <= $dateRangeEnd;
+            })->toArray();
+
+            // Trier les événements dans la plage par `dueDate`
+            usort($eventsBrothersInRange, function ($a, $b) {
+                return $a->getDueDate() <=> $b->getDueDate();
+            });
+
+            // Parcourir les événements frères dans la plage et dupliquer en conséquence
+            foreach ($eventsBrothersInRange as $eventBrother) {
+                $currentDueDate = $eventBrother->getDueDate();
+                $nextDueDate = $currentDueDate->modify('+1 day');
+
                 $hasBrotherNextDay = $eventsBrothers->exists(function ($key, $eventBrotherNextDay) use ($nextDueDate) {
                     return $eventBrotherNextDay->getDueDate() == $nextDueDate;
                 });
 
-                // Arrêter la duplication si l'événement nouvellement créé est marqué comme `done`
-                if ($taskStatus === 'done') {
-                    break;
+                $previousDay = $currentDueDate->modify('-1 day');
+                $hasDonePreviousDay = $eventsBrothers->exists(function ($key, $eventBrotherPreviousDay) use ($previousDay) {
+                    return $eventBrotherPreviousDay->getDueDate() == $previousDay &&
+                        $eventBrotherPreviousDay->getTask()->getTaskStatus() === 'done';
+                });
+
+                if ($hasDonePreviousDay) {
+                    continue;
+                }
+
+                while (!$hasBrotherNextDay) {
+                    $newEvent = $this->duplicateEvent($eventBrother);
+                    $taskStatus = $this->faker->randomElement(['unrealised', 'done']);
+                    $this->setEventTask($newEvent, $taskStatus);
+                    $this->em->persist($newEvent);
+                    $this->em->flush();
+                    $eventRecurring->addEvent($newEvent);
+
+                    $nextDueDate = $nextDueDate->modify('+1 day');
+                    $hasBrotherNextDay = $eventsBrothers->exists(function ($key, $eventBrotherNextDay) use ($nextDueDate) {
+                        return $eventBrotherNextDay->getDueDate() == $nextDueDate;
+                    });
+
+                    if ($taskStatus === 'done') {
+                        break;
+                    }
                 }
             }
         }
     }
-
 
     /**
      * Crée une instance d'Event avec des propriétés de base.
@@ -686,7 +707,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $createdBy = $createdByUser->getFullName();
         $updatedBy = $updatedByUser->getFullName();
         $sections = $this->retrieveEntities("section", $this);
-
+        $section = $sections[array_rand($sections)];
         $event = new Event();
         $event
             ->setDescription($this->faker->sentence)
@@ -695,14 +716,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setTitle($this->faker->sentence)
             ->setCreatedBy($createdBy)
             ->setUpdatedBy($updatedBy)
-            ->setType($this->faker->randomElement(['task', 'info']));
-
-        $section = new Section();
-        $section->setName($sections[array_rand($sections)]->getName());
-        $event
+            ->setType($this->faker->randomElement(['task', 'info']))
             ->setSection($section);
 
-
+        $this->em->persist($event);
         return $event;
 
     }
@@ -723,7 +740,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $nowDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', $now->format('Y-m-d'));
 
         $type = $event->getType();
-
         // Traitement du type Task
         if ($type === "task") {
             // Obtention de la dueDate et calcul de la différence
@@ -732,7 +748,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $dueDateDiff = (int) $nowDayOnly->diff($dueDateDayOnly)->format('%r%a');
 
             // Cas des événements non récurrents, dans la plage active (-30 jours à aujourd'hui non inclus)
-            if (!$event->isRecurring() && $dueDateDiff >= -30 && $dueDateDiff < 0) {
+            if (!$eventRecurring && $dueDateDiff >= -30 && $dueDateDiff < 0) {
                 $taskStatut = $this->faker->randomElement(['done', 'unrealised']);
 
                 // Si l'événement a un statut "unrealised"
@@ -766,52 +782,32 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 }
 
                 // Cas des événements récurrents dans la plage active (-30 jours à aujourd'hui non inclus)
-            } elseif ($event->isRecurring() && $dueDateDiff >= -30 && $dueDateDiff < 0) {
+            } elseif ($eventRecurring && $dueDateDiff >= -30 && $dueDateDiff < 0) {
                 $taskStatut = $this->faker->randomElement(['done', 'unrealised']);
                 if ($taskStatut === 'unrealised') {
                     $this->setEventTask($event, 'unrealised');
-                    $this->em->persist($event);
                     $eventRecurring->addEvent($event);
-                    $this->em->flush();
                     $this->duplicateUnrealisedRecurringEvent($event, $eventRecurring);
-
                 } else {
                     $this->setEventTask($event, 'done');
-                    $this->em->persist($event);
-                    $this->em->flush();
-
+                    $eventRecurring->addEvent($event);
                 }
 
                 // Cas où la dueDate est aujourd'hui
-            } elseif ($dueDateDiff === 0) {
-                $this->processEvent($event, $now, $eventRecurring = null);
+            } elseif ($dueDateDiff >= 0 && $dueDateDiff <= 7) {
+                $eventRecurring ?
+                    $taskStatuses = ['todo', 'todo_modified', 'done', 'pending', 'warning'] :
+                    $taskStatuses = ['todo', 'todo_modified', 'done', 'pending'];
+                    
+                $this->handleEventStatus($event, $taskStatuses, $eventRecurring);
 
                 // Cas des événements futurs (dueDate dans le futur)
-            } elseif ($dueDateDiff > 0) {
+            } elseif ($dueDateDiff > 7) {
+                $eventRecurring ?
+                    $taskStatuses = ['todo_modified', 'done', 'pending', 'warning'] :
+                    $taskStatuses = ['todo_modified', 'done', 'pending'];
 
-                $taskStatut = $this->faker->randomElement(
-                    $event->isRecurring() ?
-                    ['todo_modified', 'done', 'pending', 'warning'] :
-                    ['todo_modified', 'done', 'pending']
-                );
-
-                $this->setEventTask($event, $taskStatut);
-                $this->em->persist($event);
-                $this->em->flush();
-
-
-                if ($taskStatut === 'pending') {
-                    if ($event->isRecurring()) {
-                        $this->setEventTask($event, 'pending');
-                        $this->em->persist($event);
-                        $eventRecurring->addEvent($event);
-                        $this->em->flush();
-
-                        $this->duplicatePendingRecurringEvent($event, $eventRecurring);
-                    } else {
-                        $this->duplicatePendingEvent($event);
-                    }
-                }
+                $this->handleEventStatus($event, $taskStatuses, $eventRecurring);
             }
             // Traitement du type Info
         } elseif ($type === "info") {
@@ -856,7 +852,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $event->setInfo($info);
             $this->em->persist($event);
             $this->em->flush();
-            if ($event->isRecurring()) {
+            if ($eventRecurring) {
                 $eventRecurring->addEvent($event);
             }
 
@@ -880,8 +876,11 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setTaskStatus($taskStatus)
             ->setCreatedAt($event->getCreatedAt())
             ->setUpdatedAt($event->getUpdatedAt());
+        $this->em->persist($newTask);
 
         $event->setTask($newTask);
+        $this->em->persist($event);
+        $this->em->flush();
     }
 
     /**
@@ -893,22 +892,23 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return void
      */
-    private function handleEventStatus(Event $event, array $taskStatuses, bool $isRecurring, EventRecurring $eventRecurring = null): void
+    private function handleEventStatus(Event $event, array $taskStatuses, EventRecurring $eventRecurring = null): void
     {
         $taskStatut = $this->faker->randomElement($taskStatuses);
         $this->setEventTask($event, $taskStatut);
         $this->em->persist($event);
         $this->em->flush();
-
+        if ($eventRecurring) {
+            $eventRecurring->addEvent($event);
+        }
+        if ($taskStatut === 'pending' && $eventRecurring) {
+            $this->duplicatePendingRecurringEvent($event, $eventRecurring);
+        }
         if ($taskStatut === 'pending') {
-            if ($isRecurring) {
-                $eventRecurring->addEvent($event);
-                $this->duplicatePendingRecurringEvent($event, $eventRecurring);
-            } else {
-                $this->duplicatePendingEvent($event);
-            }
+            $this->duplicatePendingEvent($event);
         }
     }
+
 
     /**
      * Process the event based on its due date and current time.
@@ -918,29 +918,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return void
      */
-    public function processEvent(Event $event, DateTimeImmutable $now, EventRecurring $eventRecurring = null): void
-    {
-
-        $dueDate = $event->getDueDate();
-        // Créer une version sans heure de $dueDate et $now
-        $dueDateDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', $dueDate->format('Y-m-d'));
-        $nowDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', $now->format('Y-m-d'));
-        $dueDateDiff = (int) $nowDayOnly->diff($dueDateDayOnly)->days;
-        $isRecurring = $event->isRecurring();
-
-        // Statuts en fonction du contexte
-        $taskStatusesToday = ['todo', 'todo_modified', 'done', 'pending', 'warning'];
-        $taskStatusesAfterToday = ['todo_modified', 'done', 'pending'];
-
-        // Traitement dans le cas today
-        if ($dueDateDiff === 0) {
-            $this->handleEventStatus($event, $isRecurring ? $taskStatusesToday : array_slice($taskStatusesToday, 0, 4), $isRecurring, $eventRecurring = null);
-
-            // Traitement dans le cas après today
-        } elseif ($dueDateDiff > 0) {
-            $this->handleEventStatus($event, $isRecurring ? array_merge($taskStatusesAfterToday, ['warning']) : $taskStatusesAfterToday, $isRecurring, $eventRecurring = null);
-        }
-    }
 
     /**
      * Calculate the number of everyday child events.
