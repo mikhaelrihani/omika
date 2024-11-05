@@ -360,31 +360,31 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $this->createChildEvents($eventRecurring, $firstDueDate, $numberOfEventsChildren, $createdAtParent, $now);
             }
 
-            // Handle period dates
-            if ($periodDates) {
-                foreach ($periodDates as $periodDate) {
-                    $dueDate = $periodDate->getDate();
-                    $this->handlePeriodDate($eventRecurring, $dueDate, $createdAtParent, $now);
-                }
-            }
+            // // Handle period dates
+            // if ($periodDates) {
+            //     foreach ($periodDates as $periodDate) {
+            //         $dueDate = $periodDate->getDate();
+            //         $this->handlePeriodDate($eventRecurring, $dueDate, $createdAtParent, $now);
+            //     }
+            // }
 
-            // Handle month days
-            if ($monthDays) {
-                foreach ($monthDays as $monthDay) {
-                    $day = $monthDay->getDay();
-                    $date = (new DateTimeImmutable("now"))->modify("first day of this month")->modify("+{$day} days");
-                    $this->handleMonthDay($eventRecurring, $date, $createdAtParent, $now);
-                }
-            }
+            // // Handle month days
+            // if ($monthDays) {
+            //     foreach ($monthDays as $monthDay) {
+            //         $day = $monthDay->getDay();
+            //         $date = (new DateTimeImmutable("now"))->modify("first day of this month")->modify("+{$day} days");
+            //         $this->handleMonthDay($eventRecurring, $date, $createdAtParent, $now);
+            //     }
+            // }
 
-            // Handle week days
-            if ($weekDays) {
-                foreach ($weekDays as $weekDay) {
-                    $day = $weekDay->getDay();
-                    $date = (new DateTimeImmutable("now"))->modify("this week")->modify("+{$day} days");
-                    $this->handleWeekDay($eventRecurring, $date, $createdAtParent, $now);
-                }
-            }
+            // // Handle week days
+            // if ($weekDays) {
+            //     foreach ($weekDays as $weekDay) {
+            //         $day = $weekDay->getDay();
+            //         $date = (new DateTimeImmutable("now"))->modify("this week")->modify("+{$day} days");
+            //         $this->handleWeekDay($eventRecurring, $date, $createdAtParent, $now);
+            //     }
+            // }
         }
     }
     /**
@@ -605,10 +605,12 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return void
      */
-    public function duplicateUnrealisedRecurringEvent(Event $event, EventRecurring $eventRecurring, $RangeStart = "-30 days", $RangeEnd = "-1 day")
+    public function duplicateUnrealisedRecurringEvent(Event $event, EventRecurring $eventRecurring)
     {
-        $dateRangeStart = new DateTimeImmutable($RangeStart);
-        $dateRangeEnd = new DateTimeImmutable($RangeEnd);
+
+        $dateRangeStart = DateTimeImmutable::createFromFormat('Y-m-d', (new DateTimeImmutable("-30 days"))->format('Y-m-d'));
+        $dateRangeEnd = DateTimeImmutable::createFromFormat('Y-m-d', (new DateTimeImmutable("-1 day"))->format('Y-m-d'));
+
 
         // Exclure l'événement actuel des frères
         $eventsBrothers = $eventRecurring->getEvents()->filter(function ($brotherEvent) use ($event) {
@@ -787,7 +789,9 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 if ($taskStatut === 'unrealised') {
                     $this->setEventTask($event, 'unrealised');
                     $eventRecurring->addEvent($event);
-                    $this->duplicateUnrealisedRecurringEvent($event, $eventRecurring);
+                    if (!$eventRecurring->isEveryday()) {
+                        $this->duplicateUnrealisedRecurringEvent($event, $eventRecurring);
+                    }
                 } else {
                     $this->setEventTask($event, 'done');
                     $eventRecurring->addEvent($event);
@@ -798,7 +802,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $eventRecurring ?
                     $taskStatuses = ['todo', 'todo_modified', 'done', 'pending', 'warning'] :
                     $taskStatuses = ['todo', 'todo_modified', 'done', 'pending'];
-                    
+
                 $this->handleEventStatus($event, $taskStatuses, $eventRecurring);
 
                 // Cas des événements futurs (dueDate dans le futur)
@@ -817,15 +821,21 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $randomUsers = $this->faker->randomElements($users, $randomNumOfUsers);
 
             $info = new EventInfo();
+            $info
+                ->setCreatedAt($createdAt)
+                ->setUpdatedAt($updatedAt)
+                ->setSharedWithCount($randomNumOfUsers);
+            $this->em->persist($info);
+
             $inforeadCounter = 0;
-
+            
             foreach ($randomUsers as $user) {
-                $eventSharedInfo = new EventSharedInfo();
+                $info->addSharedWith($user);
                 $isRead = $this->faker->boolean;
-
                 if ($isRead) {
                     $inforeadCounter++;
                 }
+                $eventSharedInfo = new EventSharedInfo();
                 $eventSharedInfo
                     ->setUser($user)
                     ->setEventInfo($info)
@@ -833,14 +843,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                     ->setCreatedAt($createdAt)
                     ->setUpdatedAt($updatedAt);
                 $this->em->persist($eventSharedInfo);
-                $info->addSharedWith($user);
             }
 
             $info
-                ->setCreatedAt($createdAt)
-                ->setUpdatedAt($updatedAt)
-                ->setUserReadInfoCount($inforeadCounter)
-                ->setSharedWithCount($randomNumOfUsers);
+                ->setUserReadInfoCount($inforeadCounter);
 
             if ($inforeadCounter === $randomNumOfUsers) {
                 $info->setIsFullyRead(true);
@@ -848,9 +854,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $info->setIsFullyRead(false);
             }
 
-            $this->em->persist($info);
             $event->setInfo($info);
-            $this->em->persist($event);
             $this->em->flush();
             if ($eventRecurring) {
                 $eventRecurring->addEvent($event);
@@ -901,10 +905,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         if ($eventRecurring) {
             $eventRecurring->addEvent($event);
         }
-        if ($taskStatut === 'pending' && $eventRecurring) {
+        if ($taskStatut === 'pending' && $eventRecurring && !$eventRecurring->isEveryday()) {
             $this->duplicatePendingRecurringEvent($event, $eventRecurring);
         }
-        if ($taskStatut === 'pending') {
+        if ($taskStatut === 'pending' && !$eventRecurring) {
             $this->duplicatePendingEvent($event);
         }
     }
@@ -944,14 +948,12 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     private function createChildEvents($eventRecurring, DateTimeImmutable $firstDueDate, int $numberOfEventsChildren, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
     {
-
+        $event = $this->setEventBase();
         for ($i = 0; $i < $numberOfEventsChildren; $i++) {
             $dueDate = $firstDueDate->modify("+{$i} days");
             [$createdAt, $updatedAt] = $this->calculateCreatedUpdatedDates($dueDate, $createdAtParent, $now);
             [$dateStatus, $activeDay] = $this->calculateDateStatus($dueDate, $now);
-
-            $this->persistEventRecurrring($eventRecurring, $dueDate, $createdAt, $updatedAt, $dateStatus, $activeDay);
-
+            $this->setEventRecurrringTimestamps($event, $eventRecurring, $dueDate, $createdAt, $updatedAt, $dateStatus, $activeDay);
         }
     }
 
@@ -967,6 +969,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     private function handlePeriodDate($eventRecurring, DateTimeImmutable $dueDate, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
     {
+        $event = $this->setEventBase();
         $dueDateInt = (int) $now->diff($dueDate)->format('%r%a');
 
         // Check active range validity
@@ -975,7 +978,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         } else {
             [$createdAt, $updatedAt] = $this->calculateCreatedUpdatedDates($dueDate, $createdAtParent, $now);
             [$dateStatus, $activeDay] = $this->calculateDateStatus($dueDate, $now);
-            $this->persistEventRecurrring($eventRecurring, $dueDate, $createdAt, $updatedAt, $dateStatus, $activeDay);
+            $this->setEventRecurrringTimestamps($event, $eventRecurring, $dueDate, $createdAt, $updatedAt, $dateStatus, $activeDay);
 
         }
 
@@ -994,11 +997,12 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     private function handleMonthDay($eventRecurring, DateTimeImmutable $date, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
     {
+        $event = $this->setEventBase();
         $isActiveDay = (int) $now->diff($date)->format('%r%a');
         [$createdAt, $updatedAt] = $this->calculateCreatedUpdatedDates($date, $createdAtParent, $now);
         [$dateStatus, $activeDay] = $this->calculateDateStatus($date, $now);
 
-        $this->persistEventRecurrring($eventRecurring, $date, $createdAt, $updatedAt, $dateStatus, $activeDay);
+        $this->setEventRecurrringTimestamps($event, $eventRecurring, $date, $createdAt, $updatedAt, $dateStatus, $activeDay);
     }
 
     /**
@@ -1013,11 +1017,12 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     private function handleWeekDay($eventRecurring, DateTimeImmutable $date, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
     {
+        $event = $this->setEventBase();
         $isActiveDay = (int) $now->diff($date)->format('%r%a');
         [$createdAt, $updatedAt] = $this->calculateCreatedUpdatedDates($date, $createdAtParent, $now);
         [$dateStatus, $activeDay] = $this->calculateDateStatus($date, $now);
 
-        $this->persistEventRecurrring($eventRecurring, $date, $createdAt, $updatedAt, $dateStatus, $activeDay);
+        $this->setEventRecurrringTimestamps($event, $eventRecurring, $date, $createdAt, $updatedAt, $dateStatus, $activeDay);
     }
 
     /**
@@ -1073,10 +1078,9 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return void
      */
-    private function persistEventRecurrring(EventRecurring $eventRecurring, DateTimeImmutable $dueDate, DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt, string $dateStatus, ?int $activeDay): void//!
+    private function setEventRecurrringTimestamps(Event $event, EventRecurring $eventRecurring, DateTimeImmutable $dueDate, DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt, string $dateStatus, ?int $activeDay): void//!
     {
 
-        $event = $this->setEventBase();
         $event
             ->setIsRecurring(true)
             ->setCreatedAt($createdAt)
@@ -1090,6 +1094,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->setEventRelations($event, $eventRecurring);
 
     }
+
+
 
 
     /**
