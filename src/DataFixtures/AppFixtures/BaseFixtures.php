@@ -5,6 +5,8 @@ namespace App\DataFixtures\AppFixtures;
 use App\Entity\carte\Dish;
 use App\Entity\carte\DishCategory;
 use App\Entity\user\User;
+use App\Repository\Event\TagInfoRepository;
+use App\Repository\Event\TagRepository;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\FixtureInterface;
 use Doctrine\ORM\EntityManagerInterface;
@@ -12,20 +14,17 @@ use Doctrine\Persistence\ObjectManager;
 use Faker\Factory;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use App\service\EventDuplicationService;
+use App\Service\UnsplashApiService;
 
 class BaseFixtures extends Fixture implements FixtureInterface
 {
-    protected EntityManagerInterface $em;
-    protected UserPasswordHasherInterface $userPasswordHasher;
     protected \Faker\Generator $faker;
 
-    public function __construct(UserPasswordHasherInterface $userPasswordHasher, EntityManagerInterface $em)
+    public function __construct(protected UnsplashApiService $unsplashApi, protected UserPasswordHasherInterface $userPasswordHasher,protected EntityManagerInterface $em,protected TagRepository $tagRepository, protected TagInfoRepository $tagInfoRepository)
     {
-        $this->userPasswordHasher = $userPasswordHasher;
-        $this->em = $em;
         $this->faker = Factory::create("fr_FR");
     }
-
+   
     /**
      * Retrieve entities by their references in a fixture.
      *

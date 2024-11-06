@@ -16,6 +16,7 @@ use App\Entity\Event\PeriodDate;
 use App\Entity\Event\Tag;
 use App\Entity\Event\TagInfo;
 use App\Entity\Event\WeekDay;
+use App\Repository\Event\TagInfoRepository;
 use App\Repository\Event\TagRepository;
 use DateInterval;
 use DateTimeImmutable;
@@ -26,9 +27,8 @@ use Doctrine\Persistence\ObjectManager;
 class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 {
 
-    public function __construct(private TagRepository $tagRepository)
-    {
-    }
+   
+   
     public function load(ObjectManager $manager): void
     {
         $this->faker->addProvider(new AppProvider($this->faker));
@@ -1028,11 +1028,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     {
         // un tag peut être créer pour chaque jour et pour chaque section de chaque side.
         // un tag correspond uniquement a un jour et a une section.
-        // l'event qui est le premier pour ce jour et cette section aura la meeme createdAt que le tag associé.
-        // un event et un tag ont en commun la section, le side, la duedate/day, le dateStatus et le activeDay,
-        // par contre le updatedAt correspond a la createdAt du dernier event arrivé.
-        // lors de la suppression du dernier event correspondant a un tag, ce tag sera remove de la bdd.
-        // si je n'ai pas de tag pour une section pour un jour donné alors cela veut dire que il n'a pas de nouvelle task ou info.
 
         $day = $event->getDueDate();
         $side = $event->getSide();
@@ -1070,19 +1065,49 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     private function setInfoTagCount(Tag $tag, Event $event): void
     {
         // un tag pour un event de type info doit etre compte pour chaque user.
-        $tag->setUpdatedAt($event->getCreatedAt());
-        $taskInfo = new TagInfo();
 
-        $this->em->persist($taskInfo);
+        // je récupère les users qui ont lu l'info
+        $eventsSharedInfos = $event->getInfo()->getEventSharedInfo();
+        $users = [];
+        foreach ($eventsSharedInfos as $eventSharedInfo) {
+            if ($eventSharedInfo->getIsRead()) {
+                $user = $eventSharedInfo->getUser();
+                $users[] = $user;
+            }
+        }
+        // pour chaque user je cree un tag info en vérifiant que ce tag info n'existe pas déjà.
+        foreach ($users as $user) {
+            $tagInfo = $this->tagInfoRepository->findOneByUserTag($user, $tag);
+            if ($tagInfo) {
+                $count = $tagInfo->getUnreadInfoCount();
+                $count++;
+                $tagInfo->setUnreadInfoCount($count);
+                $tagInfo->setUpdatedAt($event->getCreatedAt());
+            } else {
+                $count = 1;
+                $tagInfo = new TagInfo();
+                $tagInfo
+                    ->setUser($user)
+                    ->setTag($tag)
+                    ->setUnreadInfoCount($count)
+                    ->setCreatedAt($event->getCreatedAt())
+                    ->setUpdatedAt($event->getCreatedAt());
+            }
+        }
+
+        $tag->setUpdatedAt($event->getCreatedAt());
+        $this->em->persist($tagInfo);
 
     }
     private function setTaskTagCount(Tag $tag, Event $event): void
     {
         // un tag pour un event de type task doit etre ajoute pour chaque event sauf pour unrealised alors on retranche de un.
-        $tag->setUpdatedAt($event->getCreatedAt());
+        $count = $tag->getTaskCount();
+        $statut = $event->getTask()->getTaskStatus();
+        ($statut === "unrealised") ? $count-- : $count++;
 
-
-
+        $tag->setTaskCount($count);
+        $tag->setUpdatedAt($event->getUpdatedAt());
     }
 
 

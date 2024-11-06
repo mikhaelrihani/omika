@@ -19,23 +19,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
  */
 class MediaFixtures extends BaseFixtures 
 {
-    /**
-     * @var UnsplashApiService $unsplashApiService Service for fetching images from Unsplash.
-     */
-    private UnsplashApiService $unsplashApiService;
-
-    /**
-     * MediaFixtures constructor.
-     *
-     * @param UnsplashApiService $unsplashApi The Unsplash API service.
-     * @param UserPasswordHasherInterface $userPasswordHasher The password hasher service.
-     * @param EntityManagerInterface $em The entity manager interface.
-     */
-    public function __construct(UnsplashApiService $unsplashApi, UserPasswordHasherInterface $userPasswordHasher, EntityManagerInterface $em)
-    {
-        parent::__construct($userPasswordHasher, $em);
-        $this->unsplashApiService = $unsplashApi;
-    }
+   
 
    
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Entity\Event;
 
+use App\Entity\BaseEntity;
 use App\Entity\User\user;
 use App\Repository\Event\TagInfoRepository;
 use Doctrine\ORM\Mapping as ORM;
@@ -9,7 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: TagInfoRepository::class)]
 #[ORM\Index(name: "Taginfo_user_tag_idx", columns: ["user_id", "tag_id"])]
 
-class TagInfo
+class TagInfo extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]

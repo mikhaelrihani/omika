@@ -20,7 +20,7 @@ class EventTask extends BaseEntity
 
     #[ORM\Column(length: 50, nullable: false)]
     #[Assert\NotBlank(message: "Task status should not be blank.")]
-    private ?string $task_status = null; // Statut de la tâche (todo, pending, done, late, unrealised, warning, modified)
+    private ?string $taskStatus = null; // Statut de la tâche (todo, pending, done, late, unrealised, warning, modified)
 
 
     // Getters and Setters
@@ -43,12 +43,12 @@ class EventTask extends BaseEntity
 
     public function getTaskStatus(): ?string
     {
-        return $this->task_status;
+        return $this->taskStatus;
     }
 
     public function setTaskStatus(string $task_status): static
     {
-        $this->task_status = $task_status;
+        $this->taskStatus = $task_status;
         return $this;
     }
 
