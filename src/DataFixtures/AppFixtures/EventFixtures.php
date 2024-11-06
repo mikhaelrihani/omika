@@ -384,14 +384,14 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 while ($currentMonthDate <= $endPeriodDate) {
                     foreach ($monthDays as $monthDay) {
                         $day = $monthDay->getDay(); // Jour spécifique dans le mois (ex : 13, 21, 27)
-                      
+
                         // Générer la date pour ce jour spécifique dans le mois courant
                         $dueDate = $currentMonthDate->modify("+{$day} days -1 day"); // -1 pour que "21" soit bien le 21e jour du mois
-                       
+
                         // Vérifier si la dueDate est dans la période cible
                         if ($dueDate >= $earliestCreationDate && $dueDate <= $latestCreationDate) {
                             // Créer l'événement enfant pour ce jour et ce mois spécifiés
-                           
+
                             $this->handleMonthDay($eventRecurring, $dueDate, $createdAtParent, $now);
                         }
                     }
@@ -476,6 +476,9 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function duplicateEvent(Event $event): Event
     {
+        // Créer le nouvel événement en copiant les propriétés de l'original et en appliquant les nouvelles valeurs
+        $newEvent = $this->duplicateEventProperties($event);
+
         // Définir la nouvelle date d'échéance et les dates de création/mise à jour en ajoutant un jour
         $dueDate = $event->getDueDate()->modify('+1 day');
         $createdAt = $dueDate;
@@ -501,8 +504,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $activeDay = null;
         }
 
-        // Créer le nouvel événement en copiant les propriétés de l'original et en appliquant les nouvelles valeurs
-        $newEvent = $this->duplicateEventProperties($event);
         $newEvent
             ->setDateStatus($dateStatus)
             ->setActiveDay($activeDay)
@@ -510,8 +511,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setCreatedAt($createdAt)
             ->setUpdatedAt($updatedAt);
 
-        // Persister l'événement et le retourner
-        $this->em->persist($newEvent);
         return $newEvent;
     }
 
@@ -567,7 +566,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function duplicatePendingRecurringEvent(Event $event, EventRecurring $eventRecurring): void
     {
-        $eventsBrothers = $eventRecurring->getEvents();
+        // Exclure l'événement actuel des frères
+        $eventsBrothers = $eventRecurring->getEvents()->filter(function ($brotherEvent) use ($event) {
+            return $brotherEvent !== $event;
+        });
 
         // Initialise la date de l'événement courant et le jour suivant
         $currentDueDate = $event->getDueDate();
@@ -579,17 +581,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             return $eventBrotherNextDay->getDueDate() == $nextDueDate;
         });
 
-        // Si un frère est trouvé le jour suivant, on marque l'événement actuel comme "unrealised"
+        // Si un frère est trouvé le jour suivant, on marque l'événement actuel comme "unrealised" 
         if ($hasBrotherNextDay) {
             $this->setEventTask($event, 'unrealised');
         } else {
             // Sinon, on commence à créer des événements duplicata avec le statut "pending"
             $numberOfPendingDays = $this->faker->numberBetween(1, 7);
             $i = 1;
-
+            $newEvent = $this->duplicateEvent($event);
             while ($i <= $numberOfPendingDays) {
-                $newEvent = $this->duplicateEvent($event);
-
                 // Vérifie encore une fois pour chaque nouvel événement si un frère est présent le jour suivant
                 $nextDueDate = $newEvent->getDueDate()->modify('+1 day');
                 $hasBrotherNextDay = $eventsBrothers->exists(function ($key, $eventBrotherNextDay) use ($nextDueDate) {
@@ -598,29 +598,23 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
                 if ($hasBrotherNextDay) {
                     // Si un frère est trouvé, on arrête la duplication et on passe au statut final
-                    $this->setEventTask($newEvent, 'done');
-                    $this->em->persist($newEvent);
-                    $this->em->flush();
+                    $this->setEventTask($newEvent, 'unrealised');
                     $eventRecurring->addEvent($newEvent);
+                    $this->em->flush();
                     break;
                 } else {
-                    // Sinon, on continue avec le statut "pending" ou "done" pour le dernier jour
-                    if ($i === $numberOfPendingDays) {
-                        $this->setEventTask($newEvent, 'done');
-                    } else {
+                    ($i === $numberOfPendingDays) ?
+                        // le statut "done" pour le dernier jour
+                        $this->setEventTask($newEvent, 'done') :
                         $this->setEventTask($newEvent, 'pending');
-                    }
-                    // Ajoute et persiste le nouvel événement
-                    $this->em->persist($newEvent);
-                    $this->em->flush();
                     $eventRecurring->addEvent($newEvent);
+                    $this->em->flush();
                 }
                 // Passe au prochain événement
                 $event = $newEvent;
                 $i++;
             }
         }
-
 
     }
 
