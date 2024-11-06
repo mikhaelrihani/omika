@@ -13,7 +13,10 @@ use App\Entity\Event\EventSharedInfo;
 use App\Entity\event\Issue;
 use App\Entity\Event\MonthDay;
 use App\Entity\Event\PeriodDate;
+use App\Entity\Event\Tag;
+use App\Entity\Event\TagInfo;
 use App\Entity\Event\WeekDay;
+use App\Repository\Event\TagRepository;
 use DateInterval;
 use DateTimeImmutable;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
@@ -23,7 +26,9 @@ use Doctrine\Persistence\ObjectManager;
 class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 {
 
-
+    public function __construct(private TagRepository $tagRepository)
+    {
+    }
     public function load(ObjectManager $manager): void
     {
         $this->faker->addProvider(new AppProvider($this->faker));
@@ -516,107 +521,43 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
 
     /**
-     * Duplique un événement en attente pour un certain nombre de jours.
+     * Duplique un événement non récurrent tant qu'il est non réalisé (unrealised).
      *
-     * Cette méthode crée plusieurs duplicatas d'un événement en attente pour un nombre
-     * de jours déterminé aléatoirement. Le statut de l'événement final est défini sur "done"
-     * si c'est le dernier jour de duplication, sinon il est défini sur "pending".
+     * Cette fonction crée une copie d'un événement donné en modifiant sa date d'échéance
+     * et son statut de tâche, jusqu'à ce que le statut soit autre chose que "unrealised".
+     * Chaque copie est persistée en base de données.
      *
-     * @param Event $event L'événement à dupliquer en attente.
+     * @param Event $event L'événement source à dupliquer
      *
      * @return void
      */
-    public function duplicatePendingEvent(Event $event): void
+    private function duplicateNonRecurringUnrealisedEvent(Event $event): void
     {
-
-        $numberOfPendingDays = $this->faker->numberBetween(1, 7);
-        $i = 1;
-        while ($i <= $numberOfPendingDays) {
+        do {
+            // Crée une copie de l'événement
             $newEvent = $this->duplicateEvent($event);
-            if ($i === $numberOfPendingDays) {
-                $this->setEventTask($newEvent, 'done');
-                $this->em->persist($newEvent);
-            } else {
-                $this->setEventTask($newEvent, 'pending');
-                $this->em->persist($newEvent);
 
-            }
+            // Définit la nouvelle date d'échéance en utilisant uniquement la date
+            $newDueDate = DateTimeImmutable::createFromFormat('Y-m-d', $newEvent->getDueDate()->format('Y-m-d'));
+
+            // Détermine le statut de la tâche : "late" si la date d'échéance est hier, sinon aléatoirement "unrealised" ou "done"
+            $taskStatus = $newDueDate->format('Y-m-d') === (new DateTimeImmutable('yesterday'))->format('Y-m-d')
+                ? 'late'
+                : $this->faker->randomElement(['unrealised', 'done']);
+
+            // Met à jour le statut de la tâche de l'événement
+            $this->setEventTask($newEvent, $taskStatus);
+
+            // Persist et flush l'événement dupliqué dans la base de données
             $this->em->persist($newEvent);
-
-            // on flushe a chaque event pour pouvoir traiter les status unrealised de chaque event enfant dans la periode -30 a -1.
             $this->em->flush();
 
-            // Met à jour l'événement courant pour la prochaine itération
+            // Met à jour l'événement pour la prochaine itération si nécessaire
             $event = $newEvent;
-            $i++;
-        }
+
+        } while ($taskStatus === 'unrealised'); // Répète la duplication si le statut est encore "unrealised"
     }
 
-    /**
-     * Duplique un événement récurrent en attente en vérifiant les événements frères.
-     *
-     * Cette méthode duplique un événement récurrent en attente, en vérifiant si un frère
-     * existe le jour suivant. Si un frère est trouvé, l'événement actuel est marqué comme
-     * "unrealised". Sinon, plusieurs duplicatas sont créés, en ajustant les statuts
-     * en fonction de la présence d'événements frères.
-     *
-     * @param Event $event L'événement récurrent à dupliquer.
-     *
-     * @return void
-     */
-    public function duplicatePendingRecurringEvent(Event $event, EventRecurring $eventRecurring): void
-    {
-        // Exclure l'événement actuel des frères
-        $eventsBrothers = $eventRecurring->getEvents()->filter(function ($brotherEvent) use ($event) {
-            return $brotherEvent !== $event;
-        });
-
-        // Initialise la date de l'événement courant et le jour suivant
-        $currentDueDate = $event->getDueDate();
-
-        $nextDueDate = $currentDueDate->modify('+1 day');
-
-        // Vérifie si un frère existe le jour suivant
-        $hasBrotherNextDay = $eventsBrothers->exists(function ($key, $eventBrotherNextDay) use ($nextDueDate) {
-            return $eventBrotherNextDay->getDueDate() == $nextDueDate;
-        });
-
-        // Si un frère est trouvé le jour suivant, on marque l'événement actuel comme "unrealised" 
-        if ($hasBrotherNextDay) {
-            $this->setEventTask($event, 'unrealised');
-        } else {
-            // Sinon, on commence à créer des événements duplicata avec le statut "pending"
-            $numberOfPendingDays = $this->faker->numberBetween(1, 7);
-            $i = 1;
-            $newEvent = $this->duplicateEvent($event);
-            while ($i <= $numberOfPendingDays) {
-                // Vérifie encore une fois pour chaque nouvel événement si un frère est présent le jour suivant
-                $nextDueDate = $newEvent->getDueDate()->modify('+1 day');
-                $hasBrotherNextDay = $eventsBrothers->exists(function ($key, $eventBrotherNextDay) use ($nextDueDate) {
-                    return $eventBrotherNextDay->getDueDate() == $nextDueDate;
-                });
-
-                if ($hasBrotherNextDay) {
-                    // Si un frère est trouvé, on arrête la duplication et on passe au statut final
-                    $this->setEventTask($newEvent, 'unrealised');
-                    $eventRecurring->addEvent($newEvent);
-                    $this->em->flush();
-                    break;
-                } else {
-                    ($i === $numberOfPendingDays) ?
-                        // le statut "done" pour le dernier jour
-                        $this->setEventTask($newEvent, 'done') :
-                        $this->setEventTask($newEvent, 'pending');
-                    $eventRecurring->addEvent($newEvent);
-                    $this->em->flush();
-                }
-                // Passe au prochain événement
-                $event = $newEvent;
-                $i++;
-            }
-        }
-
-    }
 
     /**
      * Duplique les événements récurrents non réalisés dans une plage de dates spécifiée.
@@ -816,22 +757,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->em->flush();
     }
 
-    private function duplicateNonRecurringUnrealisedEvent(Event $event): void
-    {
-        do {
-            $newEvent = $this->duplicateEvent($event);
-            $newDueDate = DateTimeImmutable::createFromFormat('Y-m-d', $newEvent->getDueDate()->format('Y-m-d'));
-            $taskStatus = $newDueDate->format('Y-m-d') === (new DateTimeImmutable('yesterday'))->format('Y-m-d') ? 'late' : $this->faker->randomElement(['unrealised', 'done']);
-            $this->setEventTask($newEvent, $taskStatus);
-            $this->em->persist($newEvent);
-            $this->em->flush();
-            $event = $newEvent;
-        } while ($taskStatus === 'unrealised');
-    }
 
     private function handleInfoEvent(Event $event, ?EventRecurring $eventRecurring, DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt): void
     {
-        $users = $this->retrieveEntities("user", $this);
+        $users = $this->retrieveEntities("user", fixture: $this);
         $randomUsers = $this->faker->randomElements($users, $this->faker->numberBetween(1, count($users)));
 
         $info = new EventInfo();
@@ -909,12 +838,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         if ($eventRecurring) {
             $eventRecurring->addEvent($event);
         }
-        if ($taskStatut === 'pending' && $eventRecurring && !$eventRecurring->isEveryday()) {
-            $this->duplicatePendingRecurringEvent($event, $eventRecurring);
-        }
-        if ($taskStatut === 'pending' && !$eventRecurring) {
-            $this->duplicatePendingEvent($event);
-        }
+
     }
 
 
@@ -1100,6 +1024,66 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     }
 
 
+    private function createTag(Event $event): void
+    {
+        // un tag peut être créer pour chaque jour et pour chaque section de chaque side.
+        // un tag correspond uniquement a un jour et a une section.
+        // l'event qui est le premier pour ce jour et cette section aura la meeme createdAt que le tag associé.
+        // un event et un tag ont en commun la section, le side, la duedate/day, le dateStatus et le activeDay,
+        // par contre le updatedAt correspond a la createdAt du dernier event arrivé.
+        // lors de la suppression du dernier event correspondant a un tag, ce tag sera remove de la bdd.
+        // si je n'ai pas de tag pour une section pour un jour donné alors cela veut dire que il n'a pas de nouvelle task ou info.
+
+        $day = $event->getDueDate();
+        $side = $event->getSide();
+        $section = $event->getSection()->getName();
+        $createdAt = $updatedAt = $event->getCreatedAt();
+
+        // we check if the tag already exists 
+        $tag = $this->tagRepository->findOneByDaySideSection($day, $side, $section);
+        if (!$tag) {
+            $tag = new Tag();
+            $tag
+                ->setCreatedAt($createdAt)
+                ->setUpdatedAt($updatedAt)
+                ->setSection($section)
+                ->setDay($day)
+                ->setDateStatus($event->getDateStatus())
+                ->setActiveDay($event->getActiveDay())
+                ->setSide($side);
+
+            $this->em->persist(object: $tag);
+            $this->updateTagCount($tag, $event);
+        }
+    }
+
+
+    private function updateTagCount(Tag $tag, Event $event): void
+    {
+        $type = $event->getType();
+        ($type === "task") ?
+            $this->setTaskTagCount($tag, $event) :
+            $this->setInfoTagCount($tag, $event);
+
+        $this->em->flush();
+    }
+    private function setInfoTagCount(Tag $tag, Event $event): void
+    {
+        // un tag pour un event de type info doit etre compte pour chaque user.
+        $tag->setUpdatedAt($event->getCreatedAt());
+        $taskInfo = new TagInfo();
+
+        $this->em->persist($taskInfo);
+
+    }
+    private function setTaskTagCount(Tag $tag, Event $event): void
+    {
+        // un tag pour un event de type task doit etre ajoute pour chaque event sauf pour unrealised alors on retranche de un.
+        $tag->setUpdatedAt($event->getCreatedAt());
+
+
+
+    }
 
 
     /**

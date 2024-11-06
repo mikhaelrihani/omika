@@ -40,6 +40,9 @@ class Tag extends BaseEntity
     #[ORM\OneToMany(targetEntity: TagInfo::class, mappedBy: 'tag', orphanRemoval: true)]
     private Collection $tagInfos;
 
+    #[ORM\Column(length: 255)]
+    private ?string $side = null;
+
     public function __construct()
     {
         parent::__construct();
@@ -135,6 +138,18 @@ class Tag extends BaseEntity
                 $tagInfo->setTag(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getSide(): ?string
+    {
+        return $this->side;
+    }
+
+    public function setSide(string $side): static
+    {
+        $this->side = $side;
 
         return $this;
     }
