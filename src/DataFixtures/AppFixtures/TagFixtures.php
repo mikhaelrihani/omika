@@ -16,16 +16,9 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->createTags();
     }
 
-    private function createTags(): void
-    {
-        $randomNumber = $this->faker->numberBetween(1, 5);
-        for ($i = 0; $i < $randomNumber; $i++) {
-            $this->createOneTag();
-        }
-        ;
-    }
 
-    private function createOneTag(): void
+
+    private function createTags(): void
     {
         // un tag peut être créer pour chaque jour et pour chaque section de chaque side.
         // un tag correspond uniquement a un jour et a une section.
@@ -33,8 +26,9 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
 
         // on recupere tous les events
         $events = $this->retrieveEntities("event", $this);
-       
+
         foreach ($events as $event) {
+
             if ($event->getInfo() ? !$event->getInfo()->isFullyRead() : true) {
 
                 $day = $event->getDueDate();
@@ -61,7 +55,9 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
                 continue;
             }
 
+
         }
+
 
     }
 
@@ -115,10 +111,10 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
             }
             //!penser a remove le tag pour les users qui ont  lu l info 
             $tag->addTagInfo($tagInfo);
-            $this->em->flush();
+           
 
         }
-
+ $this->em->flush();
     }
     private function setTaskTagCount(Tag $tag, Event $event): void
     {
