@@ -28,8 +28,9 @@ class Tag extends BaseEntity
     #[ORM\Column(length: 255)]
     private string $date_status; // Statut de la date (ex. "past", "active_day_range", "future")
 
-    #[ORM\Column(type: Types::INTEGER)]
-    private int $task_count = 0; // Compte des tâches actives
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
+    private ?int $task_count = null; // Compte des tâches actives, peut être null
+
 
     #[ORM\Column(nullable: true)]
     private ?int $active_day = null;
@@ -88,18 +89,18 @@ class Tag extends BaseEntity
         return $this;
     }
 
-    public function getTaskCount(): int
+    public function getTaskCount(): int|null
     {
         return $this->task_count;
     }
 
-    public function setTaskCount(int $task_count): static
+    public function setTaskCount(?int $task_count): static
     {
         $this->task_count = $task_count;
         return $this;
     }
 
-   
+
     public function getActiveDay(): ?int
     {
         return $this->active_day;
@@ -154,6 +155,6 @@ class Tag extends BaseEntity
         return $this;
     }
 
-   
-   
+
+
 }

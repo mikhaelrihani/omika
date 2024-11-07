@@ -2,22 +2,16 @@
 
 namespace App\DataFixtures\AppFixtures;
 
-use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
+use App\DataFixtures\Provider\AppProvider;
 use App\Entity\event\Event;
-use App\Entity\event\Section;
 use App\Entity\event\EventTask;
 use App\Entity\event\EventInfo;
 use App\Entity\Event\EventRecurring;
 use App\Entity\Event\EventSharedInfo;
-use App\Entity\event\Issue;
 use App\Entity\Event\MonthDay;
 use App\Entity\Event\PeriodDate;
-use App\Entity\Event\Tag;
-use App\Entity\Event\TagInfo;
 use App\Entity\Event\WeekDay;
-use App\Repository\Event\TagInfoRepository;
-use App\Repository\Event\TagRepository;
 use DateInterval;
 use DateTimeImmutable;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
@@ -27,20 +21,13 @@ use Doctrine\Persistence\ObjectManager;
 class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 {
 
-   
-   
+
+
     public function load(ObjectManager $manager): void
     {
         $this->faker->addProvider(new AppProvider($this->faker));
-
-        // Créer des Issues (ici en tant qu'exemple)
-        $this->createIssues();
-        $this->em->flush();
-        // Créer les sections d'événements
-        $this->createSections();
-        $this->em->flush();
         // Créer les événements
-        $this->createEvents(50);
+        $this->createEvents(5);
         $this->em->flush();
         // // Créer les événements récurrence parents
         $this->createEventRecurringParent();
@@ -50,98 +37,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->em->flush();
 
     }
-    /**
-     * Crée des incidents (issues) et les enregistre dans la base de données.
-     *
-     * Cette méthode génère une liste de 30 incidents en assignant des valeurs aléatoires aux propriétés
-     * de chaque incident, y compris l'auteur, les techniciens concernés, les dates, et d'autres détails.
-     * Chaque incident est créé avec des informations de suivi et un numéro d'identification unique.
-     * 
-     * La méthode utilise un utilisateur aléatoire comme auteur et attribue des techniciens ayant
-     * le titre "technicien" aux rôles de technicien contacté et technicien à venir.
-     *
-     * @return void
-     */
-    public function createIssues()
-    {
-        $users = $this->retrieveEntities("user", $this);
-        $author = $this->faker->randomElement($users);
-
-        $contacts = $this->retrieveEntities("contact", $this);
-        $technicienContacts = [];
-        foreach ($contacts as $contact) {
-            if ($contact->getJob() == "technicien") {
-                $technicienContacts[] = $contact;
-            }
-        }
-
-        $countNumber = 0;
-        $timeStamps = $this->faker->createTimeStamps();
-        $createdAt = $timeStamps[ 'createdAt' ];
 
 
-        for ($i = 0; $i < 30; $i++) {
-
-            $technicienContacted = $this->faker->randomElement($technicienContacts);
-            $technicienComing = $this->faker->randomElement($technicienContacts);
-
-            $createdAt = (clone $createdAt)->modify('+' . $this->faker->numberBetween(0, 7) . ' days');
-            $updatedAt = (clone $createdAt)->modify('+' . $this->faker->numberBetween(0, 7) . ' days');
-            $fixDate = (clone $updatedAt)->modify('+' . $this->faker->numberBetween(0, 7) . ' days');
-            // Génère une heure entre 06:00 et 18:00
-            $hour = random_int(6, 18); // Heure minimale : 6h, Heure maximale : 18h
-            $minute = random_int(0, 59); // Minutes entre 0 et 59
-            // Formater l'heure générée
-            $fixTime = sprintf('%02d:%02d', $hour, $minute);
-
-            $issue = new Issue();
-            $issue
-                ->setCountNumber($countNumber + 1)
-                ->setStatus($this->faker->getOneRandomStatus())
-                ->setAuthor($author->getFullName())
-                ->setTechnicianContacted($technicienContacted)
-                ->setTechnicianComing($technicienComing)
-                ->setCreatedAt($createdAt)
-                ->setUpdatedAt($updatedAt)
-                ->setFixDate($fixDate)
-                ->setFixTime(\DateTime::createFromFormat('H:i', $fixTime))
-                ->setFollowUp($this->faker->numberBetween(1, 3))
-                ->setSolution($this->faker->sentence())
-                ->setSummary($this->faker->sentence())
-                ->setDescription($this->faker->sentence());
-
-            $this->em->persist($issue);
-            $countNumber++;
-        }
-
-    }
-    /**
-     * Crée des sections et les enregistre dans la base de données.
-     *
-     * Cette méthode génère plusieurs sections, chaque section ayant un nom défini dans la liste
-     * retournée par `getSectionList`. Chaque section reçoit également des timestamps de création et
-     * de mise à jour aléatoires. Un identifiant de référence unique est ajouté pour chaque section
-     * pour une utilisation ultérieure.
-     *
-     * @return void
-     */
-    public function createSections(): void
-    {
-        $timestamps = $this->faker->createTimeStamps();
-
-        $Sections = $this->faker->getSectionList();
-        $s = 0;
-        foreach ($Sections as $section) {
-            $Section = new Section();
-            $Section->setName($section);
-            $Section->setCreatedAt($timestamps[ 'createdAt' ]);
-            $Section->setUpdatedAt($timestamps[ 'updatedAt' ]);
-            $this->em->persist($Section);
-            $this->addReference("section_{$s}", $Section);
-            $s++;
-        }
-
-    }
 
     /**
      * Crée un certain nombre d'événements dont le statut est "activeDayRange".
@@ -201,7 +98,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 );
 
             $this->setEventRelations($event);
-            $this->em->persist($event);
+
         }
     }
     /**
@@ -551,6 +448,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             // Persist et flush l'événement dupliqué dans la base de données
             $this->em->persist($newEvent);
             $this->em->flush();
+            $id = $newEvent->getId();
+            $this->addReference("event_{$id}", $event);
 
             // Met à jour l'événement pour la prochaine itération si nécessaire
             $event = $newEvent;
@@ -600,6 +499,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 $this->em->flush();
 
                 $eventRecurring->addEvent($newEvent);
+                $id = $newEvent->getId();
+                $this->addReference("event_{$id}", $event);
 
                 if ($taskStatus === 'done') {
                     break;
@@ -611,9 +512,11 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         } else {
             // Si des frères existent, filtrer et gérer selon la plage donnée
             $eventsBrothersInRange = $eventsBrothers->filter(function ($eventBrother) use ($dateRangeStart, $dateRangeEnd) {
-                return $eventBrother->getTask()->getTaskStatus() === "unrealised"
-                    && $eventBrother->getDueDate() >= $dateRangeStart
-                    && $eventBrother->getDueDate() <= $dateRangeEnd;
+                if ($eventBrother->getTask() !== null) {//! penser a trouver la raison de pourquoi j ai une erreur gettaskinfo on null
+                    return $eventBrother->getTask()->getTaskStatus() === "unrealised"
+                        && $eventBrother->getDueDate() >= $dateRangeStart
+                        && $eventBrother->getDueDate() <= $dateRangeEnd;
+                }
             })->toArray();
 
             // Trier les événements dans la plage par `dueDate`
@@ -647,6 +550,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                     $this->em->persist($newEvent);
                     $this->em->flush();
                     $eventRecurring->addEvent($newEvent);
+                    $id = $newEvent->getId();
+                    $this->addReference("event_{$id}", $event);
 
                     $nextDueDate = $nextDueDate->modify('+1 day');
                     $hasBrotherNextDay = $eventsBrothers->exists(function ($key, $eventBrotherNextDay) use ($nextDueDate) {
@@ -755,6 +660,9 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
         $this->em->persist($event);
         $this->em->flush();
+        $id = $event->getId();
+        $this->addReference("event_{$id}", $event);
+     
     }
 
 
@@ -783,6 +691,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 ->setCreatedAt($createdAt)
                 ->setUpdatedAt($updatedAt);
             $this->em->persist($eventSharedInfo);
+            $info->addEventSharedInfo($eventSharedInfo);
         }
 
         $info->setUserReadInfoCount($inforeadCounter)
@@ -795,7 +704,9 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         }
 
         $this->em->flush();
-
+        $id = $event->getId();
+        $this->addReference("event_{$id}", $event);
+      
 
     }
 
@@ -819,6 +730,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $event->setTask($newTask);
         $this->em->persist($event);
         $this->em->flush();
+        $id = $event->getId();
+       
     }
 
     /**
@@ -1023,94 +936,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     }
 
-
-    private function createTag(Event $event): void
-    {
-        // un tag peut être créer pour chaque jour et pour chaque section de chaque side.
-        // un tag correspond uniquement a un jour et a une section.
-
-        $day = $event->getDueDate();
-        $side = $event->getSide();
-        $section = $event->getSection()->getName();
-        $createdAt = $updatedAt = $event->getCreatedAt();
-
-        // we check if the tag already exists 
-        $tag = $this->tagRepository->findOneByDaySideSection($day, $side, $section);
-        if (!$tag) {
-            $tag = new Tag();
-            $tag
-                ->setCreatedAt($createdAt)
-                ->setUpdatedAt($updatedAt)
-                ->setSection($section)
-                ->setDay($day)
-                ->setDateStatus($event->getDateStatus())
-                ->setActiveDay($event->getActiveDay())
-                ->setSide($side);
-
-            $this->em->persist(object: $tag);
-            $this->updateTagCount($tag, $event);
-        }
-    }
-
-
-    private function updateTagCount(Tag $tag, Event $event): void
-    {
-        $type = $event->getType();
-        ($type === "task") ?
-            $this->setTaskTagCount($tag, $event) :
-            $this->setInfoTagCount($tag, $event);
-
-        $this->em->flush();
-    }
-    private function setInfoTagCount(Tag $tag, Event $event): void
-    {
-        // un tag pour un event de type info doit etre compte pour chaque user.
-
-        // je récupère les users qui ont lu l'info
-        $eventsSharedInfos = $event->getInfo()->getEventSharedInfo();
-        $users = [];
-        foreach ($eventsSharedInfos as $eventSharedInfo) {
-            if ($eventSharedInfo->getIsRead()) {
-                $user = $eventSharedInfo->getUser();
-                $users[] = $user;
-            }
-        }
-        // pour chaque user je cree un tag info en vérifiant que ce tag info n'existe pas déjà.
-        foreach ($users as $user) {
-            $tagInfo = $this->tagInfoRepository->findOneByUserTag($user, $tag);
-            if ($tagInfo) {
-                $count = $tagInfo->getUnreadInfoCount();
-                $count++;
-                $tagInfo->setUnreadInfoCount($count);
-                $tagInfo->setUpdatedAt($event->getCreatedAt());
-            } else {
-                $count = 1;
-                $tagInfo = new TagInfo();
-                $tagInfo
-                    ->setUser($user)
-                    ->setTag($tag)
-                    ->setUnreadInfoCount($count)
-                    ->setCreatedAt($event->getCreatedAt())
-                    ->setUpdatedAt($event->getCreatedAt());
-            }
-        }
-
-        $tag->setUpdatedAt($event->getCreatedAt());
-        $this->em->persist($tagInfo);
-
-    }
-    private function setTaskTagCount(Tag $tag, Event $event): void
-    {
-        // un tag pour un event de type task doit etre ajoute pour chaque event sauf pour unrealised alors on retranche de un.
-        $count = $tag->getTaskCount();
-        $statut = $event->getTask()->getTaskStatus();
-        ($statut === "unrealised") ? $count-- : $count++;
-
-        $tag->setTaskCount($count);
-        $tag->setUpdatedAt($event->getUpdatedAt());
-    }
-
-
     /**
      * Get the dependencies for this fixture.
      *
@@ -1119,7 +944,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     public function getDependencies(): array
     {
         return [
-            CarteFixtures::class,
             UserFixtures::class,
         ];
     }

@@ -35,13 +35,17 @@ class BaseFixtures extends Fixture implements FixtureInterface
     public function retrieveEntities(string $entityName, object $fixture): array
     {
         $entities = [];
-        $i = 0;
-        while ($fixture->hasReference("{$entityName}_{$i}")) {
-            $entities[] = $fixture->getReference("{$entityName}_{$i}");
-            $i++;
+    
+        foreach ($fixture->referenceRepository->getReferences() as $referenceKey => $entity) {
+            // Vérifie si le nom de la référence commence bien par l'entité ciblée
+            if (strpos($referenceKey, "{$entityName}_") === 0) {
+                $entities[] = $fixture->getReference($referenceKey);
+            }
         }
+    
         return $entities;
     }
+    
 
     /**
      * Set a picture to an entity from a list of pictures.
