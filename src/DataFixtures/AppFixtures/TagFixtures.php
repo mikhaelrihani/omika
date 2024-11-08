@@ -21,15 +21,13 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
     private function createTags(): void
     {
         // un tag peut être créer pour chaque jour et pour chaque section de chaque side.
-        // un tag correspond uniquement a un jour et a une section.
-        // le seul event qui n a pas de tag est un event info qui a été lu par tous les users. 
 
         // on recupere tous les events
         $events = $this->retrieveEntities("event", $this);
 
         foreach ($events as $event) {
-
-            if ($event->getInfo() ? !$event->getInfo()->isFullyRead() : true) {
+            // le seul event qui n a pas de tag est un event info qui a été lu par tous les users. 
+            if (!$event->getInfo() || !$event->getInfo()->isFullyRead()) {
 
                 $day = $event->getDueDate();
                 $side = $event->getSide();
@@ -49,16 +47,11 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
                         ->setActiveDay($event->getActiveDay())
                         ->setSide($side);
 
-                    $this->updateTagCount($tag, $event);
+                    $this->em->persist($tag);
                 }
-            } else {
-                continue;
+                $this->updateTagCount($tag, $event);
             }
-
-
         }
-
-
     }
 
 
@@ -77,7 +70,7 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
                 ->setUpdatedAt($event->getUpdatedAt())
                 ->setTaskCount(null);
             $this->em->persist($tag);
-            $this->em->flush(); // Flush pour générer un ID pour le tag en base pour löa methode "findOneByUserAndTag"
+            $this->em->flush(); // Flush pour générer un ID pour le tag en base pour la methode "findOneByUserAndTag"
         }
 
         // je récupère les users qui n'ont pas lu l'info pour ensuite ajouter un count au tag
@@ -108,28 +101,30 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
                     ->setCreatedAt($event->getCreatedAt())
                     ->setUpdatedAt($event->getCreatedAt());
                 $this->em->persist($tagInfo);
+                $tag->addTagInfo($tagInfo);
             }
             //!penser a remove le tag pour les users qui ont  lu l info 
-            $tag->addTagInfo($tagInfo);
-           
 
         }
- $this->em->flush();
+        $this->em->flush();
     }
+
     private function setTaskTagCount(Tag $tag, Event $event): void
     {
         // Récupérer le compteur actuel, ou initialiser à zéro si nul
         $count = $tag->getTaskCount() ?? 0;
 
         // Vérifier le statut de la tâche de l'événement
-        $statut = $event->getTask()->getTaskStatus();
-
-        // Mettre à jour le compteur en fonction du statut
-        if ($statut === "unrealised") {
-            $count = max(0, $count - 1); // Empêcher le compteur de descendre en dessous de zéro
-        } else {
-            $count++;
-        }
+            $statut = $event->getTask()->getTaskStatus();
+            // Choisir si on décrémente pour unrealised ou on incrémente pour tout
+            if ($statut !== "unrealised") {
+                $count++;
+            } else {
+                $count = max(0, $count - 1); // Décrémenter uniquement si nécessaire
+            }
+       
+            $count++; // Si la tâche n'est pas définie, on peut choisir d'incrémenter par défaut
+        
 
         $tag->setTaskCount($count);
         $tag->setUpdatedAt($event->getUpdatedAt());
@@ -138,7 +133,7 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
     }
 
 
-    
+
     public function getDependencies(): array
     {
         return [

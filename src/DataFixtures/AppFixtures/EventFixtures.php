@@ -28,16 +28,16 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->faker->addProvider(new AppProvider($this->faker));
         // Créer les événements
         $this->createEvents(5);
-       
+
         // Créer les événements samples for tags
         $this->createSampleEvents(5, 1);
-       
+
         // Créer les événements récurrence parents
         $this->createEventRecurringParent();
-       
+
         // Créer les événements enfants pour chaque événement récurrence parent
         $this->createEventsChildrenforEachEventRecurringParent();
-       
+
 
     }
 
@@ -341,15 +341,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $data = $this->getSampleEventBaseData();
         for ($e = 0; $e < $numEvents; $e++) {
             $event = new Event();
-            $this->setSampleEventBase($event,$data);
+            $this->setSampleEventBase($event, $data);
             $this->setSampleEventBaseTimestamps($day, $event);
             $this->setEventRelations($event);
         }
     }
 
-    public function setSampleEventBase(Event $event,array $data): Event
+    public function setSampleEventBase(Event $event, array $data): Event
     {
-        
+
         $event
             ->setDescription($data[ "description" ])
             ->setIsImportant($data[ "isImportant" ])
@@ -422,7 +422,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
         return $data;
     }
-    
+
     /**
      * Duplique les propriétés d'un événement existant.
      *
@@ -819,10 +819,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->em->persist($newTask);
 
         $event->setTask($newTask);
-        $this->em->persist($event);
-        $this->em->flush();
-        $id = $event->getId();
-
+    
     }
 
     /**
