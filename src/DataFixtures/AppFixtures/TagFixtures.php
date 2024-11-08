@@ -136,6 +136,9 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->em->persist($tag);
         $this->em->flush();
     }
+
+
+    
     public function getDependencies(): array
     {
         return [

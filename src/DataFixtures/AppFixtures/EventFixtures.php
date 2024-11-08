@@ -28,13 +28,16 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->faker->addProvider(new AppProvider($this->faker));
         // Créer les événements
         $this->createEvents(5);
-        $this->em->flush();
-        // // Créer les événements récurrence parents
+       
+        // Créer les événements samples for tags
+        $this->createSampleEvents(5, 1);
+       
+        // Créer les événements récurrence parents
         $this->createEventRecurringParent();
-        $this->em->flush();
-        // // Créer les événements enfants pour chaque événement récurrence parent
+       
+        // Créer les événements enfants pour chaque événement récurrence parent
         $this->createEventsChildrenforEachEventRecurringParent();
-        $this->em->flush();
+       
 
     }
 
@@ -332,6 +335,94 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
         }
     }
+
+    public function createSampleEvents(int $numEvents, int $day): void
+    {
+        $data = $this->getSampleEventBaseData();
+        for ($e = 0; $e < $numEvents; $e++) {
+            $event = new Event();
+            $this->setSampleEventBase($event,$data);
+            $this->setSampleEventBaseTimestamps($day, $event);
+            $this->setEventRelations($event);
+        }
+    }
+
+    public function setSampleEventBase(Event $event,array $data): Event
+    {
+        
+        $event
+            ->setDescription($data[ "description" ])
+            ->setIsImportant($data[ "isImportant" ])
+            ->setSide($data[ "side" ])
+            ->setTitle($data[ "title" ])
+            ->setCreatedBy($data[ "createdBy" ])
+            ->setUpdatedBy($data[ "updatedBy" ])
+            ->setType($data[ "type" ])
+            ->setSection($data[ "section" ]);
+
+        return $event;
+    }
+
+    public function setSampleEventBaseTimestamps($day, $event): Event
+    {
+        $timestamps = $this->faker->createTimeStamps('-15 days', 'now');
+        $createdAt = $timestamps[ 'createdAt' ];
+        $updatedAt = $timestamps[ 'updatedAt' ];
+        $nowDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', (new DateTimeImmutable('now'))->format('Y-m-d'));
+        $dueDate = $nowDayOnly->modify("+{$day} days");
+
+        $activeDayInt = (int) $nowDayOnly->diff($dueDate)->format('%r%a');
+        $activeDay = ($activeDayInt >= -3 && $activeDayInt <= 7) ? $activeDayInt : null;
+
+        $dueDateDiff = (int) $nowDayOnly->diff($dueDate)->format('%r%a');
+        if ($dueDateDiff >= -3 && $dueDateDiff <= 7) {
+            $dateStatus = "activeDayRange";
+        } elseif ($dueDateDiff >= -30 && $dueDateDiff < -3) {
+            $dateStatus = "past";
+        } else {
+            $dateStatus = "future";
+        }
+        $event
+            ->setIsRecurring(False)
+            ->setCreatedAt($createdAt)
+            ->setUpdatedAt($updatedAt)
+            ->setActiveDay($activeDay)
+            ->setDueDate($dueDate)
+            ->setDateStatus(
+                $dateStatus
+            );
+
+        return $event;
+    }
+
+    public function getSampleEventBaseData(): array
+    {
+        $users = $this->retrieveEntities("user", $this);
+        $createdByUser = $this->faker->randomElement($users);
+        $updatedByUser = $this->faker->randomElement($users);
+        $createdBy = $createdByUser->getFullName();
+        $updatedBy = $updatedByUser->getFullName();
+        $sections = $this->retrieveEntities("section", $this);
+        $section = $sections[array_rand($sections)];
+        $description = $this->faker->sentence;
+        $title = $this->faker->sentence;
+        $isImportant = $this->faker->boolean;
+        $side = $this->faker->randomElement(['kitchen', 'office']);
+        $type = $this->faker->randomElement(['task', 'info']);
+
+        $data = [];
+        $data[ "description" ] = $description;
+        $data[ "title" ] = $title;
+        $data[ "isImportant" ] = $isImportant;
+        $data[ "side" ] = $side;
+        $data[ "type" ] = $type;
+        $data[ "createdBy" ] = $createdBy;
+        $data[ "updatedBy" ] = $updatedBy;
+        $data[ "section" ] = $section;
+
+        return $data;
+    }
+    
     /**
      * Duplique les propriétés d'un événement existant.
      *
@@ -662,7 +753,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->em->flush();
         $id = $event->getId();
         $this->addReference("event_{$id}", $event);
-     
+
     }
 
 
@@ -706,7 +797,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->em->flush();
         $id = $event->getId();
         $this->addReference("event_{$id}", $event);
-      
+
 
     }
 
@@ -731,7 +822,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->em->persist($event);
         $this->em->flush();
         $id = $event->getId();
-       
+
     }
 
     /**
@@ -935,6 +1026,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->setEventRelations($event, $eventRecurring);
 
     }
+
 
     /**
      * Get the dependencies for this fixture.
