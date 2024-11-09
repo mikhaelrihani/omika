@@ -11,7 +11,7 @@ use App\Entity\Product\ProductType;
 use App\Entity\Product\Rupture;
 use App\Entity\Supplier\DeliveryDay;
 use App\Entity\Supplier\Supplier;
-use App\Entity\recipe\Unit;
+use App\Entity\Recipe\Unit;
 use App\Entity\Supplier\OrderDay;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;

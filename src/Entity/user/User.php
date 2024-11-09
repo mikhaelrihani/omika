@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Entity\user;
+namespace App\Entity\User;
 
 use App\Entity\BaseEntity;
 use App\Entity\Event\Event;
