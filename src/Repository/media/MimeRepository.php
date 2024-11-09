@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Repository\media;
+namespace App\Repository\Media;
 
 use App\Entity\Media\Mime;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
