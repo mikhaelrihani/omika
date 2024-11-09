@@ -10,6 +10,7 @@ use App\Entity\User\Absence;
 use App\Entity\User\Contact;
 use App\Entity\User\User;
 use App\Entity\User\UserLogin;
+use App\Repository\User\UserRepository;
 use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\Uid\Uuid;
 
@@ -22,7 +23,7 @@ use Symfony\Component\Uid\Uuid;
  */
 class UserFixtures extends BaseFixtures
 {
-   
+
 
     private array $businessEntities;
     /**
@@ -52,7 +53,7 @@ class UserFixtures extends BaseFixtures
         $this->faker->addProvider(new AppProvider($this->faker));
         $this->pictures = $this->retrieveEntities('picture', $this);
         $this->createContacts(20);
-        $this->createUsers(10);
+        $this->createUsers(10, $this->userRepository);
         $users = $this->retrieveEntities('user', $this);
         $contacts = $this->retrieveEntities('contact', $this);
         // Flush to set the ID of each recipient entity when sending message
@@ -72,7 +73,7 @@ class UserFixtures extends BaseFixtures
      */
     public function createUserLoginAdmin(): UserLogin
     {
-        
+
         $timestamps = $this->faker->createTimeStamps();
         $userLogin = new UserLogin($this->userPasswordHasher);
         $userLogin
@@ -82,9 +83,9 @@ class UserFixtures extends BaseFixtures
             ->setEnabled(true)
             ->setCreatedAt($timestamps[ 'createdAt' ])
             ->setUpdatedAt($timestamps[ 'updatedAt' ]);
-            
+
         $this->em->persist($userLogin);
-        
+
         return $userLogin;
     }
 
@@ -113,9 +114,11 @@ class UserFixtures extends BaseFixtures
      *
      * @param int $num The number of User entities to create.
      */
-    public function createUsers(int $num): void
+    public function createUsers(int $num, UserRepository $userRepository): void
     {
-        $this->userAdminExists = true;//!
+        //! on fait cette verification depuis la bdd, pour eviter l'unicité de l'entité superadmin afin de pouvoir ajouter plus de fixtures avec "php bin/console doctrine:fixtures:load --append"
+        ($userRepository->findBy(["surname" => "rihani"])) ? $this->userAdminExists = true : $this->userAdminExists = false;
+       
         for ($u = 0; $u < $num; $u++) {
             $timestamps = $this->faker->createTimeStamps();
             $user = new User();

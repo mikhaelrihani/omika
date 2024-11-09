@@ -11,9 +11,9 @@ use Doctrine\Persistence\ObjectManager;
 class TagFixtures extends BaseFixtures implements DependentFixtureInterface
 {
     public function load(ObjectManager $manager): void
-    {
+    {#$this->createTags();
         $manager->flush();
-        $this->createTags();
+        
     }
 
 
@@ -30,6 +30,17 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
             if (!$event->getInfo() || !$event->getInfo()->isFullyRead()) {
 
                 $day = $event->getDueDate();
+                if ($day instanceof \DateTimeImmutable) {
+                    echo "Event ID " . $event->getId() . " has a due date of type DateTimeImmutable.\n";
+                } else {
+                    echo "Event ID " . $event->getId() . " does not have a due date of type DateTimeImmutable. Converting...\n";
+                }
+                if ($day instanceof \DateTime) {
+                    $day = \DateTimeImmutable::createFromMutable($day);
+                    $event->setDueDate($day);
+                    echo "Converted to DateTimeImmutable.\n";
+                }
+
                 $side = $event->getSide();
                 $section = $event->getSection()->getName();
                 $createdAt = $updatedAt = $event->getCreatedAt();
@@ -115,16 +126,16 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
         $count = $tag->getTaskCount() ?? 0;
 
         // Vérifier le statut de la tâche de l'événement
-            $statut = $event->getTask()->getTaskStatus();
-            // Choisir si on décrémente pour unrealised ou on incrémente pour tout
-            if ($statut !== "unrealised") {
-                $count++;
-            } else {
-                $count = max(0, $count - 1); // Décrémenter uniquement si nécessaire
-            }
-       
-            $count++; // Si la tâche n'est pas définie, on peut choisir d'incrémenter par défaut
-        
+        $statut = $event->getTask()->getTaskStatus();
+        // Choisir si on décrémente pour unrealised ou on incrémente pour tout
+        if ($statut !== "unrealised") {
+            $count++;
+        } else {
+            $count = max(0, $count - 1); // Décrémenter uniquement si nécessaire
+        }
+
+        $count++; // Si la tâche n'est pas définie, on peut choisir d'incrémenter par défaut
+
 
         $tag->setTaskCount($count);
         $tag->setUpdatedAt($event->getUpdatedAt());

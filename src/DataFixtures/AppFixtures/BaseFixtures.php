@@ -7,6 +7,7 @@ use App\Entity\Carte\DishCategory;
 use App\Entity\User\User;
 use App\Repository\Event\TagInfoRepository;
 use App\Repository\Event\TagRepository;
+use App\Repository\User\UserRepository;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\FixtureInterface;
 use Doctrine\ORM\EntityManagerInterface;
@@ -19,11 +20,17 @@ class BaseFixtures extends Fixture implements FixtureInterface
 {
     protected \Faker\Generator $faker;
 
-    public function __construct(protected UnsplashApiService $unsplashApi, protected UserPasswordHasherInterface $userPasswordHasher,protected EntityManagerInterface $em,protected TagRepository $tagRepository, protected TagInfoRepository $tagInfoRepository)
-    {
+    public function __construct(
+        protected UnsplashApiService $unsplashApi,
+        protected UserPasswordHasherInterface $userPasswordHasher,
+        protected EntityManagerInterface $em,
+        protected TagRepository $tagRepository,
+        protected TagInfoRepository $tagInfoRepository,
+        protected UserRepository $userRepository
+    ) {
         $this->faker = Factory::create("fr_FR");
     }
-   
+
     /**
      * Retrieve entities by their references in a fixture.
      *
@@ -34,17 +41,17 @@ class BaseFixtures extends Fixture implements FixtureInterface
     public function retrieveEntities(string $entityName, object $fixture): array
     {
         $entities = [];
-    
+
         foreach ($fixture->referenceRepository->getReferences() as $referenceKey => $entity) {
             // Vérifie si le nom de la référence commence bien par l'entité ciblée
             if (strpos($referenceKey, "{$entityName}_") === 0) {
                 $entities[] = $fixture->getReference($referenceKey);
             }
         }
-    
+
         return $entities;
     }
-    
+
 
     /**
      * Set a picture to an entity from a list of pictures.
