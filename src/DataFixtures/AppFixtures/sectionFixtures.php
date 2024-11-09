@@ -3,7 +3,7 @@
 namespace App\DataFixtures\AppFixtures;
 
 use App\DataFixtures\Provider\AppProvider;
-use App\Entity\event\Section;
+use App\Entity\Event\Section;
 use Doctrine\Persistence\ObjectManager;
 
 class sectionFixtures extends BaseFixtures

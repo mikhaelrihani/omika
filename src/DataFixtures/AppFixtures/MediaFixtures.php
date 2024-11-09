@@ -4,13 +4,10 @@ namespace App\DataFixtures\AppFixtures;
 
 use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
-use App\Entity\media\Mime;
-use App\Entity\media\Picture;
-use App\Entity\media\Template;
-use App\Service\UnsplashApiService;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Entity\Media\Mime;
+use App\Entity\Media\Picture;
+use App\Entity\Media\Template;
 use Doctrine\Persistence\ObjectManager;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
  * Class MediaFixtures

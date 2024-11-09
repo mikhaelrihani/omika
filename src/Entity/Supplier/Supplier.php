@@ -4,14 +4,13 @@ namespace App\Entity\Supplier;
 
 use App\Entity\BaseEntity;
 use App\Entity\Event\Event;
-use App\Entity\user\Business;
+use App\Entity\User\Business;
 use App\Repository\Supplier\SupplierRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\product\Product;
-use App\Entity\order\Order;
+use App\Entity\Product\Product;
+use App\Entity\Order\Order;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: SupplierRepository::class)]

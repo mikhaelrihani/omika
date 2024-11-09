@@ -2,7 +2,7 @@
 
 namespace App\Repository\media;
 
-use App\Entity\media\Mime;
+use App\Entity\Media\Mime;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

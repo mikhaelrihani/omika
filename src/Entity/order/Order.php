@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Entity\order;
+namespace App\Entity\Order;
 
 use App\Entity\BaseEntity;
-use App\Repository\order\OrderRepository;
+use App\Repository\Order\OrderRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Entity\Supplier\Supplier;

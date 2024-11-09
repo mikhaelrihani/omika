@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Entity\event;
+namespace App\Entity\Event;
 
 use App\Entity\BaseEntity;
 use App\Repository\event\SectionRepository;

@@ -4,11 +4,11 @@ namespace App\DataFixtures\AppFixtures;
 
 use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
-use App\Entity\carte\Dish;
-use App\Entity\recipe\Ingredient;
-use App\Entity\recipe\Recipe;
-use App\Entity\recipe\RecipeAdvise;
-use App\Entity\recipe\RecipeStep;
+use App\Entity\Carte\Dish;
+use App\Entity\Recipe\Ingredient;
+use App\Entity\Recipe\Recipe;
+use App\Entity\Recipe\RecipeAdvise;
+use App\Entity\Recipe\RecipeStep;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 

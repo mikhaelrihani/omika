@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Entity\inventory;
+namespace App\Entity\Inventory;
 
 use App\Entity\BaseEntity;
-use App\Repository\inventory\KitchenSpaceRepository;
+use App\Repository\Inventory\KitchenSpaceRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 

@@ -4,11 +4,10 @@ namespace App\DataFixtures\AppFixtures;
 
 use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
-use App\Entity\inventory\Inventory;
-use App\Entity\inventory\KitchenSpace;
-use App\Entity\inventory\ProductInventory;
-use App\Entity\inventory\Room;
-use App\Entity\inventory\RoomProduct;
+use App\Entity\Inventory\Inventory;
+use App\Entity\Inventory\KitchenSpace;
+use App\Entity\Inventory\Room;
+use App\Entity\Inventory\RoomProduct;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 

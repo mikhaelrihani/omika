@@ -4,9 +4,9 @@ namespace App\DataFixtures\AppFixtures;
 
 use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
-use App\Entity\carte\DishCategory;
-use App\Entity\carte\Dod;
-use App\Entity\carte\Menu;
+use App\Entity\Carte\DishCategory;
+use App\Entity\Carte\Dod;
+use App\Entity\Carte\Menu;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 

@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Repository\order;
+namespace App\Repository\Order;
 
-use App\Entity\order\Order;
+use App\Entity\Order\Order;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

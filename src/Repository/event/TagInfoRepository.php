@@ -4,7 +4,7 @@ namespace App\Repository\Event;
 
 use App\Entity\Event\Tag;
 use App\Entity\Event\TagInfo;
-use App\Entity\user\User;
+use App\Entity\User\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

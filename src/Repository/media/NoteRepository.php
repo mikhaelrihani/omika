@@ -2,7 +2,7 @@
 
 namespace App\Repository\media;
 
-use App\Entity\media\Note;
+use App\Entity\Media\Note;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

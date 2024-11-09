@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Entity\media;
+namespace App\Entity\Media;
 
 use App\Entity\BaseEntity;
-use App\Repository\media\TemplateRepository;
+use App\Repository\Media\TemplateRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 

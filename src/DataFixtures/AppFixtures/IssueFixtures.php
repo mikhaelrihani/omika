@@ -3,7 +3,7 @@
 namespace App\DataFixtures\AppFixtures;
 
 use App\DataFixtures\Provider\AppProvider;
-use App\Entity\event\Issue;
+use App\Entity\Event\Issue;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 

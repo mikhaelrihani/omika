@@ -4,7 +4,7 @@ namespace App\DataFixtures\AppFixtures;
 
 use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
-use App\Entity\user\Business;
+use App\Entity\User\Business;
 use Doctrine\Persistence\ObjectManager;
 
 /**

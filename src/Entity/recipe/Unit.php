@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Entity\recipe;
+namespace App\Entity\Recipe;
 
 use App\Entity\BaseEntity;
 use App\Repository\recipe\UnitRepository;

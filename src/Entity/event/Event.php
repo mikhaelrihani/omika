@@ -3,7 +3,6 @@
 namespace App\Entity\Event;
 
 use App\Entity\BaseEntity;
-use App\Entity\Product\Supplier;
 use App\Entity\User\User;
 use App\Repository\Event\EventRepository;
 use Doctrine\Common\Collections\ArrayCollection;

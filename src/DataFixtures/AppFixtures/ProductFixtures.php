@@ -4,18 +4,18 @@ namespace App\DataFixtures\AppFixtures;
 
 use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
-use App\Entity\order\Order;
-use App\Entity\order\ProductOrder;
-use App\Entity\product\Product;
-use App\Entity\product\ProductType;
-use App\Entity\product\Rupture;
+use App\Entity\Order\Order;
+use App\Entity\Order\ProductOrder;
+use App\Entity\Product\Product;
+use App\Entity\Product\ProductType;
+use App\Entity\Product\Rupture;
 use App\Entity\Supplier\DeliveryDay;
 use App\Entity\Supplier\Supplier;
 use App\Entity\recipe\Unit;
 use App\Entity\Supplier\OrderDay;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
-use phpseclib3\Crypt\Random;
+
 
 /**
  * Class ProductFixtures

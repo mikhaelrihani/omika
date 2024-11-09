@@ -4,14 +4,13 @@ namespace App\DataFixtures\AppFixtures;
 
 use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
-use App\Entity\media\Message;
-use App\Entity\media\Note;
-use App\Entity\user\Absence;
-use App\Entity\user\Contact;
-use App\Entity\user\User;
-use App\Entity\user\UserLogin;
+use App\Entity\Media\Message;
+use App\Entity\Media\Note;
+use App\Entity\User\Absence;
+use App\Entity\User\Contact;
+use App\Entity\User\User;
+use App\Entity\User\UserLogin;
 use Doctrine\Persistence\ObjectManager;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Uid\Uuid;
 
 
@@ -73,6 +72,7 @@ class UserFixtures extends BaseFixtures
      */
     public function createUserLoginAdmin(): UserLogin
     {
+        
         $timestamps = $this->faker->createTimeStamps();
         $userLogin = new UserLogin($this->userPasswordHasher);
         $userLogin
@@ -115,7 +115,7 @@ class UserFixtures extends BaseFixtures
      */
     public function createUsers(int $num): void
     {
-        $this->userAdminExists = false;
+        $this->userAdminExists = true;//!
         for ($u = 0; $u < $num; $u++) {
             $timestamps = $this->faker->createTimeStamps();
             $user = new User();

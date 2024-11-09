@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Entity\media;
+namespace App\Entity\Media;
 
 use App\Entity\BaseEntity;
-use App\Repository\media\NoteRepository;
+use App\Repository\Media\NoteRepository;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\user\User; 
+use App\Entity\User\User; 
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: NoteRepository::class)]

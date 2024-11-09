@@ -3,14 +3,14 @@
 namespace App\Entity\Product;
 
 use App\Entity\BaseEntity;
-use App\Repository\product\ProductRepository;
+use App\Repository\Product\ProductRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Entity\Supplier\Supplier;
-use App\Entity\recipe\Unit;
-use App\Entity\recipe\Recipe;
+use App\Entity\Recipe\Unit;
+use App\Entity\Recipe\Recipe;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
