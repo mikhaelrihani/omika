@@ -22,7 +22,7 @@ class Tag extends BaseEntity
     #[ORM\Column(length: 255)]
     private string $section; // Section de l'événement
 
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    #[ORM\Column(type: Types::DATE_IMMUTABLE)]
     private \DateTimeImmutable $day; // Jour concerné
 
     #[ORM\Column(length: 255)]

@@ -13,6 +13,7 @@ use App\Entity\Supplier\DeliveryDay;
 use App\Entity\Supplier\Supplier;
 use App\Entity\Recipe\Unit;
 use App\Entity\Supplier\OrderDay;
+use App\Repository\Supplier\SupplierRepository;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 
@@ -50,11 +51,11 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
 
         $this->createSuppliers();
 
-        $this->createProducts($this->numProduct);
+        $this->createProducts($this->numProduct, $this->supplierRepository);
 
         $this->createRuptures();
 
-        $this->createOrders(20);
+        $this->createOrders(20, $this->supplierRepository);
 
         $this->products_Orders();
 
@@ -122,70 +123,73 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     private function createSuppliers(): void
     {
+        //! on fait cette verification pour conserver l unicite de la relation en one to one supplier/business pour "php bin/console doctrine:fixtures:load --append"
         $businesses = $this->retrieveEntities('business', $this);
-        $s = 0;
+        if (!empty($businesses)) {
+            $s = 0;
 
-        foreach ($businesses as $business) {
-            $timestamps = $this->faker->createTimeStamps();
+            foreach ($businesses as $business) {
+                $timestamps = $this->faker->createTimeStamps();
 
-            $days = [1, 2, 3, 4, 5, 6, 7];
+                $days = [1, 2, 3, 4, 5, 6, 7];
 
-            // Récupérer des indices de jours de commande aléatoires
-            // Récupérer des indices de jours de commande aléatoires
-            $orderDaysEntries = (array) array_rand($days, rand(1, 3));
-            $orderDays = [];
+                // Récupérer des indices de jours de commande aléatoires
+                // Récupérer des indices de jours de commande aléatoires
+                $orderDaysEntries = (array) array_rand($days, rand(1, 3));
+                $orderDays = [];
 
-            // Récupérer les jours de commande à partir des indices
-            foreach ($orderDaysEntries as $index) {
-                $orderDays[] = $days[$index];
+                // Récupérer les jours de commande à partir des indices
+                foreach ($orderDaysEntries as $index) {
+                    $orderDays[] = $days[$index];
+                }
+
+                // Jours disponibles pour la livraison
+                $deliveryAvailableDays = array_diff($days, $orderDays);
+
+                // Calculer le nombre de jours de livraison, choisir le même nombre que de jours de commande
+                $deliveryDaysCount = count($orderDays);
+
+                // Vérifier si des jours de livraison sont disponibles 
+                if (count($deliveryAvailableDays) < $deliveryDaysCount) {
+                    $deliveryDaysCount = count($deliveryAvailableDays);
+                }
+
+                // Choisir des jours de livraison parmi les jours disponibles
+                $deliveryDaysEntries = (array) array_rand($deliveryAvailableDays, $deliveryDaysCount);
+                $deliveryDays = [];
+
+                // Récupérer les jours de livraison à partir des indices
+                foreach ($deliveryDaysEntries as $index) {
+                    $deliveryDays[] = $deliveryAvailableDays[$index];
+                }
+
+                $supplier = new Supplier();
+                $supplier
+                    ->setBusiness($business)
+                    ->setLogistic($this->faker->text(50))
+                    ->setHabits($this->faker->text(50))
+                    ->setGoodToKnow($this->faker->text(50))
+                    ->setCreatedAt($timestamps[ 'createdAt' ])
+                    ->setUpdatedAt($timestamps[ 'updatedAt' ]);
+
+                // Ajouter les jours de commande
+                foreach ($orderDays as $day) {
+                    $orderDay = new OrderDay();
+                    $orderDay->setDay($day);
+                    $supplier->addOrderDay($orderDay);
+                }
+
+                // Ajouter les jours de livraison
+                foreach ($deliveryDays as $day) {
+                    $deliveryDay = new DeliveryDay();
+                    $deliveryDay->setDay($day);
+                    $supplier->addDeliveryDay($deliveryDay);
+                }
+
+                $this->em->persist($supplier);
+                $this->addReference("supplier_{$s}", $supplier);
+                $s++;
             }
-
-            // Jours disponibles pour la livraison
-            $deliveryAvailableDays = array_diff($days, $orderDays);
-
-            // Calculer le nombre de jours de livraison, choisir le même nombre que de jours de commande
-            $deliveryDaysCount = count($orderDays);
-
-            // Vérifier si des jours de livraison sont disponibles 
-            if (count($deliveryAvailableDays) < $deliveryDaysCount) {
-                $deliveryDaysCount = count($deliveryAvailableDays);
-            }
-
-            // Choisir des jours de livraison parmi les jours disponibles
-            $deliveryDaysEntries = (array) array_rand($deliveryAvailableDays, $deliveryDaysCount);
-            $deliveryDays = [];
-
-            // Récupérer les jours de livraison à partir des indices
-            foreach ($deliveryDaysEntries as $index) {
-                $deliveryDays[] = $deliveryAvailableDays[$index];
-            }
-
-            $supplier = new Supplier();
-            $supplier
-                ->setBusiness($business)
-                ->setLogistic($this->faker->text(50))
-                ->setHabits($this->faker->text(50))
-                ->setGoodToKnow($this->faker->text(50))
-                ->setCreatedAt($timestamps[ 'createdAt' ])
-                ->setUpdatedAt($timestamps[ 'updatedAt' ]);
-
-            // Ajouter les jours de commande
-            foreach ($orderDays as $day) {
-                $orderDay = new OrderDay();
-                $orderDay->setDay($day);
-                $supplier->addOrderDay($orderDay);
-            }
-
-            // Ajouter les jours de livraison
-            foreach ($deliveryDays as $day) {
-                $deliveryDay = new DeliveryDay();
-                $deliveryDay->setDay($day);
-                $supplier->addDeliveryDay($deliveryDay);
-            }
-
-            $this->em->persist($supplier);
-            $this->addReference("supplier_{$s}", $supplier);
-            $s++;
         }
     }
 
@@ -197,11 +201,15 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @param int $numProduct The number of products to create.
      */
-    private function createProducts(int $numProduct): void
+    private function createProducts(int $numProduct, SupplierRepository $supplierRepository): void
     {
         $units = $this->retrieveEntities('unit', $this);
         $productTypes = $this->retrieveEntities('productType', $this);
         $suppliers = $this->retrieveEntities('supplier', $this);
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($suppliers)) {
+            $suppliers = $supplierRepository->findAll();
+        }
         $favoriteAssigned = []; // Track favorite products for each kitchen name
         $kitchenName = []; // Map kitchen names to product types
 
@@ -291,10 +299,13 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @param int $numOrder The number of orders to create.
      */
-    private function createOrders(int $numOrder): void
+    private function createOrders(int $numOrder, SupplierRepository $supplierRepository): void
     {
         $suppliers = $this->retrieveEntities('supplier', $this);
-
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($suppliers)) {
+            $suppliers = $supplierRepository->findAll();
+        }
         for ($o = 0; $o < $numOrder; $o++) {
             $timestamps = $this->faker->createTimeStamps();
             $orderDate = $timestamps[ 'updatedAt' ];

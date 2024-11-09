@@ -11,11 +11,10 @@ use Doctrine\Persistence\ObjectManager;
 class TagFixtures extends BaseFixtures implements DependentFixtureInterface
 {
     public function load(ObjectManager $manager): void
-    {#$this->createTags();
+    {
+        $this->createTags();
         $manager->flush();
-        
     }
-
 
 
     private function createTags(): void
@@ -30,17 +29,6 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
             if (!$event->getInfo() || !$event->getInfo()->isFullyRead()) {
 
                 $day = $event->getDueDate();
-                if ($day instanceof \DateTimeImmutable) {
-                    echo "Event ID " . $event->getId() . " has a due date of type DateTimeImmutable.\n";
-                } else {
-                    echo "Event ID " . $event->getId() . " does not have a due date of type DateTimeImmutable. Converting...\n";
-                }
-                if ($day instanceof \DateTime) {
-                    $day = \DateTimeImmutable::createFromMutable($day);
-                    $event->setDueDate($day);
-                    echo "Converted to DateTimeImmutable.\n";
-                }
-
                 $side = $event->getSide();
                 $section = $event->getSection()->getName();
                 $createdAt = $updatedAt = $event->getCreatedAt();

@@ -49,7 +49,16 @@ class UserFixtures extends BaseFixtures
      */
     public function load(ObjectManager $manager): void
     {
-        $this->businessEntities = $this->retrieveEntities('business', $this);
+        //! on fait cette verification pour eviter l'erreur "Notice: Undefined offset: 0" lorsqu'on a pas de business dans la bdd pour "php bin/console doctrine:fixtures:load --append"
+        $businessEntities = $this->retrieveEntities('business', $this);
+        if (empty($businessEntities)) {
+            $businesses = $this->businessRepository->findAll();
+            foreach ($businesses as $business) {
+                $this->businessEntities[] = $business;
+            }
+        }
+
+
         $this->faker->addProvider(new AppProvider($this->faker));
         $this->pictures = $this->retrieveEntities('picture', $this);
         $this->createContacts(20);
@@ -118,7 +127,7 @@ class UserFixtures extends BaseFixtures
     {
         //! on fait cette verification depuis la bdd, pour eviter l'unicité de l'entité superadmin afin de pouvoir ajouter plus de fixtures avec "php bin/console doctrine:fixtures:load --append"
         ($userRepository->findBy(["surname" => "rihani"])) ? $this->userAdminExists = true : $this->userAdminExists = false;
-       
+
         for ($u = 0; $u < $num; $u++) {
             $timestamps = $this->faker->createTimeStamps();
             $user = new User();
@@ -155,6 +164,8 @@ class UserFixtures extends BaseFixtures
             $this->setPicture($user, $this->pictures);
 
             // Randomly assign the user to a business
+
+
             $randomIndexBusiness = rand(0, count($this->businessEntities) - 1);
             $user->setBusiness($this->businessEntities[$randomIndexBusiness]);
 
