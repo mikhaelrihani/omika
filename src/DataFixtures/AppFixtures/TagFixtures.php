@@ -5,8 +5,6 @@ namespace App\DataFixtures\AppFixtures;
 use App\Entity\Event\Event;
 use App\Entity\Event\Tag;
 use App\Entity\Event\TagInfo;
-use App\Repository\Event\TagInfoRepository;
-use App\Repository\Event\TagRepository;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 
@@ -36,7 +34,7 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
                 $createdAt = $updatedAt = $event->getCreatedAt();
 
                 // we check if the tag already exists 
-                $tag = $this->em->getRepository(TagRepository::class)->findOneByDaySideSection($day, $side, $section);
+                $tag = $this->em->getRepository(Tag::class)->findOneByDaySideSection($day, $side, $section);
                 if (!$tag) {
                     $tag = new Tag();
                     $tag
@@ -87,7 +85,7 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
         // pour chaque user je cree un tag info en vérifiant que ce tag info n'existe pas déjà.
         foreach ($users as $user) {
 
-            $tagInfo = $this->em->getRepository(TagInfoRepository::class)->findOneByUserAndTag($user, $tag);
+            $tagInfo = $this->em->getRepository(TagInfo::class)->findOneByUserAndTag($user, $tag);
             if ($tagInfo) {
                 $count = $tagInfo->getUnreadInfoCount();
                 $count++;

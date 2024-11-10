@@ -26,27 +26,21 @@ class InventoryFixtures extends BaseFixtures implements DependentFixtureInterfac
      * and saves them into the database. It ensures that all required fixtures are created in the
      * correct order and that entities are persisted and flushed properly.
      * 
-     * @param ObjectManager $manager The Doctrine ObjectManager instance.
+     * @param ObjectManager $manager 
      */
     public function load(ObjectManager $manager): void
     {
-        // Add custom data provider for generating fake data
+
         $this->faker->addProvider(new AppProvider($this->faker));
 
-        // Create KitchenSpaces and persist them to the database
         $this->createKitchensSpaces();
-
-        // Create Rooms and persist them to the database
+        $this->em->flush();
         $this->createRooms();
-        $manager->flush();
-
-        // Create RoomProducts and persist them to the database
+        $this->em->flush();
         $this->createRoomProducts();
-        $manager->flush();
-
-        // Create Inventories and persist them to the database
+        $this->em->flush();
         $this->createInventories();
-        $manager->flush();
+        $this->em->flush();
     }
 
     /**
@@ -140,7 +134,7 @@ class InventoryFixtures extends BaseFixtures implements DependentFixtureInterfac
         }
 
         // Create multiple inventories
-        for ($i = 0; $i < 30; $i++) {
+        for ($i = 0; $i < 10; $i++) {
             // Modify createdAt and updatedAt timestamps for each inventory
             $createdAt = (clone $createdAt)->modify('+' . $this->faker->numberBetween(0, 7) . ' days');
             $updatedAt = (clone $createdAt)->modify('+' . $this->faker->numberBetween(0, 7) . ' days');
@@ -178,6 +172,9 @@ class InventoryFixtures extends BaseFixtures implements DependentFixtureInterfac
             // Persist the Inventory object and add reference for later use
             $this->em->persist($inventory);
             $this->addReference("inventory_{$i}", $inventory);
+
+           
+
         }
     }
 

@@ -55,11 +55,10 @@ class UserFixtures extends BaseFixtures
             $this->businessEntities = $this->em->getRepository(Business::class)->findAll();
         }
 
-
         $this->faker->addProvider(new AppProvider($this->faker));
         $this->pictures = $this->retrieveEntities('picture', $this);
-        $this->createContacts(20);
-        $this->createUsers(10);
+        $this->createContacts(10);
+        $this->createUsers(5);
         $users = $this->retrieveEntities('user', $this);
         $contacts = $this->retrieveEntities('contact', $this);
         // Flush to set the ID of each recipient entity when sending message
@@ -118,14 +117,14 @@ class UserFixtures extends BaseFixtures
     /**
      * Create a specified number of User entities.
      *
-     * @param int $num The number of User entities to create.
+     * @param int $numUsers The number of User entities to create.
      */
-    public function createUsers(int $num): void
+    public function createUsers(int $numUsers): void
     {
         //! on fait cette verification depuis la bdd, pour eviter l'unicité de l'entité superadmin afin de pouvoir ajouter plus de fixtures avec "php bin/console doctrine:fixtures:load --append"
-        ($this->em->getRepository(User::class)->findBy(["surname" => "rihani"])) ? $this->userAdminExists = true : $this->userAdminExists = false;
+        ($this->em->getRepository(User::class)->findBy(["surname" => "rihani"])) ? [$this->userAdminExists = true, $numUsers = 1] : $this->userAdminExists = false;
 
-        for ($u = 0; $u < $num; $u++) {
+        for ($u = 0; $u < $numUsers; $u++) {
             $timestamps = $this->faker->createTimeStamps();
             $user = new User();
             if (!$this->userAdminExists) {
@@ -181,9 +180,16 @@ class UserFixtures extends BaseFixtures
     /**
      * Create a number of Contact entities.
      */
-    public function createContacts(int $num): void
+    public function createContacts(int $numContacts): void
     {
-        for ($c = 0; $c < $num; $c++) {
+
+        //! on fait cette verification depuis la bdd, pour eviter l'unicité de l'entité superadmin afin de pouvoir ajouter plus de fixtures avec "php bin/console doctrine:fixtures:load --append"
+        if ($this->em->getRepository(Contact::class)->findAll() > 0) {
+            $numContacts = 5;
+        }
+        ;
+
+        for ($c = 0; $c < $numContacts; $c++) {
             $timestamps = $this->faker->createTimeStamps();
             $contact = new Contact();
             $contact
@@ -205,7 +211,7 @@ class UserFixtures extends BaseFixtures
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
             // Randomly assign the contact to a business
-            $randomIndex= rand(0, count($this->businessEntities) - 1);
+            $randomIndex = rand(0, count($this->businessEntities) - 1);
             $contact->setBusiness($this->businessEntities[$randomIndex]);
 
             // Set the absence information for the contact

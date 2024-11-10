@@ -3,7 +3,7 @@
 namespace App\Entity\Recipe;
 
 use App\Entity\BaseEntity;
-use App\Repository\recipe\UnitRepository;
+use App\Repository\Recipe\UnitRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 

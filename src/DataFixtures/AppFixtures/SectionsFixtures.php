@@ -6,7 +6,7 @@ use App\DataFixtures\Provider\AppProvider;
 use App\Entity\Event\Section;
 use Doctrine\Persistence\ObjectManager;
 
-class SectionFixtures extends BaseFixtures
+class SectionsFixtures extends BaseFixtures
 {
     public function load(ObjectManager $manager): void
     {

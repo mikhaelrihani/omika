@@ -11,6 +11,7 @@ use App\Entity\Event\EventRecurring;
 use App\Entity\Event\EventSharedInfo;
 use App\Entity\Event\MonthDay;
 use App\Entity\Event\PeriodDate;
+use App\Entity\Event\Section;
 use App\Entity\Event\WeekDay;
 use DateInterval;
 use DateTimeImmutable;
@@ -33,7 +34,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         // Créer les événements samples for tags
         # $this->createSampleEvents(20, 0);
         // Créer les événements récurrence parents
-        $this->createEventRecurringParent();
+        $this->createEventRecurringParent(5);
         // Créer les événements enfants pour chaque événement récurrence parent
         $this->createEventRecurringChildrens();
     }
@@ -80,6 +81,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $updatedBy = $updatedByUser->getFullName();
 
         $sections = $this->retrieveEntities("section", $this);
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($sections)) {
+            $sections = $this->em->getRepository(Section::class)->findAll();
+        }
         $section = $sections[array_rand($sections)];
 
         $event = new Event();
@@ -402,9 +407,13 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      *
      * @return void
      */
-    public function createEventRecurringParent(): void
+    public function createEventRecurringParent(int $numEvents): void
     {
-        for ($e = 0; $e < 5; $e++) {
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if ($this->em->getRepository(EventRecurring::class)->count([]) > 0) {
+            $numEvents = 2;
+        }
+        for ($e = 0; $e < $numEvents; $e++) {
             $eventRecurring = $this->setRecurringParentBase();
             $eventRecurring = $this->setRecurringParentsRelations($eventRecurring);
             $this->em->persist($eventRecurring);

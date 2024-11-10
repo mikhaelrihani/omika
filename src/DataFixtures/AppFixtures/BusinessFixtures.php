@@ -5,7 +5,6 @@ namespace App\DataFixtures\AppFixtures;
 use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
 use App\Entity\User\Business;
-use App\Repository\User\BusinessRepository;
 use Doctrine\Persistence\ObjectManager;
 
 /**
