@@ -27,7 +27,7 @@ class BusinessFixtures extends BaseFixtures
     public function load(ObjectManager $manager): void
     {
         $this->faker->addProvider(new AppProvider($this->faker));
-        $this->createBusiness($this->businessRepository);
+        $this->createBusiness();
         $this->em->flush();
 
     }
@@ -36,7 +36,7 @@ class BusinessFixtures extends BaseFixtures
     /**
      * Create Business entities and store them in $businessEntities.
      */
-    public function createBusiness(BusinessRepository $businessRepository): void
+    public function createBusiness(): void
     {
         $businessList = $this->faker->getBusinessList();
         $this->businessEntities = [];
@@ -48,7 +48,7 @@ class BusinessFixtures extends BaseFixtures
                 ->setName($businessName)
                 ->setCreatedAt($timestamps[ 'createdAt' ])
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);
-            if ($businessRepository->findOneBy(['name' => $businessName]) === null) {
+            if ($this->em->getRepository(Business::class)->findOneBy(['name' => $businessName]) === null) {
                 $this->em->persist($business);
                 $this->businessEntities[] = $business;
                 $this->addReference("business_{$b}", $business);

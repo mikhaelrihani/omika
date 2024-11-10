@@ -7,10 +7,10 @@ use App\DataFixtures\AppFixtures\BaseFixtures;
 use App\Entity\Media\Message;
 use App\Entity\Media\Note;
 use App\Entity\User\Absence;
+use App\Entity\User\Business;
 use App\Entity\User\Contact;
 use App\Entity\User\User;
 use App\Entity\User\UserLogin;
-use App\Repository\User\UserRepository;
 use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\Uid\Uuid;
 
@@ -50,19 +50,16 @@ class UserFixtures extends BaseFixtures
     public function load(ObjectManager $manager): void
     {
         //! on fait cette verification pour eviter l'erreur "Notice: Undefined offset: 0" lorsqu'on a pas de business dans la bdd pour "php bin/console doctrine:fixtures:load --append"
-        $businessEntities = $this->retrieveEntities('business', $this);
+        $this->businessEntities = $this->retrieveEntities('business', $this);
         if (empty($businessEntities)) {
-            $businesses = $this->businessRepository->findAll();
-            foreach ($businesses as $business) {
-                $this->businessEntities[] = $business;
-            }
+            $this->businessEntities = $this->em->getRepository(Business::class)->findAll();
         }
 
 
         $this->faker->addProvider(new AppProvider($this->faker));
         $this->pictures = $this->retrieveEntities('picture', $this);
         $this->createContacts(20);
-        $this->createUsers(10, $this->userRepository);
+        $this->createUsers(10);
         $users = $this->retrieveEntities('user', $this);
         $contacts = $this->retrieveEntities('contact', $this);
         // Flush to set the ID of each recipient entity when sending message
@@ -123,10 +120,10 @@ class UserFixtures extends BaseFixtures
      *
      * @param int $num The number of User entities to create.
      */
-    public function createUsers(int $num, UserRepository $userRepository): void
+    public function createUsers(int $num): void
     {
         //! on fait cette verification depuis la bdd, pour eviter l'unicité de l'entité superadmin afin de pouvoir ajouter plus de fixtures avec "php bin/console doctrine:fixtures:load --append"
-        ($userRepository->findBy(["surname" => "rihani"])) ? $this->userAdminExists = true : $this->userAdminExists = false;
+        ($this->em->getRepository(User::class)->findBy(["surname" => "rihani"])) ? $this->userAdminExists = true : $this->userAdminExists = false;
 
         for ($u = 0; $u < $num; $u++) {
             $timestamps = $this->faker->createTimeStamps();
@@ -166,8 +163,8 @@ class UserFixtures extends BaseFixtures
             // Randomly assign the user to a business
 
 
-            $randomIndexBusiness = rand(0, count($this->businessEntities) - 1);
-            $user->setBusiness($this->businessEntities[$randomIndexBusiness]);
+            $randomIndex = rand(0, count($this->businessEntities) - 1);
+            $user->setBusiness($this->businessEntities[$randomIndex]);
 
             $this->setAbsenceEntity($user, $this->surnames);
 
@@ -208,8 +205,8 @@ class UserFixtures extends BaseFixtures
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
             // Randomly assign the contact to a business
-            $randomIndexBusiness = rand(0, count($this->businessEntities) - 1);
-            $contact->setBusiness($this->businessEntities[$randomIndexBusiness]);
+            $randomIndex= rand(0, count($this->businessEntities) - 1);
+            $contact->setBusiness($this->businessEntities[$randomIndex]);
 
             // Set the absence information for the contact
             $this->setAbsenceEntity($contact, $this->surnames);

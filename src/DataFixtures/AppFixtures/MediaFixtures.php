@@ -14,11 +14,11 @@ use Doctrine\Persistence\ObjectManager;
  *
  * Fixture class responsible for loading media-related data into the database.
  */
-class MediaFixtures extends BaseFixtures 
+class MediaFixtures extends BaseFixtures
 {
-   
 
-   
+
+
     /**
      * Load the media fixtures into the database.
      */
@@ -43,18 +43,23 @@ class MediaFixtures extends BaseFixtures
     private function createMimes(): array
     {
         $MimeList = $this->faker->getMimelist();
-        $mimes = [];
-        foreach ($MimeList as $mimeName) {
 
-            $timestamps = $this->faker->createTimeStamps();
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if ($this->em->getRepository(Mime::class)->count([]) > 0) {
+            $mimes = $this->em->getRepository(Mime::class)->findAll();
+        } else {
+            $mimes = [];
+            foreach ($MimeList as $mimeName) {
+                $timestamps = $this->faker->createTimeStamps();
 
-            $mime = new Mime();
-            $mime
-                ->setName($mimeName)
-                ->setCreatedAt($timestamps[ 'createdAt' ])
-                ->setUpdatedAt($timestamps[ 'updatedAt' ]);
-            $mimes[] = $mime;
-            $this->em->persist($mime);
+                $mime = new Mime();
+                $mime
+                    ->setName($mimeName)
+                    ->setCreatedAt($timestamps[ 'createdAt' ])
+                    ->setUpdatedAt($timestamps[ 'updatedAt' ]);
+                $mimes[] = $mime;
+                $this->em->persist($mime);
+            }
         }
         return $mimes;
     }

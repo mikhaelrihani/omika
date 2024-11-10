@@ -5,11 +5,6 @@ namespace App\DataFixtures\AppFixtures;
 use App\Entity\Carte\Dish;
 use App\Entity\Carte\DishCategory;
 use App\Entity\User\User;
-use App\Repository\Event\TagInfoRepository;
-use App\Repository\Event\TagRepository;
-use App\Repository\Supplier\SupplierRepository;
-use App\Repository\User\BusinessRepository;
-use App\Repository\User\UserRepository;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\FixtureInterface;
 use Doctrine\ORM\EntityManagerInterface;
@@ -26,11 +21,6 @@ class BaseFixtures extends Fixture implements FixtureInterface
         protected UnsplashApiService $unsplashApi,
         protected UserPasswordHasherInterface $userPasswordHasher,
         protected EntityManagerInterface $em,
-        protected TagRepository $tagRepository,
-        protected TagInfoRepository $tagInfoRepository,
-        protected UserRepository $userRepository,
-        protected BusinessRepository $businessRepository,
-        protected SupplierRepository $supplierRepository,
         
     ) {
         $this->faker = Factory::create("fr_FR");

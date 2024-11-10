@@ -5,10 +5,12 @@ namespace App\DataFixtures\AppFixtures;
 use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
 use App\Entity\Carte\Dish;
+use App\Entity\Carte\DishCategory;
 use App\Entity\Recipe\Ingredient;
 use App\Entity\Recipe\Recipe;
 use App\Entity\Recipe\RecipeAdvise;
 use App\Entity\Recipe\RecipeStep;
+use App\Entity\Recipe\Unit;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 
@@ -96,6 +98,10 @@ class RecipeFixtures extends BaseFixtures implements DependentFixtureInterface
     {
         $recipes = $this->retrieveEntities("recipe", $this);
         $dishCategories = $this->retrieveEntities("dishCategories", $this);
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($dishCategories)) {
+            $dishCategories = $this->em->getRepository(DishCategory::class)->findAll();
+        }
         $pictures = $this->retrieveEntities("picture", $this);
 
         foreach ($recipes as $recipe) {
@@ -119,6 +125,10 @@ class RecipeFixtures extends BaseFixtures implements DependentFixtureInterface
     public function createIngredients()
     {
         $units = $this->retrieveEntities("unit", $this);
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($units)) {
+            $units = $this->em->getRepository(Unit::class)->findAll();
+        }
         $products = $this->retrieveEntities("product", $this);
         $recipes = $this->retrieveEntities("recipe", $this);
 

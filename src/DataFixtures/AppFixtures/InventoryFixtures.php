@@ -58,20 +58,25 @@ class InventoryFixtures extends BaseFixtures implements DependentFixtureInterfac
      */
     public function createKitchensSpaces(): void
     {
-        $kitchenSpaces = $this->faker->getKitchenSpaceList();
-        $timestamps = $this->faker->createTimeStamps();
-        $k = 0;
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if ($this->em->getRepository(KitchenSpace::class)->count([]) === 0) {
 
-        foreach ($kitchenSpaces as $space) {
-            $kitchenSpace = new KitchenSpace();
-            $kitchenSpace->setName($space);
-            $kitchenSpace->setCreatedAt($timestamps[ 'createdAt' ]);
-            $kitchenSpace->setUpdatedAt($timestamps[ 'updatedAt' ]);
+            $kitchenSpaces = $this->faker->getKitchenSpaceList();
+            $timestamps = $this->faker->createTimeStamps();
+            $k = 0;
 
-            $this->em->persist($kitchenSpace);
-            $this->addReference("kitchenSpace_{$k}", $kitchenSpace);
-            $k++;
+            foreach ($kitchenSpaces as $space) {
+                $kitchenSpace = new KitchenSpace();
+                $kitchenSpace->setName($space);
+                $kitchenSpace->setCreatedAt($timestamps[ 'createdAt' ]);
+                $kitchenSpace->setUpdatedAt($timestamps[ 'updatedAt' ]);
+
+                $this->em->persist($kitchenSpace);
+                $this->addReference("kitchenSpace_{$k}", $kitchenSpace);
+                $k++;
+            }
         }
+
     }
 
     /**
@@ -83,25 +88,31 @@ class InventoryFixtures extends BaseFixtures implements DependentFixtureInterfac
      */
     public function createRooms(): void
     {
-        $r = 0;
-        $rooms = $this->faker->getRoomList();
-        $timestamps = $this->faker->createTimeStamps();
 
-        foreach ($rooms as $room) {
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if ($this->em->getRepository(Room::class)->count([]) === 0) {
 
-            $numRooms = $this->faker->numberBetween(1, 5);
-            for ($i = 0; $i < $numRooms; $i++) {
-                $newRoom = new Room();
-                $newRoom->setName($room);
-                $newRoom->setLocationDetails($this->faker->text(100));
-                $newRoom->setCreatedAt($timestamps[ 'createdAt' ]);
-                $newRoom->setUpdatedAt($timestamps[ 'updatedAt' ]);
+            $r = 0;
+            $rooms = $this->faker->getRoomList();
+            $timestamps = $this->faker->createTimeStamps();
 
-                $this->em->persist($newRoom);
-                $this->addReference("room_{$r}", $newRoom);
-                $r++;
+            foreach ($rooms as $room) {
+
+                $numRooms = $this->faker->numberBetween(1, 5);
+                for ($i = 0; $i < $numRooms; $i++) {
+                    $newRoom = new Room();
+                    $newRoom->setName($room);
+                    $newRoom->setLocationDetails($this->faker->text(100));
+                    $newRoom->setCreatedAt($timestamps[ 'createdAt' ]);
+                    $newRoom->setUpdatedAt($timestamps[ 'updatedAt' ]);
+
+                    $this->em->persist($newRoom);
+                    $this->addReference("room_{$r}", $newRoom);
+                    $r++;
+                }
             }
         }
+
     }
 
     /**
@@ -123,6 +134,10 @@ class InventoryFixtures extends BaseFixtures implements DependentFixtureInterfac
         $users = $this->retrieveEntities("user", $this);
         $author = $this->faker->randomElement($users);
         $roomList = $this->retrieveEntities("room", $this);
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($roomList)) {
+            $roomList = $this->em->getRepository(Room::class)->findAll();
+        }
 
         // Create multiple inventories
         for ($i = 0; $i < 30; $i++) {
@@ -177,6 +192,10 @@ class InventoryFixtures extends BaseFixtures implements DependentFixtureInterfac
     public function createRoomProducts(): void
     {
         $rooms = $this->retrieveEntities("room", $this);
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($rooms)) {
+            $rooms = $this->em->getRepository(Room::class)->findAll();
+        }
         $products = $this->retrieveEntities("product", $this);
         $r = 0;
 
