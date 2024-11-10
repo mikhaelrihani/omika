@@ -25,7 +25,7 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
 
         // on recupere tous les events
         $events = $this->retrieveEntities("event", $this);
-       
+
         foreach ($events as $event) {
             // le seul event qui n'interagit pas avec un tag est un event info qui a été lu par tous les users. 
             if (!$event->getInfo() || !$event->getInfo()->isFullyRead()) {
@@ -66,15 +66,16 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
     }
     private function setInfoTagCount(Tag $tag, Event $event): void
     {
+        $tag
+            ->setUpdatedAt($event->getUpdatedAt())
+            ->setTaskCount(null);
+
         if ($tag->getId() === null) {
-            $tag
-                ->setUpdatedAt($event->getUpdatedAt())
-                ->setTaskCount(null);
             $this->em->persist($tag);
             $this->em->flush(); // Flush pour générer un ID pour le tag en base pour la methode "findOneByUserAndTag"
         }
 
-        // je récupère les users qui n'ont pas lu l'info pour ensuite ajouter un count au tag
+        // je récupère les users avec lesquels l'info a été partagée et pour chacun on vérifie si l'info est non lue, dans ce cas on imcrémente de 1 le tag associé.
         $eventsSharedInfos = $event->getInfo()->getEventSharedInfo();
         $users = [];
         foreach ($eventsSharedInfos as $eventSharedInfo) {
@@ -104,7 +105,7 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
                 $this->em->persist($tagInfo);
                 $tag->addTagInfo($tagInfo);
             }
-            //!penser a remove le tag pour les users qui ont  lu l info 
+
 
         }
         $this->em->flush();
@@ -124,11 +125,8 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
             $count = max(0, $count - 1); // Décrémenter uniquement si nécessaire
         }
 
-        $count++; // Si la tâche n'est pas définie, on peut choisir d'incrémenter par défaut
-
-
-        $tag->setTaskCount($count);
-        $tag->setUpdatedAt($event->getUpdatedAt());
+        $tag->setTaskCount($count)
+            ->setUpdatedAt($event->getUpdatedAt());
         $this->em->persist($tag);
         $this->em->flush();
     }

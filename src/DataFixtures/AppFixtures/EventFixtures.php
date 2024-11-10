@@ -230,7 +230,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
         $inforeadCounter = 0;
         foreach ($randomUsers as $user) {
-            $isRead = $this->faker->boolean;
+            $isRead = $this->faker->boolean(20);
             $info->addSharedWith($user);
             if ($isRead)
                 $inforeadCounter++;
