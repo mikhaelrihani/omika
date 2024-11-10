@@ -39,7 +39,7 @@ class InventoryFixtures extends BaseFixtures implements DependentFixtureInterfac
         $this->em->flush();
         $this->createRoomProducts();
         $this->em->flush();
-        $this->createInventories();
+        $this->createInventories(30);
         $this->em->flush();
     }
 
@@ -119,7 +119,7 @@ class InventoryFixtures extends BaseFixtures implements DependentFixtureInterfac
      * It ensures that each product is assigned to at least one inventory, with 
      * a random quantity and location details.
      */
-    public function createInventories(): void
+    public function createInventories($numInventory): void
     {
         // Get the current time stamps for creating and updating records
         $timestamps = $this->faker->createTimeStamps();
@@ -132,9 +132,13 @@ class InventoryFixtures extends BaseFixtures implements DependentFixtureInterfac
         if (empty($roomList)) {
             $roomList = $this->em->getRepository(Room::class)->findAll();
         }
-
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if ($this->em->getRepository(Inventory::class)->count() > 0) {
+            $numInventory = 5;
+        }
         // Create multiple inventories
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < $numInventory; $i++) {
+
             // Modify createdAt and updatedAt timestamps for each inventory
             $createdAt = (clone $createdAt)->modify('+' . $this->faker->numberBetween(0, 7) . ' days');
             $updatedAt = (clone $createdAt)->modify('+' . $this->faker->numberBetween(0, 7) . ' days');
@@ -173,7 +177,7 @@ class InventoryFixtures extends BaseFixtures implements DependentFixtureInterfac
             $this->em->persist($inventory);
             $this->addReference("inventory_{$i}", $inventory);
 
-           
+
 
         }
     }

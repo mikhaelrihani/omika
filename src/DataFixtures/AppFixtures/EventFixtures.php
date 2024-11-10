@@ -13,6 +13,7 @@ use App\Entity\Event\MonthDay;
 use App\Entity\Event\PeriodDate;
 use App\Entity\Event\Section;
 use App\Entity\Event\WeekDay;
+use App\Entity\User\User;
 use DateInterval;
 use DateTimeImmutable;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
@@ -217,7 +218,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     }
     private function handleInfoEvent(Event $event, ?EventRecurring $eventRecurring, DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt): void
     {
-        $users = $this->retrieveEntities("user", fixture: $this);
+        $users = $this->em->getRepository(User::class)->findAll();
+
         $randomUsers = $this->faker->randomElements($users, $this->faker->numberBetween(1, count($users)));
 
         $info = new EventInfo();

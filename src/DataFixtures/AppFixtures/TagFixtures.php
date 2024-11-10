@@ -20,12 +20,14 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
     private function createTags(): void
     {
         // un tag peut être créer pour chaque jour et pour chaque section de chaque side.
+        // un event n'est pas lié à un tag , mais la création d'un event incremente le count du tag existant correspondant(section, sidee, duedate)
+        // ou crée un nouveau tag et l'incremente de 1.
 
         // on recupere tous les events
         $events = $this->retrieveEntities("event", $this);
-
+       
         foreach ($events as $event) {
-            // le seul event qui n a pas de tag est un event info qui a été lu par tous les users. 
+            // le seul event qui n'interagit pas avec un tag est un event info qui a été lu par tous les users. 
             if (!$event->getInfo() || !$event->getInfo()->isFullyRead()) {
 
                 $day = $event->getDueDate();
