@@ -39,7 +39,7 @@ class InventoryFixtures extends BaseFixtures implements DependentFixtureInterfac
         $this->em->flush();
         $this->createRoomProducts();
         $this->em->flush();
-        $this->createInventories(30);
+        $this->createInventories(20);
         $this->em->flush();
     }
 

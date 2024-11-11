@@ -16,6 +16,7 @@ use App\Entity\Event\WeekDay;
 use App\Entity\User\User;
 use DateInterval;
 use DateTimeImmutable;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 
@@ -25,18 +26,13 @@ use Doctrine\Persistence\ObjectManager;
 class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 {
 
-
-
     public function load(ObjectManager $manager): void
     {
         $this->faker->addProvider(new AppProvider($this->faker));
-        // Créer les événements
+
         $this->createEvents(20);
-        // Créer les événements samples for tags
         # $this->createSampleEvents(20, 0);
-        // Créer les événements récurrence parents
         $this->createEventRecurringParent(5);
-        // Créer les événements enfants pour chaque événement récurrence parent
         $this->createEventRecurringChildrens();
     }
 
@@ -75,7 +71,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function setEventBase(): Event
     {
-        $users = $this->retrieveEntities("user", $this);
+        $users = $this->em->getRepository(User::class)->findAll();
+
         $createdByUser = $this->faker->randomElement($users);
         $updatedByUser = $this->faker->randomElement($users);
         $createdBy = $createdByUser->getFullName();
@@ -155,7 +152,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $dueDate = $event->getDueDate();
         $diff = (int) $now->diff($dueDate)->format('%r%a'); // Différence en jours entre aujourd'hui et dueDate
         $type = $event->getType();
-
+       
         if ($type === "task") {
             $this->handleTaskEvent($event, $eventRecurring, $diff);
         } elseif ($type === "info") {
@@ -167,16 +164,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         // Événements dans la plage active (passé)
         if ($diff >= -30 && $diff < 0) {
             $taskStatus = $this->faker->randomElement(['done', 'unrealised']);
+
             if ($taskStatus === 'unrealised') {
                 $this->setEventTask($event, 'unrealised');
-                if ($eventRecurring) {
-                    $this->duplicateUnrealisedRecurringEvent($event, $eventRecurring);
-                } elseif (!$eventRecurring) {
+                if (!$eventRecurring)
                     $this->duplicateNonRecurringUnrealisedEvent($event);
-                }
             } else {
                 $this->setEventTask($event, 'done');
             }
+
             if ($eventRecurring)
                 $eventRecurring->addEvent($event);
 
@@ -337,7 +333,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $event = new Event();
         // Copy properties from the original event to the new event
         $event
-            ->setIsRecurring($originalEvent->isRecurring())
             ->setSide($originalEvent->getSide())
             ->setType($originalEvent->getType())
             ->setTitle($originalEvent->getTitle())
@@ -417,7 +412,9 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         }
         for ($e = 0; $e < $numEvents; $e++) {
             $eventRecurring = $this->setRecurringParentBase();
-            $eventRecurring = $this->setRecurringParentsRelations($eventRecurring);
+            if (!$eventRecurring->isEveryday()) {
+                $eventRecurring = $this->setRecurringParentsRelations($eventRecurring);
+            }
             $this->em->persist($eventRecurring);
             $this->addReference("eventRecurring_{$e}", $eventRecurring);
         }
@@ -426,8 +423,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     public function setRecurringParentBase(): EventRecurring
     {
         $timestamps = $this->faker->createTimeStamps('-15 days', 'now');
-        $createdAt = $timestamps[ 'createdAt' ];
-        $updatedAt = $timestamps[ 'updatedAt' ];
+        $createdAt = $updatedAt = $timestamps[ 'createdAt' ];
 
         $periodeStart = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $updatedAt->format('Y-m-d H:i:s'));
         $periodeEnd = $this->faker->dateTimeImmutableBetween($updatedAt->format('Y-m-d H:i:s'), "+1 month");
@@ -445,7 +441,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $eventRecurring->resetRecurringDays();
             $eventRecurring->setEveryday(true);
         } else {
-            $eventRecurring->setEveryday(False);
+            $eventRecurring->setEveryday(false);
         }
         return $eventRecurring;
     }
@@ -511,116 +507,71 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
         return $eventRecurring;
     }
-    /**
-     * Duplique les événements récurrents non réalisés dans une plage de dates spécifiée.
-     *
-     * Cette méthode parcourt les événements frères d'un événement récurrent donné et duplique ceux qui sont marqués
-     * comme non réalisés (status "unrealised") dans une plage de dates définie par les paramètres $RangeStart et 
-     * $RangeEnd. Si un événement frère existe le jour suivant, aucun nouvel événement ne sera créé pour combler 
-     * l'écart. Si le jour précédent d'un événement est marqué comme fait (status "done"), aucun événement ne sera créé 
-     * pour ce jour-là.
-     *
-     * @param Event $event L'événement dont on souhaite dupliquer les événements récurrents non réalisés.
-     * @param string $RangeStart La date de début de la plage de dates (par défaut: "-30days").
-     * @param string $RangeEnd La date de fin de la plage de dates (par défaut: "-1day").
-     *
-     * @return void
-     */
-    public function duplicateUnrealisedRecurringEvent(Event $originalEvent, EventRecurring $eventRecurring)
+
+    public function createBrothers(EventRecurring $eventRecurring, array $childrensTask, DateTimeImmutable $now): void
     {
-
-        $dateRangeStart = DateTimeImmutable::createFromFormat('Y-m-d', (new DateTimeImmutable("-30 days"))->format('Y-m-d'));
-        $dateRangeEnd = DateTimeImmutable::createFromFormat('Y-m-d', (new DateTimeImmutable("-1 day"))->format('Y-m-d'));
-
-
-        // Exclure l'événement actuel des frères
-        $eventsBrothers = $eventRecurring->getEvents()->filter(function ($brotherEvent) use ($originalEvent) {
-            return $brotherEvent !== $originalEvent;
-        });
-
-        // Vérifier si, après exclusion, la liste est vide
-        if ($eventsBrothers->isEmpty()) {
-            // Si aucun frère n'existe, dupliquer jusqu'à créer un événement 'done'
-            $nextDueDate = $originalEvent->getDueDate()->modify('+1 day');
-
-            while (true) {
-                $duplicateEvent = $this->duplicateEventBase($originalEvent);
-                $event = $this->setTimestampsToDuplicatedEvent($duplicateEvent, $originalEvent);
-                $taskStatus = $this->faker->randomElement(['unrealised', 'done']);
-                $this->setEventTask($event, $taskStatus);
-                $this->em->persist($event);
-                $this->em->flush();
-
-                $eventRecurring->addEvent($event);
-                $id = $event->getId();
-                $this->addReference("event_{$id}", $event);
-
-                if ($taskStatus === 'done') {
-                    break;
-                }
-
-                // Préparer la prochaine date pour le prochain événement à dupliquer
-                $nextDueDate = $nextDueDate->modify('+1 day');
-            }
-        } else {
-            // Si des frères existent, filtrer et gérer selon la plage donnée
-            $eventsBrothersInRange = $eventsBrothers->filter(function ($eventBrother) use ($dateRangeStart, $dateRangeEnd) {
-                if ($eventBrother->getTask() !== null) {//! penser a trouver la raison de pourquoi j ai une erreur gettaskinfo on null
-                    return $eventBrother->getTask()->getTaskStatus() === "unrealised"
-                        && $eventBrother->getDueDate() >= $dateRangeStart
-                        && $eventBrother->getDueDate() <= $dateRangeEnd;
-                }
-            })->toArray();
-
-            // Trier les événements dans la plage par `dueDate`
-            usort($eventsBrothersInRange, function ($a, $b) {
-                return $a->getDueDate() <=> $b->getDueDate();
-            });
-
-            // Parcourir les événements frères dans la plage et dupliquer en conséquence
-            foreach ($eventsBrothersInRange as $eventBrother) {
-                $currentDueDate = $eventBrother->getDueDate();
-                $nextDueDate = $currentDueDate->modify('+1 day');
-
-                $hasBrotherNextDay = $eventsBrothers->exists(function ($key, $eventBrotherNextDay) use ($nextDueDate) {
-                    return $eventBrotherNextDay->getDueDate() == $nextDueDate;
-                });
-
-                $previousDay = $currentDueDate->modify('-1 day');
-                $hasDonePreviousDay = $eventsBrothers->exists(function ($key, $eventBrotherPreviousDay) use ($previousDay) {
-                    return $eventBrotherPreviousDay->getDueDate() == $previousDay &&
-                        $eventBrotherPreviousDay->getTask()->getTaskStatus() === 'done';
-                });
-
-                if ($hasDonePreviousDay) {
-                    continue;
-                }
-
-                while (!$hasBrotherNextDay) {
-                    $duplicateEvent = $this->duplicateEventBase($eventBrother);
-                    $event = $this->setTimestampsToDuplicatedEvent($duplicateEvent, $originalEvent);
-                    $taskStatus = $this->faker->randomElement(['unrealised', 'done']);
-                    $this->setEventTask($event, $taskStatus);
-                    $this->em->persist($event);
-                    $this->em->flush();
-                    $eventRecurring->addEvent($event);
-                    $id = $event->getId();
-                    $this->addReference("event_{$id}", $event);
-
+        foreach ($childrensTask as $brother) {
+            $currentDueDate = $brother->getDueDate();
+            $nextDueDate = $currentDueDate->modify('+1 day');
+            if ($nextDueDate > $now) {
+                break;
+            } elseif ($brother->getTask()->getTaskStatus() !== 'unrealised') {
+                continue;
+            } else {
+                $hasBrotherNextDay = empty(array_filter($childrensTask, function ($brotherNextDay) use ($nextDueDate) {
+                    return $brotherNextDay->getDueDate() == $nextDueDate;
+                }));
+                while ($hasBrotherNextDay) {
+                    $brother = $this->createOneBrother($now, $nextDueDate, $brother, $eventRecurring);
+                    // Préparer la prochaine date pour le prochain événement à dupliquer
                     $nextDueDate = $nextDueDate->modify('+1 day');
-                    $hasBrotherNextDay = $eventsBrothers->exists(function ($key, $eventBrotherNextDay) use ($nextDueDate) {
-                        return $eventBrotherNextDay->getDueDate() == $nextDueDate;
-                    });
-
-                    if ($taskStatus === 'done') {
+                    $taskStatus = $brother->getTask()->getTaskStatus();
+                    if ($taskStatus === 'done' || $taskStatus === 'late') {
                         break;
                     }
+                    $hasBrotherNextDay = empty(array_filter($childrensTask, function ($brotherNextDay) use ($nextDueDate) {
+                        return $brotherNextDay->getDueDate() == $nextDueDate;
+                    }));
                 }
+
             }
         }
+        $this->em->flush();
+    }
+    public function createOneBrother(DateTimeImmutable $now, DateTimeImmutable $nextDueDate, Event $originalEvent, EventRecurring $eventRecurring): Event
+    {
+
+        $event = $this->duplicateEventBase($originalEvent);
+        $this->setTimestampsToDuplicatedEvent($event, $originalEvent);
+        $taskStatus = ($nextDueDate === $now) ? 'late' : $this->faker->randomElement(['unrealised', 'done']);
+        $this->setEventTask($event, $taskStatus);
+        $event->setIsRecurring(True);
+
+        $this->em->persist($event);
+        $eventRecurring->addEvent($event);
+
+        $id = $event->getId();
+        $this->addReference("event_{$id}", $event);
+
+        return $event;
     }
 
+    public function duplicateUnrealisedRecurringChildrens(EventRecurring $eventRecurring)
+    {
+        $now = DateTimeImmutable::createFromFormat('Y-m-d', (new DateTimeImmutable('now'))->format('Y-m-d'));
+        // on récupère les events tasks 
+        $childrensTask = [];
+        $childrens = $eventRecurring->getEvents();
+        foreach ($childrens as $child) {
+            if ($child->getTask()) {
+                $childrensTask[] = $child;
+            }
+        }
 
+        if (count($childrensTask) !== 0) {
+            $this->createBrothers($eventRecurring, $childrensTask, $now);
+        }
+    }
 
     //! Event Recurring Childrens
     public function createEventRecurringChildrens(): void
@@ -637,27 +588,31 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             }
 
             // Handle everyday events
-            if ($data[ "everyday" ]) {
+            elseif ($data[ "everyday" ]) {
                 $this->handleEveryday($data, $eventRecurring);
             }
 
             // Handle period dates
-            if ($data[ "periodDates" ]) {
+            elseif ($data[ "periodDates" ]) {
                 $this->handlePeriodDates($data, $eventRecurring);
             }
 
             // Handle month days
-            if ($data[ "monthDays" ]) {
+            elseif ($data[ "monthDays" ]) {
                 $this->handleMonthDays($data, $eventRecurring);
             }
 
             // Handle week days
-            if ($data[ "weekDays" ]) {
+            elseif ($data[ "weekDays" ]) {
                 $this->handleWeekdays($data, $eventRecurring);
             }
 
 
         }
+        // après avoir flushé tous les evenements enfants d'un parent récurrent,
+        // on s'occupe maintenant de la duplication des evenements enfants qui sont de type task et qui ont un statut unrealised
+
+        $this->duplicateUnrealisedRecurringChildrens($eventRecurring);
     }
     public function getTimestampsDataForRecurringChildrens(EventRecurring $eventRecurring): array
     {
@@ -668,16 +623,16 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
         $now = DateTimeImmutable::createFromFormat('Y-m-d', (new DateTimeImmutable('now'))->format('Y-m-d'));
         $startDate = DateTimeImmutable::createFromFormat('Y-m-d', $eventRecurring->getPeriodeStart()->format('Y-m-d'));
-        $createdAtParent = DateTimeImmutable::createFromFormat('Y-m-d', $eventRecurring->getCreatedAt()->format('Y-m-d'));
+        $updatedAtParent = DateTimeImmutable::createFromFormat('Y-m-d', $eventRecurring->getUpdatedAt()->format('Y-m-d'));
         // les events enfants peuvent etre en bdd que entre -30 et +7
         // la periode entre start et end du parent doit etre entre -30 et +7
         $latestCreationDate = $now->modify('+7 days');
-        $earliestCreationDate = max($now->modify('-30 days'), $createdAtParent); // On prend la date la plus récente entre -30 jours et la date de création
+        $earliestCreationDate = max($now->modify('-30 days'), $updatedAtParent); // On prend la date la plus récente entre -30 jours et la date de dernière update
 
-        $endDate = DateTimeImmutable::createFromFormat(
-            'Y-m-d',
-            ($eventRecurring->getPeriodeEnd() ?? $latestCreationDate)->format('Y-m-d')
-        );// si l'event est illimité,car dans ce cas la period end date est null.
+        $endDate = $eventRecurring->getPeriodeEnd() && $eventRecurring->getPeriodeEnd() < $latestCreationDate
+            ? DateTimeImmutable::createFromFormat('Y-m-d', $eventRecurring->getPeriodeEnd()->format('Y-m-d'))
+            : DateTimeImmutable::createFromFormat('Y-m-d', $latestCreationDate->format('Y-m-d'));
+
 
         $data = [
             "earliestCreationDate" => $earliestCreationDate,
@@ -688,32 +643,33 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             "periodDates"          => $periodDates,
             "monthDays"            => $monthDays,
             "weekDays"             => $weekDays,
-            "createdAtParent"      => $createdAtParent,
+            "updatedAtParent"      => $updatedAtParent,
             "now"                  => $now,
         ];
 
         return $data;
     }
-    private function setRecurringChildrensTimestamps(Event $event, DateTimeImmutable $dueDate, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
+    private function setRecurringChildrensTimestamps(Event $event, DateTimeImmutable $dueDate, DateTimeImmutable $updatedAtParent, DateTimeImmutable $now): void
     {
-        [$createdAt, $updatedAt] = $this->calculateCreatedUpdatedDates($dueDate, $createdAtParent, $now);
+        $createdAt = $this->calculateCreatedUpdatedDates($dueDate, $updatedAtParent, $now);
         [$dateStatus, $activeDay] = $this->calculateDateStatus($dueDate, $now);
 
         $event
-            ->setIsRecurring(true)
+            ->setIsRecurring(True)
             ->setCreatedAt($createdAt)
-            ->setUpdatedAt($updatedAt)
+            ->setUpdatedAt($createdAt)
             ->setDateStatus($dateStatus)
             ->setActiveDay($activeDay)
             ->setDueDate($dueDate);
     }
+
     public function handleEveryday(array $data, EventRecurring $eventRecurring): void
     {
         // Ajuster les dates de début et de fin possibles pour les enfants en fonction de la période active
         $firstDueDate = ($data[ "startDate" ] > $data[ "earliestCreationDate" ]) ? $data[ "startDate" ] : $data[ "earliestCreationDate" ];
         $lastDueDate = ($data[ "endDate" ] < $data[ "latestCreationDate" ]) ? $data[ "endDate" ] : $data[ "latestCreationDate" ];
         $numberOfEventsChildren = (int) $firstDueDate->diff($lastDueDate)->format('%r%a') + 1;
-        $this->createEverydayChildren($eventRecurring, $firstDueDate, $numberOfEventsChildren, $data[ "createdAtParent" ], $data[ "now" ]);
+        $this->createEverydayChildren($eventRecurring, $firstDueDate, $numberOfEventsChildren, $data[ "updatedAtParent" ], $data[ "now" ]);
     }
     public function handlePeriodDates(array $data, EventRecurring $eventRecurring): void
     {
@@ -724,7 +680,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             if ($diff > 7 || $diff < -30) {
                 continue; // Exclude dates outside of active range
             } else {
-                $this->createChildren($eventRecurring, $dueDate, $data[ "createdAtParent" ], $data[ "now" ]);
+                $this->createChildren($eventRecurring, $dueDate, $data[ "updatedAtParent" ], $data[ "now" ]);
 
             }
         }
@@ -749,7 +705,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 if ($dueDate >= $data[ "earliestCreationDate" ] && $dueDate <= $data[ "latestCreationDate" ]) {
                     // Créer l'événement enfant pour ce jour et ce mois spécifiés
 
-                    $this->createChildren($eventRecurring, $dueDate, $data[ "createdAtParent" ], $data[ "now" ]);
+                    $this->createChildren($eventRecurring, $dueDate, $data[ "updatedAtParent" ], $data[ "now" ]);
                 }
             }
 
@@ -773,7 +729,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 // Vérifier si la dueDate est dans la période cible
                 if ($dueDate >= $data[ "earliestCreationDate" ] && $dueDate <= $data[ "latestCreationDate" ]) {
                     // Créer l'événement enfant pour ce jour et cette semaine spécifiés
-                    $this->createChildren($eventRecurring, $dueDate, $data[ "createdAtParent" ], $data[ "now" ]);
+                    $this->createChildren($eventRecurring, $dueDate, $data[ "updatedAtParent" ], $data[ "now" ]);
                 }
             }
 
@@ -781,16 +737,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $currentWeekDate = $currentWeekDate->modify('next week');
         }
     }
-    private function createEverydayChildren(EventRecurring $eventRecurring, DateTimeImmutable $firstDueDate, int $numberOfEventsChildren, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
+    private function createEverydayChildren(EventRecurring $eventRecurring, DateTimeImmutable $firstDueDate, int $numberOfEventsChildren, DateTimeImmutable $updatedAtParent, DateTimeImmutable $now): void
     {
-
         $originalEvent = $this->setEventBase();
+        $this->em->persist($originalEvent);
+
         for ($i = 0; $i < $numberOfEventsChildren; $i++) {
-            ($i === 0) ? $event = $originalEvent : $event = $this->duplicateEventBase($originalEvent);
-
+            $event = ($i === 0) ? $originalEvent : $this->duplicateEventBase($originalEvent);
             $dueDate = $firstDueDate->modify("+{$i} days");
-
-            $this->setRecurringChildrensTimestamps($event, $dueDate, $createdAtParent, $now);
+            $this->setRecurringChildrensTimestamps($event, $dueDate, $updatedAtParent, $now);
             $this->setRelations($event, $eventRecurring);
         }
     }
@@ -808,21 +763,20 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      * @param DateTimeImmutable $dueDate The due date for the child event.
      * @param DateTimeImmutable $createdAtParent The creation date of the parent event.
      *
-     * @return array An array containing the calculated [createdAt, updatedAt] dates.
      */
-    private function calculateCreatedUpdatedDates(DateTimeImmutable $dueDate, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): array
+    private function calculateCreatedUpdatedDates(DateTimeImmutable $dueDate, DateTimeImmutable $updatedAtParent, DateTimeImmutable $now): DateTimeImmutable
     {
-        // pour calculer la date de crátion on doit comprendre que un event est créé des lors qu'il rentre dans la periode active.
+        // pour calculer la date de crátion on doit comprendre que un event everyday est créé des lors qu'il rentre dans la periode active.
         // donc soit il y est déjà a la creation du parent, soit il arrive au jour 7.
         // Lorsque le parent est crée ,createdParent= $now.
         // si le parent est crée dans la periode active, alors la date de creation est la date de creation du parent.
         // sinon la date de creation est egal a $now + (dueDate - now + 7 days)
-        if ($createdAtParent->modify("+7 days") < $dueDate) {
-            return [$createdAtParent, $createdAtParent]; // Case 1
+        if ($updatedAtParent->modify("+7 days") >= $dueDate) {
+            $creationDate = $updatedAtParent;
         } else {
             $creationDate = $now->add($now->diff($dueDate))->modify('-7 days');
-            return [$creationDate, $creationDate]; // Case 2
         }
+        return $creationDate;
     }
 
     private function calculateDateStatus(DateTimeImmutable $dueDate, DateTimeImmutable $now): array

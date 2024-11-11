@@ -66,7 +66,7 @@ class EventRecurring extends BaseEntity
     private Collection $monthDays;
 
     #[ORM\Column]
-    private ?bool $isEveryday = null;
+    private ?bool $isEveryday = false;
 
     public function __construct()
     {
