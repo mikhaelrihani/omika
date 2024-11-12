@@ -1,14 +1,15 @@
 <?php
 
-namespace App\Entity\event;
+namespace App\Entity\Event;
 
 use App\Entity\BaseEntity;
-use App\Repository\event\EventSectionRepository;
+use App\Repository\Event\SectionRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
-#[ORM\Entity(repositoryClass: EventSectionRepository::class)]
-class EventSection extends BaseEntity
+
+#[ORM\Entity(repositoryClass: SectionRepository::class)]
+class Section extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]

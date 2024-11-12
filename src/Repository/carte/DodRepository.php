@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Repository\carte;
+namespace App\Repository\Carte;
 
-use App\Entity\carte\Dod;
+use App\Entity\Carte\Dod;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

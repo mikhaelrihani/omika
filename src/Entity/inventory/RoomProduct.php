@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Entity\inventory;
+namespace App\Entity\Inventory;
 
 use App\Entity\BaseEntity;
-use App\Repository\inventory\RoomProductRepository;
+use App\Repository\Inventory\RoomProductRepository;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\product\product;
+use App\Entity\Product\Product;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: RoomProductRepository::class)]

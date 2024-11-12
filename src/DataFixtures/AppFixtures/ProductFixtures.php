@@ -2,17 +2,19 @@
 
 namespace App\DataFixtures\AppFixtures;
 
-use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
-use App\Entity\order\Order;
-use App\Entity\order\ProductOrder;
-use App\Entity\product\Product;
-use App\Entity\product\ProductType;
-use App\Entity\product\Rupture;
-use App\Entity\product\Supplier;
-use App\Entity\recipe\Unit;
+use App\Entity\Order\Order;
+use App\Entity\Order\ProductOrder;
+use App\Entity\Product\Product;
+use App\Entity\Product\ProductType;
+use App\Entity\Product\Rupture;
+use App\Entity\Supplier\DeliveryDay;
+use App\Entity\Supplier\Supplier;
+use App\Entity\Recipe\Unit;
+use App\Entity\Supplier\OrderDay;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
+
 
 /**
  * Class ProductFixtures
@@ -23,8 +25,8 @@ use Doctrine\Persistence\ObjectManager;
  */
 class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
 {
-    private $numProduct = 200; 
-    private array $users; 
+    private $numProduct = 200;
+    private array $users;
 
     /**
      * Load the product fixtures into the database.
@@ -37,51 +39,44 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
     public function load(ObjectManager $manager): void
     {
 
-        $this->faker->addProvider(new AppProvider($this->faker));
-
         $this->users = $this->retrieveEntities('user', $this);
 
         $this->createUnits();
-
         $this->createProductTypes();
-
         $this->createSuppliers();
-
         $this->createProducts($this->numProduct);
-
         $this->createRuptures();
-
-        $this->createOrders(20);
-
+        $this->createOrders(20, );
         $this->products_Orders();
 
-        $this->em->flush();
     }
 
     /**
-     * Create Units and persist them to the database.
-     *
-     * Generates a list of units with names and symbols, and saves them into the database.
-     * Each unit is initialized with creation and update timestamps.
+     * Generates a list of units with names and symbols.
      */
     private function createUnits(): void
     {
-        $unitNames = $this->faker->getUnitList();
-        $u = 0;
+        //! on fait cette verification pour "php bin/console doctrine:fixtures:load --append"
+        $units = $this->em->getRepository(Unit::class)->findAll();
+        if (empty($units)) {
+            $unitNames = $this->faker->getUnitList();
+            $u = 0;
 
-        foreach ($unitNames as $unitName => $unitSymbol) {
-            $timestamps = $this->faker->createTimeStamps();
+            foreach ($unitNames as $unitName => $unitSymbol) {
+                $timestamps = $this->faker->createTimeStamps();
 
-            $unit = new Unit();
-            $unit
-                ->setName($unitName)
-                ->setSymbol($unitSymbol)
-                ->setCreatedAt($timestamps[ 'createdAt' ])
-                ->setUpdatedAt($timestamps[ 'updatedAt' ]);
+                $unit = new Unit();
+                $unit
+                    ->setName($unitName)
+                    ->setSymbol($unitSymbol)
+                    ->setCreatedAt($timestamps[ 'createdAt' ])
+                    ->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
-            $this->em->persist($unit);
-            $this->addReference("unit_{$u}", $unit);
-            $u++;
+                $this->em->persist($unit);
+                $this->addReference("unit_{$u}", $unit);
+                $u++;
+            }
+
         }
     }
 
@@ -94,6 +89,10 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
     private function createProductTypes(): void
     {
         $productTypes = $this->faker->getProductTypeList();
+        //! on fait cette verification pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($productTypes)) {
+            $productTypes = $this->em->getRepository(ProductType::class)->findAll();
+        }
         $t = 0;
 
         foreach ($productTypes as $type) {
@@ -119,35 +118,76 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     private function createSuppliers(): void
     {
+        //! on fait cette verification pour conserver l unicite de la relation en one to one supplier/business pour "php bin/console doctrine:fixtures:load --append"
         $businesses = $this->retrieveEntities('business', $this);
-        $s = 0;
+        if (!empty($businesses)) {
+            $s = 0;
 
-        foreach ($businesses as $business) {
-            $timestamps = $this->faker->createTimeStamps();
-            $numOrderDays = $this->faker->numberBetween(1, 7);
-            $numDeliveryDays = $this->faker->numberBetween(1, 7);
+            foreach ($businesses as $business) {
+                $timestamps = $this->faker->createTimeStamps();
 
-            $supplier = new Supplier();
-            $supplier
-                ->setBusiness($business)
-                ->setLogistic($this->faker->text(50))
-                ->setHabits($this->faker->text(50))
-                ->setOrderDays($this->faker->randomElements(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], $numOrderDays))
-                ->setDeliveryDays($this->faker->randomElements(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], $numDeliveryDays))
-                ->setGoodToKnow($this->faker->text(50))
-                ->setCreatedAt($timestamps[ 'createdAt' ])
-                ->setUpdatedAt($timestamps[ 'updatedAt' ]);
+                $days = [1, 2, 3, 4, 5, 6, 7];
 
-            $this->em->persist($supplier);
-            $this->addReference("supplier_{$s}", $supplier);
-            $s++;
+                // Récupérer des indices de jours de commande aléatoires
+                $orderDaysEntries = (array) array_rand($days, rand(1, 3));
+                $orderDays = [];
+
+                // Récupérer les jours de commande à partir des indices
+                foreach ($orderDaysEntries as $index) {
+                    $orderDays[] = $days[$index];
+                }
+
+                // Jours disponibles pour la livraison
+                $deliveryAvailableDays = array_diff($days, $orderDays);
+
+                // Calculer le nombre de jours de livraison, choisir le même nombre que de jours de commande
+                $deliveryDaysCount = count($orderDays);
+
+                // Vérifier si des jours de livraison sont disponibles 
+                if (count($deliveryAvailableDays) < $deliveryDaysCount) {
+                    $deliveryDaysCount = count($deliveryAvailableDays);
+                }
+
+                // Choisir des jours de livraison parmi les jours disponibles
+                $deliveryDaysEntries = (array) array_rand($deliveryAvailableDays, $deliveryDaysCount);
+                $deliveryDays = [];
+
+                // Récupérer les jours de livraison à partir des indices
+                foreach ($deliveryDaysEntries as $index) {
+                    $deliveryDays[] = $deliveryAvailableDays[$index];
+                }
+
+                $supplier = new Supplier();
+                $supplier
+                    ->setBusiness($business)
+                    ->setLogistic($this->faker->text(50))
+                    ->setHabits($this->faker->text(50))
+                    ->setGoodToKnow($this->faker->text(50))
+                    ->setCreatedAt($timestamps[ 'createdAt' ])
+                    ->setUpdatedAt($timestamps[ 'updatedAt' ]);
+
+                // Ajouter les jours de commande
+                foreach ($orderDays as $day) {
+                    $orderDay = new OrderDay();
+                    $orderDay->setDay($day);
+                    $supplier->addOrderDay($orderDay);
+                }
+
+                // Ajouter les jours de livraison
+                foreach ($deliveryDays as $day) {
+                    $deliveryDay = new DeliveryDay();
+                    $deliveryDay->setDay($day);
+                    $supplier->addDeliveryDay($deliveryDay);
+                }
+
+                $this->em->persist($supplier);
+                $this->addReference("supplier_{$s}", $supplier);
+                $s++;
+            }
         }
     }
 
     /**
-     * Create Products and persist them to the database.
-     *
-     * Generates a specified number of products, each with a unit, supplier, and product type.
      * Ensures that products with the same kitchen name share the same product type and at least one product is marked as a supplier favorite.
      *
      * @param int $numProduct The number of products to create.
@@ -155,8 +195,20 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
     private function createProducts(int $numProduct): void
     {
         $units = $this->retrieveEntities('unit', $this);
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($units)) {
+            $units = $this->em->getRepository(unit::class)->findAll();
+        }
         $productTypes = $this->retrieveEntities('productType', $this);
+        //! on fait cette verification pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($productTypes)) {
+            $productTypes = $this->em->getRepository(ProductType::class)->findAll();
+        }
         $suppliers = $this->retrieveEntities('supplier', $this);
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($suppliers)) {
+            $suppliers = $this->em->getRepository(Supplier::class)->findAll();
+        }
         $favoriteAssigned = []; // Track favorite products for each kitchen name
         $kitchenName = []; // Map kitchen names to product types
 
@@ -202,8 +254,6 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
     }
 
     /**
-     * Create Ruptures and persist them to the database.
-     *
      * Generates a list of ruptures (disruptions) with associated products and persists them to the database.
      * Each rupture is assigned to a unique product.
      */
@@ -239,17 +289,15 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
     }
 
     /**
-     * Create Orders and persist them to the database.
-     *
-     * Generates a list of orders with random suppliers, authors, statuses, and delivery dates.
-     * Each order is associated with a random supplier and user.
-     *
      * @param int $numOrder The number of orders to create.
      */
     private function createOrders(int $numOrder): void
     {
         $suppliers = $this->retrieveEntities('supplier', $this);
-
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($suppliers)) {
+            $suppliers = $this->em->getRepository(Supplier::class)->findAll();
+        }
         for ($o = 0; $o < $numOrder; $o++) {
             $timestamps = $this->faker->createTimeStamps();
             $orderDate = $timestamps[ 'updatedAt' ];
@@ -275,8 +323,6 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
     }
 
     /**
-     * Create ProductOrder relationships and persist them to the database.
-     *
      * Creates associations between products and orders, ensuring that each order contains a set of products from the same supplier.
      * Each product is assigned a quantity and associated with an order.
      */
@@ -318,6 +364,7 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
                 array_splice($supplierProducts, $randomIndexProduct, 1);
             }
         }
+        $this->em->flush();
     }
 
     /**

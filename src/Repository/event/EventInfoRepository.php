@@ -1,23 +1,23 @@
 <?php
 
-namespace App\Repository\event;
+namespace App\Repository\Event;
 
-use App\Entity\event\EventFrequence;
+use App\Entity\Event\EventInfo;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @extends ServiceEntityRepository<EventFrequence>
+ * @extends ServiceEntityRepository<EventInfo>
  */
-class EventFrequenceRepository extends ServiceEntityRepository
+class EventInfoRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
-        parent::__construct($registry, EventFrequence::class);
+        parent::__construct($registry, EventInfo::class);
     }
 
     //    /**
-    //     * @return EventFrequence[] Returns an array of EventFrequence objects
+    //     * @return EventInfo[] Returns an array of EventInfo objects
     //     */
     //    public function findByExampleField($value): array
     //    {
@@ -31,7 +31,7 @@ class EventFrequenceRepository extends ServiceEntityRepository
     //        ;
     //    }
 
-    //    public function findOneBySomeField($value): ?EventFrequence
+    //    public function findOneBySomeField($value): ?EventInfo
     //    {
     //        return $this->createQueryBuilder('e')
     //            ->andWhere('e.exampleField = :val')

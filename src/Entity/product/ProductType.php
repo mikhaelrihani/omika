@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Entity\product;
+namespace App\Entity\Product;
 
 use App\Entity\BaseEntity;
-use App\Repository\product\ProductTypeRepository;
+use App\Repository\Product\ProductTypeRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 

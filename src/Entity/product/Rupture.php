@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Entity\product;
+namespace App\Entity\Product;
 
 use App\Entity\BaseEntity;
-use App\Repository\product\RuptureRepository;
+use App\Repository\Product\RuptureRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
-use App\Entity\product\Product;
+use App\Entity\Product\Product;
 
 /**
  * @ORM\Entity(repositoryClass=RuptureRepository::class)

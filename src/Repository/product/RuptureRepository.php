@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Repository\product;
+namespace App\Repository\Product;
 
-use App\Entity\product\Rupture;
+use App\Entity\Product\Rupture;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

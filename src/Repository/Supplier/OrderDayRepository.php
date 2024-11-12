@@ -1,40 +1,40 @@
 <?php
 
-namespace App\Repository\product;
+namespace App\Repository\Supplier;
 
-use App\Entity\product\Supplier;
+use App\Entity\Supplier\OrderDay;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @extends ServiceEntityRepository<Supplier>
+ * @extends ServiceEntityRepository<OrderDay>
  */
-class SupplierRepository extends ServiceEntityRepository
+class OrderDayRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
-        parent::__construct($registry, Supplier::class);
+        parent::__construct($registry, OrderDay::class);
     }
 
     //    /**
-    //     * @return Supplier[] Returns an array of Supplier objects
+    //     * @return OrderDays[] Returns an array of OrderDays objects
     //     */
     //    public function findByExampleField($value): array
     //    {
-    //        return $this->createQueryBuilder('s')
-    //            ->andWhere('s.exampleField = :val')
+    //        return $this->createQueryBuilder('o')
+    //            ->andWhere('o.exampleField = :val')
     //            ->setParameter('val', $value)
-    //            ->orderBy('s.id', 'ASC')
+    //            ->orderBy('o.id', 'ASC')
     //            ->setMaxResults(10)
     //            ->getQuery()
     //            ->getResult()
     //        ;
     //    }
 
-    //    public function findOneBySomeField($value): ?Supplier
+    //    public function findOneBySomeField($value): ?OrderDays
     //    {
-    //        return $this->createQueryBuilder('s')
-    //            ->andWhere('s.exampleField = :val')
+    //        return $this->createQueryBuilder('o')
+    //            ->andWhere('o.exampleField = :val')
     //            ->setParameter('val', $value)
     //            ->getQuery()
     //            ->getOneOrNullResult()

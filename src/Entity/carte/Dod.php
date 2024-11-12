@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Entity\carte;
+namespace App\Entity\Carte;
 
 use App\Entity\BaseEntity;
-use App\Repository\carte\DodRepository;
+use App\Repository\Carte\DodRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 

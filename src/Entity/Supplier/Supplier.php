@@ -1,16 +1,16 @@
 <?php
 
-namespace App\Entity\product;
+namespace App\Entity\Supplier;
 
 use App\Entity\BaseEntity;
-use App\Entity\user\Business;
-use App\Repository\product\SupplierRepository;
+use App\Entity\Event\Event;
+use App\Entity\User\Business;
+use App\Repository\Supplier\SupplierRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\product\Product;
-use App\Entity\order\Order;
+use App\Entity\Product\Product;
+use App\Entity\Order\Order;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: SupplierRepository::class)]
@@ -33,10 +33,7 @@ class Supplier extends BaseEntity
     #[ORM\Column(length: 1000, nullable: true)]
     private ?string $habits = null;
 
-    #[ORM\Column(type: Types::JSON, nullable: false)]
-    #[Assert\NotBlank(message: "Order Days should not be blank.")]
-    private array $orderDays = [];
-
+   
     #[ORM\Column(length: 1000, nullable: true)]
     private ?string $goodToKnow = null;
 
@@ -45,7 +42,7 @@ class Supplier extends BaseEntity
     /**
      * @ORM\OneToMany(targetEntity="App\Entity\product\Product", mappedBy="supplier")
      */
-    #[ORM\OneToMany(targetEntity: Product::class,mappedBy: 'supplier', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: Product::class, mappedBy: 'supplier', orphanRemoval: true)]
     private Collection $products;
 
     /**
@@ -54,14 +51,38 @@ class Supplier extends BaseEntity
     #[ORM\OneToMany(targetEntity: Order::class, mappedBy: 'supplier', orphanRemoval: true)]
     private Collection $orders;
 
-    #[ORM\Column]
-    private array $deliveryDays = [];
+  
 
+    /**
+     * @var Collection<int, Event>
+     */
+    #[ORM\ManyToMany(targetEntity: Event::class)]
+    #[ORM\JoinTable(name: 'supplier_recurring_event_children')]
+
+    private Collection $recurring_Event_children;
+
+    /**
+     * @var Collection<int, OrderDay>
+     */
+    #[ORM\ManyToMany(targetEntity: OrderDay::class, inversedBy: 'suppliers',cascade: ['persist'])]
+    private Collection $orderDays;
+
+    /**
+     * @var Collection<int, DeliveryDay>
+     */
+    #[ORM\ManyToMany(targetEntity: DeliveryDay::class, inversedBy: 'suppliers',cascade: ['persist'])]
+    private Collection $deliveryDays;
+
+   
 
     public function __construct()
     {
         $this->orders = new ArrayCollection();
         $this->products = new ArrayCollection();
+        $this->recurring_Event_children = new ArrayCollection();
+        $this->orderDays = new ArrayCollection();
+        $this->deliveryDays = new ArrayCollection();
+   
     }
 
     public function getId(): ?int
@@ -94,18 +115,7 @@ class Supplier extends BaseEntity
         return $this;
     }
 
-    public function getOrderDays(): array
-    {
-        return $this->orderDays;
-    }
-
-    public function setOrderDays(array $orderDays): static
-    {
-        $this->orderDays = $orderDays;
-
-        return $this;
-    }
-
+  
     public function getGoodToKnow(): ?string
     {
         return $this->goodToKnow;
@@ -187,15 +197,81 @@ class Supplier extends BaseEntity
         return $this;
     }
 
-    public function getDeliveryDays(): array
+  
+
+    /**
+     * @return Collection<int, Event>
+     */
+    public function getRecurringEventChildren(): Collection
+    {
+        return $this->recurring_Event_children;
+    }
+
+    public function addRecurringEventChild(Event $recurringEventChild): static
+    {
+        if (!$this->recurring_Event_children->contains($recurringEventChild)) {
+            $this->recurring_Event_children->add($recurringEventChild);
+        }
+
+        return $this;
+    }
+
+    public function removeRecurringEventChild(Event $recurringEventChild): static
+    {
+        $this->recurring_Event_children->removeElement($recurringEventChild);
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, OrderDay>
+     */
+    public function getOrderDays(): Collection
+    {
+        return $this->orderDays;
+    }
+
+    public function addOrderDay(OrderDay $orderDay): static
+    {
+        if (!$this->orderDays->contains($orderDay)) {
+            $this->orderDays->add($orderDay);
+        }
+
+        return $this;
+    }
+
+    public function removeOrderDay(OrderDay $orderDay): static
+    {
+        $this->orderDays->removeElement($orderDay);
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, DeliveryDay>
+     */
+    public function getDeliveryDays(): Collection
     {
         return $this->deliveryDays;
     }
 
-    public function setDeliveryDays(array $deliveryDays): static
+    public function addDeliveryDay(DeliveryDay $deliveryDay): static
     {
-        $this->deliveryDays = $deliveryDays;
+        if (!$this->deliveryDays->contains($deliveryDay)) {
+            $this->deliveryDays->add($deliveryDay);
+        }
 
         return $this;
     }
+
+    public function removeDeliveryDay(DeliveryDay $deliveryDay): static
+    {
+        $this->deliveryDays->removeElement($deliveryDay);
+
+        return $this;
+    }
+
+
+
+   
 }

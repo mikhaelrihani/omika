@@ -1,0 +1,256 @@
+Date : 2024-10-27 13:38:37
+Directory : c:\wamp64\www\omika
+Total : 175 files,  19132 codes, 2727 comments, 2436 blanks, all 24295 lines
+
+Languages
++------------+------------+------------+------------+------------+------------+
+| language   | files      | code       | comment    | blank      | total      |
++------------+------------+------------+------------+------------+------------+
+| JSON       |          2 |     10,998 |          0 |          2 |     11,000 |
+| PHP        |        142 |      7,585 |      2,603 |      2,281 |     12,469 |
+| YAML       |         26 |        382 |         80 |         82 |        544 |
+| Markdown   |          4 |        155 |          0 |         59 |        214 |
+| Properties |          1 |         12 |         44 |         12 |         68 |
++------------+------------+------------+------------+------------+------------+
+
+Directories
++----------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                             | files      | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                |        175 |     19,132 |      2,727 |      2,436 |     24,295 |
+| . (Files)                                                                        |          9 |     11,196 |         66 |         81 |     11,343 |
+| config                                                                           |         26 |        377 |         69 |         80 |        526 |
+| config (Files)                                                                   |          4 |         90 |         13 |         21 |        124 |
+| config\packages                                                                  |         19 |        273 |         56 |         55 |        384 |
+| config\routes                                                                    |          3 |         14 |          0 |          4 |         18 |
+| migrations                                                                       |          4 |        326 |         20 |         28 |        374 |
+| public                                                                           |          1 |          6 |          0 |          4 |         10 |
+| src                                                                              |        134 |      7,219 |      2,572 |      2,239 |     12,030 |
+| src (Files)                                                                      |          1 |          8 |          0 |          4 |         12 |
+| src\Command                                                                      |          1 |         46 |         43 |         12 |        101 |
+| src\Controller                                                                   |          8 |        379 |        196 |        113 |        688 |
+| src\Controller (Files)                                                           |          4 |        129 |         61 |         45 |        235 |
+| src\Controller\Event                                                             |          1 |         17 |         54 |         19 |         90 |
+| src\Controller\Media                                                             |          3 |        233 |         81 |         49 |        363 |
+| src\DataFixtures                                                                 |         10 |      1,320 |        416 |        307 |      2,043 |
+| src\DataFixtures\AppFixtures                                                     |          9 |      1,166 |        406 |        290 |      1,862 |
+| src\DataFixtures\Provider                                                        |          1 |        154 |         10 |         17 |        181 |
+| src\Entity                                                                       |         47 |      3,990 |        261 |      1,287 |      5,538 |
+| src\Entity (Files)                                                               |          3 |        128 |          0 |         36 |        164 |
+| src\Entity\Event                                                                 |         12 |      1,061 |         47 |        326 |      1,434 |
+| src\Entity\Product                                                               |          3 |        285 |         13 |         96 |        394 |
+| src\Entity\Supplier                                                              |          3 |        284 |         43 |        104 |        431 |
+| src\Entity\carte                                                                 |          4 |        384 |         17 |        131 |        532 |
+| src\Entity\inventory                                                             |          5 |        389 |         33 |        123 |        545 |
+| src\Entity\media                                                                 |          5 |        253 |         11 |         85 |        349 |
+| src\Entity\order                                                                 |          2 |        169 |          4 |         53 |        226 |
+| src\Entity\recipe                                                                |          5 |        348 |         30 |        112 |        490 |
+| src\Entity\user                                                                  |          5 |        689 |         63 |        221 |        973 |
+| src\EventListener                                                                |          1 |         19 |          3 |          4 |         26 |
+| src\EventSubscriber                                                              |          1 |         19 |         34 |         10 |         63 |
+| src\Interface                                                                    |          1 |          7 |          0 |          3 |         10 |
+| src\Interface\entity                                                             |          1 |          7 |          0 |          3 |         10 |
+| src\Message                                                                      |          1 |         32 |          0 |          8 |         40 |
+| src\MessageHandler.php                                                           |          1 |         34 |          1 |          7 |         42 |
+| src\Repository                                                                   |         47 |        619 |      1,199 |        284 |      2,102 |
+| src\Repository (Files)                                                           |          2 |         44 |         40 |         12 |         96 |
+| src\Repository\Event                                                             |         12 |        151 |        290 |         72 |        513 |
+| src\Repository\Product                                                           |          4 |         48 |        104 |         24 |        176 |
+| src\Repository\Supplier                                                          |          3 |         36 |         78 |         18 |        132 |
+| src\Repository\carte                                                             |          4 |         48 |        104 |         24 |        176 |
+| src\Repository\inventory                                                         |          5 |         60 |        130 |         30 |        220 |
+| src\Repository\media                                                             |          5 |         76 |        138 |         30 |        244 |
+| src\Repository\order                                                             |          2 |         24 |         52 |         12 |         88 |
+| src\Repository\recipe                                                            |          5 |         60 |        130 |         30 |        220 |
+| src\Repository\user                                                              |          5 |         72 |        133 |         32 |        237 |
+| src\Scheduler                                                                    |          4 |         58 |          1 |         17 |         76 |
+| src\Scheduler (Files)                                                            |          2 |         31 |          0 |          6 |         37 |
+| src\Scheduler\Message                                                            |          1 |          5 |          1 |          4 |         10 |
+| src\Scheduler\MessageHandler                                                     |          1 |         22 |          0 |          7 |         29 |
+| src\Security                                                                     |          2 |         99 |         77 |         34 |        210 |
+| src\Serializer                                                                   |          1 |         26 |         62 |          8 |         96 |
+| src\Service                                                                      |          8 |        563 |        279 |        141 |        983 |
+| tests                                                                            |          1 |          8 |          0 |          4 |         12 |
++----------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++----------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| filename                                                                         | language   | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| c:\wamp64\www\omika\.env                                                         | Properties |         12 |         44 |         12 |         68 |
+| c:\wamp64\www\omika\README.md                                                    | Markdown   |          8 |          0 |          0 |          8 |
+| c:\wamp64\www\omika\Routes.md                                                    | Markdown   |          3 |          0 |          5 |          8 |
+| c:\wamp64\www\omika\compose.override.yaml                                        | YAML       |         12 |          4 |          3 |         19 |
+| c:\wamp64\www\omika\compose.yaml                                                 | YAML       |         16 |          7 |          3 |         26 |
+| c:\wamp64\www\omika\composer.json                                                | JSON       |        118 |          0 |          1 |        119 |
+| c:\wamp64\www\omika\composer.lock                                                | JSON       |     10,880 |          0 |          1 |     10,881 |
+| c:\wamp64\www\omika\config\bundles.php                                           | PHP        |         19 |          0 |          2 |         21 |
+| c:\wamp64\www\omika\config\packages\asset_mapper.yaml                            | YAML       |          4 |          1 |          1 |          6 |
+| c:\wamp64\www\omika\config\packages\cache.yaml                                   | YAML       |          2 |         13 |          5 |         20 |
+| c:\wamp64\www\omika\config\packages\debug.yaml                                   | YAML       |          3 |          2 |          1 |          6 |
+| c:\wamp64\www\omika\config\packages\doctrine.yaml                                | YAML       |         43 |          4 |          6 |         53 |
+| c:\wamp64\www\omika\config\packages\doctrine_migrations.yaml                     | YAML       |          4 |          2 |          1 |          7 |
+| c:\wamp64\www\omika\config\packages\framework.yaml                               | YAML       |          8 |          5 |          4 |         17 |
+| c:\wamp64\www\omika\config\packages\gesdinet_jwt_refresh_token.yaml              | YAML       |          7 |          0 |          1 |          8 |
+| c:\wamp64\www\omika\config\packages\lexik_jwt_authentication.yaml                | YAML       |          5 |          0 |          0 |          5 |
+| c:\wamp64\www\omika\config\packages\mailer.yaml                                  | YAML       |          3 |          0 |          1 |          4 |
+| c:\wamp64\www\omika\config\packages\messenger.yaml                               | YAML       |         21 |          2 |          6 |         29 |
+| c:\wamp64\www\omika\config\packages\monolog.yaml                                 | YAML       |         51 |          8 |          4 |         63 |
+| c:\wamp64\www\omika\config\packages\nelmio_cors.yaml                             | YAML       |         20 |          0 |          2 |         22 |
+| c:\wamp64\www\omika\config\packages\notifier.yaml                                | YAML       |         11 |          1 |          1 |         13 |
+| c:\wamp64\www\omika\config\packages\routing.yaml                                 | YAML       |          6 |          3 |          2 |         11 |
+| c:\wamp64\www\omika\config\packages\security.yaml                                | YAML       |         53 |         11 |         11 |         75 |
+| c:\wamp64\www\omika\config\packages\translation.yaml                             | YAML       |          7 |          0 |          1 |          8 |
+| c:\wamp64\www\omika\config\packages\twig.yaml                                    | YAML       |          5 |          0 |          2 |          7 |
+| c:\wamp64\www\omika\config\packages\validator.yaml                               | YAML       |          6 |          4 |          2 |         12 |
+| c:\wamp64\www\omika\config\packages\web_profiler.yaml                            | YAML       |         14 |          0 |          4 |         18 |
+| c:\wamp64\www\omika\config\preload.php                                           | PHP        |          4 |          0 |          2 |          6 |
+| c:\wamp64\www\omika\config\routes.yaml                                           | YAML       |         11 |          1 |          2 |         14 |
+| c:\wamp64\www\omika\config\routes\framework.yaml                                 | YAML       |          4 |          0 |          1 |          5 |
+| c:\wamp64\www\omika\config\routes\security.yaml                                  | YAML       |          3 |          0 |          1 |          4 |
+| c:\wamp64\www\omika\config\routes\web_profiler.yaml                              | YAML       |          7 |          0 |          2 |          9 |
+| c:\wamp64\www\omika\config\services.yaml                                         | YAML       |         56 |         12 |         15 |         83 |
+| c:\wamp64\www\omika\event.md                                                     | Markdown   |        131 |          0 |         54 |        185 |
+| c:\wamp64\www\omika\importmap.php                                                | PHP        |         16 |         11 |          2 |         29 |
+| c:\wamp64\www\omika\migrations\Version20241027082008.php                         | PHP        |        230 |          5 |          7 |        242 |
+| c:\wamp64\www\omika\migrations\Version20241027082335.php                         | PHP        |         30 |          5 |          7 |         42 |
+| c:\wamp64\www\omika\migrations\Version20241027082424.php                         | PHP        |         30 |          5 |          7 |         42 |
+| c:\wamp64\www\omika\migrations\Version20241027085859.php                         | PHP        |         36 |          5 |          7 |         48 |
+| c:\wamp64\www\omika\public\index.php                                             | PHP        |          6 |          0 |          4 |         10 |
+| c:\wamp64\www\omika\src\Command\CleanupTokensCommand.php                         | PHP        |         46 |         43 |         12 |        101 |
+| c:\wamp64\www\omika\src\Controller\BaseController.php                            | PHP        |          6 |          0 |          5 |         11 |
+| c:\wamp64\www\omika\src\Controller\Event\EventController.php                     | PHP        |         17 |         54 |         19 |         90 |
+| c:\wamp64\www\omika\src\Controller\Media\EmailController.php                     | PHP        |         39 |         21 |          7 |         67 |
+| c:\wamp64\www\omika\src\Controller\Media\FileController.php                      | PHP        |        110 |         56 |         26 |        192 |
+| c:\wamp64\www\omika\src\Controller\Media\MessageController.php                   | PHP        |         84 |          4 |         16 |        104 |
+| c:\wamp64\www\omika\src\Controller\SecurityController.php                        | PHP        |         77 |         60 |         23 |        160 |
+| c:\wamp64\www\omika\src\Controller\TestController.php                            | PHP        |         27 |          0 |          7 |         34 |
+| c:\wamp64\www\omika\src\Controller\UserController.php                            | PHP        |         19 |          1 |         10 |         30 |
+| c:\wamp64\www\omika\src\DataFixtures\AppFixtures\BaseFixtures.php                | PHP        |         80 |         41 |         19 |        140 |
+| c:\wamp64\www\omika\src\DataFixtures\AppFixtures\BusinessFixtures.php            | PHP        |         34 |         14 |         14 |         62 |
+| c:\wamp64\www\omika\src\DataFixtures\AppFixtures\CarteFixtures.php               | PHP        |         87 |         50 |         24 |        161 |
+| c:\wamp64\www\omika\src\DataFixtures\AppFixtures\EventFixtures.php               | PHP        |        179 |         15 |         39 |        233 |
+| c:\wamp64\www\omika\src\DataFixtures\AppFixtures\InventoryFixtures.php           | PHP        |        149 |         80 |         37 |        266 |
+| c:\wamp64\www\omika\src\DataFixtures\AppFixtures\MediaFixtures.php               | PHP        |         75 |         35 |         24 |        134 |
+| c:\wamp64\www\omika\src\DataFixtures\AppFixtures\ProductFixtures.php             | PHP        |        235 |         86 |         62 |        383 |
+| c:\wamp64\www\omika\src\DataFixtures\AppFixtures\RecipeFixtures.php              | PHP        |        119 |         15 |         28 |        162 |
+| c:\wamp64\www\omika\src\DataFixtures\AppFixtures\UserFixtures.php                | PHP        |        208 |         70 |         43 |        321 |
+| c:\wamp64\www\omika\src\DataFixtures\Provider\AppProvider.php                    | PHP        |        154 |         10 |         17 |        181 |
+| c:\wamp64\www\omika\src\Entity\BaseEntity.php                                    | PHP        |         59 |          0 |         14 |         73 |
+| c:\wamp64\www\omika\src\Entity\Event\Event.php                                   | PHP        |        222 |          7 |         63 |        292 |
+| c:\wamp64\www\omika\src\Entity\Event\EventInfo.php                               | PHP        |         73 |          0 |         21 |         94 |
+| c:\wamp64\www\omika\src\Entity\Event\EventRecurring.php                          | PHP        |        167 |         19 |         46 |        232 |
+| c:\wamp64\www\omika\src\Entity\Event\EventSharedInfo.php                         | PHP        |         52 |          0 |         17 |         69 |
+| c:\wamp64\www\omika\src\Entity\Event\EventTask.php                               | PHP        |         41 |          1 |         15 |         57 |
+| c:\wamp64\www\omika\src\Entity\Event\Issue.php                                   | PHP        |        147 |          0 |         51 |        198 |
+| c:\wamp64\www\omika\src\Entity\Event\MonthDay.php                                | PHP        |         57 |          1 |         16 |         74 |
+| c:\wamp64\www\omika\src\Entity\Event\PeriodDate.php                              | PHP        |         56 |          6 |         16 |         78 |
+| c:\wamp64\www\omika\src\Entity\Event\Section.php                                 | PHP        |         30 |          0 |         11 |         41 |
+| c:\wamp64\www\omika\src\Entity\Event\Tag.php                                     | PHP        |        105 |          7 |         33 |        145 |
+| c:\wamp64\www\omika\src\Entity\Event\TagInfo.php                                 | PHP        |         53 |          0 |         21 |         74 |
+| c:\wamp64\www\omika\src\Entity\Event\WeekDay.php                                 | PHP        |         58 |          6 |         16 |         80 |
+| c:\wamp64\www\omika\src\Entity\PasswordResetRequest.php                          | PHP        |         49 |          0 |         17 |         66 |
+| c:\wamp64\www\omika\src\Entity\Product\Product.php                               | PHP        |        166 |          6 |         55 |        227 |
+| c:\wamp64\www\omika\src\Entity\Product\ProductType.php                           | PHP        |         30 |          0 |         12 |         42 |
+| c:\wamp64\www\omika\src\Entity\Product\Rupture.php                               | PHP        |         89 |          7 |         29 |        125 |
+| c:\wamp64\www\omika\src\Entity\RefreshToken.php                                  | PHP        |         20 |          0 |          5 |         25 |
+| c:\wamp64\www\omika\src\Entity\Supplier\DeliveryDay.php                          | PHP        |         54 |          6 |         16 |         76 |
+| c:\wamp64\www\omika\src\Entity\Supplier\OrderDay.php                             | PHP        |         54 |          6 |         16 |         76 |
+| c:\wamp64\www\omika\src\Entity\Supplier\Supplier.php                             | PHP        |        176 |         31 |         72 |        279 |
+| c:\wamp64\www\omika\src\Entity\carte\Dish.php                                    | PHP        |        105 |          0 |         36 |        141 |
+| c:\wamp64\www\omika\src\Entity\carte\DishCategory.php                            | PHP        |         55 |          6 |         19 |         80 |
+| c:\wamp64\www\omika\src\Entity\carte\Dod.php                                     | PHP        |         77 |          0 |         27 |        104 |
+| c:\wamp64\www\omika\src\Entity\carte\Menu.php                                    | PHP        |        147 |         11 |         49 |        207 |
+| c:\wamp64\www\omika\src\Entity\inventory\Inventory.php                           | PHP        |        164 |         16 |         50 |        230 |
+| c:\wamp64\www\omika\src\Entity\inventory\KitchenSpace.php                        | PHP        |         30 |          0 |         13 |         43 |
+| c:\wamp64\www\omika\src\Entity\inventory\ProductInventory.php                    | PHP        |         66 |          0 |         21 |         87 |
+| c:\wamp64\www\omika\src\Entity\inventory\Room.php                                | PHP        |         74 |         17 |         22 |        113 |
+| c:\wamp64\www\omika\src\Entity\inventory\RoomProduct.php                         | PHP        |         55 |          0 |         17 |         72 |
+| c:\wamp64\www\omika\src\Entity\media\Message.php                                 | PHP        |         72 |         11 |         22 |        105 |
+| c:\wamp64\www\omika\src\Entity\media\Mime.php                                    | PHP        |         30 |          0 |         11 |         41 |
+| c:\wamp64\www\omika\src\Entity\media\Note.php                                    | PHP        |         43 |          0 |         15 |         58 |
+| c:\wamp64\www\omika\src\Entity\media\Picture.php                                 | PHP        |         66 |          0 |         22 |         88 |
+| c:\wamp64\www\omika\src\Entity\media\Template.php                                | PHP        |         42 |          0 |         15 |         57 |
+| c:\wamp64\www\omika\src\Entity\order\Order.php                                   | PHP        |        112 |          4 |         35 |        151 |
+| c:\wamp64\www\omika\src\Entity\order\ProductOrder.php                            | PHP        |         57 |          0 |         18 |         75 |
+| c:\wamp64\www\omika\src\Entity\recipe\Ingredient.php                             | PHP        |         67 |          4 |         21 |         92 |
+| c:\wamp64\www\omika\src\Entity\recipe\Recipe.php                                 | PHP        |        131 |         26 |         39 |        196 |
+| c:\wamp64\www\omika\src\Entity\recipe\RecipeAdvise.php                           | PHP        |         54 |          0 |         20 |         74 |
+| c:\wamp64\www\omika\src\Entity\recipe\RecipeStep.php                             | PHP        |         54 |          0 |         19 |         73 |
+| c:\wamp64\www\omika\src\Entity\recipe\Unit.php                                   | PHP        |         42 |          0 |         13 |         55 |
+| c:\wamp64\www\omika\src\Entity\user\Absence.php                                  | PHP        |        112 |          0 |         40 |        152 |
+| c:\wamp64\www\omika\src\Entity\user\Business.php                                 | PHP        |         66 |         13 |         19 |         98 |
+| c:\wamp64\www\omika\src\Entity\user\Contact.php                                  | PHP        |        182 |          7 |         56 |        245 |
+| c:\wamp64\www\omika\src\Entity\user\User.php                                     | PHP        |        242 |         14 |         76 |        332 |
+| c:\wamp64\www\omika\src\Entity\user\UserLogin.php                                | PHP        |         87 |         29 |         30 |        146 |
+| c:\wamp64\www\omika\src\EventListener\AuthenticationSuccessListener.php          | PHP        |         19 |          3 |          4 |         26 |
+| c:\wamp64\www\omika\src\EventSubscriber\ApiExceptionSubscriber.php               | PHP        |         19 |         34 |         10 |         63 |
+| c:\wamp64\www\omika\src\Interface\entity\RecipientInterface.php                  | PHP        |          7 |          0 |          3 |         10 |
+| c:\wamp64\www\omika\src\Kernel.php                                               | PHP        |          8 |          0 |          4 |         12 |
+| c:\wamp64\www\omika\src\MessageHandler.php\SendMessageHandler.php                | PHP        |         34 |          1 |          7 |         42 |
+| c:\wamp64\www\omika\src\Message\SendMessage.php                                  | PHP        |         32 |          0 |          8 |         40 |
+| c:\wamp64\www\omika\src\Repository\Event\EventInfoRepository.php                 | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Event\EventRecurringRepository.php            | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Event\EventRepository.php                     | PHP        |         19 |         27 |          6 |         52 |
+| c:\wamp64\www\omika\src\Repository\Event\EventSharedInfoRepository.php           | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Event\EventTaskRepository.php                 | PHP        |         12 |          3 |          6 |         21 |
+| c:\wamp64\www\omika\src\Repository\Event\IssueRepository.php                     | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Event\MonthDayRepository.php                  | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Event\PeriodDateRepository.php                | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Event\SectionRepository.php                   | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Event\TagInfoRepository.php                   | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Event\TagRepository.php                       | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Event\WeekDayRepository.php                   | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\PasswordResetRequestRepository.php            | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Product\ProductRepository.php                 | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Product\ProductRuptureRepository.php          | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Product\ProductTypeRepository.php             | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Product\RuptureRepository.php                 | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\RefreshTokenRepository.php                    | PHP        |         32 |         14 |          6 |         52 |
+| c:\wamp64\www\omika\src\Repository\Supplier\DeliveryDayRepository.php            | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Supplier\OrderDayRepository.php               | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\Supplier\SupplierRepository.php               | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\carte\DishCategoryRepository.php              | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\carte\DishRepository.php                      | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\carte\DodRepository.php                       | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\carte\MenuRepository.php                      | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\inventory\InventoryRepository.php             | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\inventory\KitchenSpaceRepository.php          | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\inventory\ProductInventoryRepository.php      | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\inventory\RoomProductRepository.php           | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\inventory\RoomRepository.php                  | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\media\MessageRepository.php                   | PHP        |         28 |         34 |          6 |         68 |
+| c:\wamp64\www\omika\src\Repository\media\MimeRepository.php                      | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\media\NoteRepository.php                      | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\media\PictureRepository.php                   | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\media\TemplateRepository.php                  | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\order\OrderRepository.php                     | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\order\ProductOrderRepository.php              | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\recipe\IngredientRepository.php               | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\recipe\RecipeAdviseRepository.php             | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\recipe\RecipeRepository.php                   | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\recipe\RecipeStepRepository.php               | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\recipe\UnitRepository.php                     | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\user\AbsenceRepository.php                    | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\user\BusinessRepository.php                   | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\user\ContactRepository.php                    | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Repository\user\UserLoginRepository.php                  | PHP        |         24 |         29 |          8 |         61 |
+| c:\wamp64\www\omika\src\Repository\user\UserRepository.php                       | PHP        |         12 |         26 |          6 |         44 |
+| c:\wamp64\www\omika\src\Scheduler\CleanupTokensSchedule.php                      | PHP        |         18 |          0 |          6 |         24 |
+| c:\wamp64\www\omika\src\Scheduler\MessageHandler\CleanupTokensMessageHandler.php | PHP        |         22 |          0 |          7 |         29 |
+| c:\wamp64\www\omika\src\Scheduler\Message\CleanupTokensMessage.php               | PHP        |          5 |          1 |          4 |         10 |
+| c:\wamp64\www\omika\src\Scheduler\readme.md                                      | Markdown   |         13 |          0 |          0 |         13 |
+| c:\wamp64\www\omika\src\Security\JwtAuthenticator.php                            | PHP        |         83 |         62 |         26 |        171 |
+| c:\wamp64\www\omika\src\Security\JwtUserToken.php                                | PHP        |         16 |         15 |          8 |         39 |
+| c:\wamp64\www\omika\src\Serializer\EntityDenormalizer.php                        | PHP        |         26 |         62 |          8 |         96 |
+| c:\wamp64\www\omika\src\Service\EmailFacadeService.php                           | PHP        |         32 |         20 |         12 |         64 |
+| c:\wamp64\www\omika\src\Service\JwtTokenService.php                              | PHP        |        133 |         62 |         28 |        223 |
+| c:\wamp64\www\omika\src\Service\MailerService.php                                | PHP        |         94 |         41 |         22 |        157 |
+| c:\wamp64\www\omika\src\Service\PhpseclibService.php                             | PHP        |         77 |         67 |         16 |        160 |
+| c:\wamp64\www\omika\src\Service\SecurityService.php                              | PHP        |        120 |         80 |         29 |        229 |
+| c:\wamp64\www\omika\src\Service\TokenCleanupService.php                          | PHP        |         35 |          2 |          9 |         46 |
+| c:\wamp64\www\omika\src\Service\TwilioService.php                                | PHP        |         43 |          0 |         14 |         57 |
+| c:\wamp64\www\omika\src\Service\UnsplashApiService.php                           | PHP        |         29 |          7 |         11 |         47 |
+| c:\wamp64\www\omika\tests\bootstrap.php                                          | PHP        |          8 |          0 |          4 |         12 |
+| Total                                                                            |            |     19,132 |      2,727 |      2,436 |     24,295 |
++----------------------------------------------------------------------------------+------------+------------+------------+------------+------------+

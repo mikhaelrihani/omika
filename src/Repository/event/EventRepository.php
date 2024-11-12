@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Repository\event;
+namespace App\Repository\Event;
 
-use App\Entity\event\Event;
+use App\Entity\Event\Event;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -15,7 +15,15 @@ class EventRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Event::class);
     }
-
+    // Méthode pour supprimer un événement
+    public function remove(Event $event, bool $flush = true): void
+    {
+        $this->getEntityManager()->remove($event);
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+    
     //    /**
     //     * @return Event[] Returns an array of Event objects
     //     */

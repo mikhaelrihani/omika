@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Repository\media;
+namespace App\Repository\Media;
 
-use App\Entity\media\Message;
-use App\Entity\user\Contact;
-use App\Entity\user\User;
+use App\Entity\Media\Message;
+use App\Entity\User\Contact;
+use App\Entity\User\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
