@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Entity\inventory;
+namespace App\Entity\Inventory;
 use App\Entity\BaseEntity;
-use App\Repository\inventory\RoomRepository;
+use App\Repository\Inventory\RoomRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;

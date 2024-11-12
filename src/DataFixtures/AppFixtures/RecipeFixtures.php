@@ -2,31 +2,23 @@
 
 namespace App\DataFixtures\AppFixtures;
 
-use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
-use App\Entity\carte\Dish;
-use App\Entity\recipe\Ingredient;
-use App\Entity\recipe\Recipe;
-use App\Entity\recipe\RecipeAdvise;
-use App\Entity\recipe\RecipeStep;
+use App\Entity\Carte\Dish;
+use App\Entity\Carte\DishCategory;
+use App\Entity\Recipe\Ingredient;
+use App\Entity\Recipe\Recipe;
+use App\Entity\Recipe\RecipeAdvise;
+use App\Entity\Recipe\RecipeStep;
+use App\Entity\Recipe\Unit;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 
-/**
- * Class recipeFixtures
- *
- * Fixture class responsible for loading recipe-related data into the database.
- */
+
 class RecipeFixtures extends BaseFixtures implements DependentFixtureInterface
 {
 
-    /**
-     * Load the recipe fixtures into the database.
-     */
     public function load(ObjectManager $manager): void
     {
-        $this->faker->addProvider(new AppProvider($this->faker));
-
         $this->createRecipes(30);
         $this->em->flush();
 
@@ -44,6 +36,7 @@ class RecipeFixtures extends BaseFixtures implements DependentFixtureInterface
             $timestamps = $this->faker->createTimeStamps();
             $recipe = new Recipe();
             $recipe->setName($this->faker->unique()->text(30));
+            $recipe->setPath($this->faker->url());
             $recipe->setCreatedAt($timestamps[ 'createdAt' ]);
             $recipe->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
@@ -95,6 +88,10 @@ class RecipeFixtures extends BaseFixtures implements DependentFixtureInterface
     {
         $recipes = $this->retrieveEntities("recipe", $this);
         $dishCategories = $this->retrieveEntities("dishCategories", $this);
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($dishCategories)) {
+            $dishCategories = $this->em->getRepository(DishCategory::class)->findAll();
+        }
         $pictures = $this->retrieveEntities("picture", $this);
 
         foreach ($recipes as $recipe) {
@@ -118,6 +115,10 @@ class RecipeFixtures extends BaseFixtures implements DependentFixtureInterface
     public function createIngredients()
     {
         $units = $this->retrieveEntities("unit", $this);
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($units)) {
+            $units = $this->em->getRepository(Unit::class)->findAll();
+        }
         $products = $this->retrieveEntities("product", $this);
         $recipes = $this->retrieveEntities("recipe", $this);
 
@@ -143,12 +144,7 @@ class RecipeFixtures extends BaseFixtures implements DependentFixtureInterface
             }
         }
     }
-    /**
-     * Get the dependencies for this fixture.
-     *
-     * @return array The array of fixture classes that this fixture depends on.
-     */
-    public function getDependencies()
+       public function getDependencies()
     {
         return [
             MediaFixtures::class,

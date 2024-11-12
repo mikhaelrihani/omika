@@ -16,6 +16,21 @@ class TagRepository extends ServiceEntityRepository
         parent::__construct($registry, Tag::class);
     }
 
+    // src/Repository/TagRepository.php
+    public function findOneByDaySideSection($day, $side, $section): ?Tag
+    {
+        return $this->createQueryBuilder('t')
+            ->where('t.day = :day')
+            ->andWhere('t.side = :side')
+            ->andWhere('t.section = :section')
+            ->setParameter('day', $day)
+            ->setParameter('side', $side)
+            ->setParameter('section', $section)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+
     //    /**
     //     * @return Tag[] Returns an array of Tag objects
     //     */

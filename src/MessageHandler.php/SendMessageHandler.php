@@ -9,11 +9,9 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 #[AsMessageHandler]
 class SendMessageHandler
 {
-    private TwilioService $twilioService;
-
-    public function __construct(TwilioService $twilioService)
+   
+    public function __construct(private TwilioService $twilioService)
     {
-        $this->twilioService = $twilioService;
     }
 
     public function __invoke(SendMessage $message): void

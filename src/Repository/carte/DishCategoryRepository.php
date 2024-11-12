@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Repository\carte;
+namespace App\Repository\Carte;
 
-use App\Entity\carte\DishCategory;
+use App\Entity\Carte\DishCategory;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

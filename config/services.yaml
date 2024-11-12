@@ -8,6 +8,7 @@ parameters:
     server_files_path: '%env(SERVER_FILES_PATH)%'
     server_private_files_path: '%env(SERVER_PRIVATE_FILES_PATH)%'
     upload_directory: '%kernel.project_dir%/public/upload'
+    twillio_file_upload_public: '%env(resolve:TWILIO_FILE_UPLOAD_PUBLIC)%'
 
 services:
     # default configuration for services in *this* file
@@ -77,6 +78,14 @@ services:
             $accountSid: '%env(TWILIO_ACCOUNT_SID)%'
             $authToken: '%env(TWILIO_AUTH_TOKEN)%'
             $from: '%env(TWILIO_FROM_NUMBER)%' 
+
+    App\Service\EventDuplicationService:
+        autowire: true
+        autoconfigure: true
+        public: true # Or omit this line for default behavior
+
+
+      
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

@@ -2,24 +2,26 @@
 
 namespace App\DataFixtures\AppFixtures;
 
-use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
-use App\Entity\media\Message;
-use App\Entity\media\Note;
-use App\Entity\user\Absence;
-use App\Entity\user\Contact;
-use App\Entity\user\User;
-use App\Entity\user\UserLogin;
+use App\Entity\Media\Message;
+use App\Entity\Media\Note;
+use App\Entity\User\Absence;
+use App\Entity\User\Business;
+use App\Entity\User\Contact;
+use App\Entity\User\User;
+use App\Entity\User\UserLogin;
 use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\Uid\Uuid;
 
+
+
 /**
  * Class UserFixtures
- *
  * Fixture class responsible for loading user-related data into the database.
  */
 class UserFixtures extends BaseFixtures
 {
+
     private array $businessEntities;
     /**
      * @var array $pictures Array of pictures retrieved for setting user avatars.
@@ -37,18 +39,17 @@ class UserFixtures extends BaseFixtures
     private bool $userAdminExists;
 
 
-    /**
-     * Load the user fixtures into the database.
-     *
-     * @param ObjectManager $manager The ObjectManager instance.
-     */
+   
     public function load(ObjectManager $manager): void
     {
+        //! on fait cette verification pour eviter l'erreur "Notice: Undefined offset: 0" lorsqu'on a pas de business dans la bdd pour "php bin/console doctrine:fixtures:load --append"
         $this->businessEntities = $this->retrieveEntities('business', $this);
-        $this->faker->addProvider(new AppProvider($this->faker));
+        if (empty($businessEntities)) {
+            $this->businessEntities = $this->em->getRepository(Business::class)->findAll();
+        }
         $this->pictures = $this->retrieveEntities('picture', $this);
-        $this->createContacts(20);
-        $this->createUsers(10);
+        $this->createContacts(10);
+        $this->createUsers(5);
         $users = $this->retrieveEntities('user', $this);
         $contacts = $this->retrieveEntities('contact', $this);
         // Flush to set the ID of each recipient entity when sending message
@@ -68,8 +69,9 @@ class UserFixtures extends BaseFixtures
      */
     public function createUserLoginAdmin(): UserLogin
     {
+
         $timestamps = $this->faker->createTimeStamps();
-        $userLogin = new UserLogin();
+        $userLogin = new UserLogin($this->userPasswordHasher);
         $userLogin
             ->setRoles(["ROLE_SUPER_ADMIN"])
             ->setPassword($this->userPasswordHasher->hashPassword($userLogin, "Password29!"))
@@ -77,9 +79,9 @@ class UserFixtures extends BaseFixtures
             ->setEnabled(true)
             ->setCreatedAt($timestamps[ 'createdAt' ])
             ->setUpdatedAt($timestamps[ 'updatedAt' ]);
-            
+
         $this->em->persist($userLogin);
-        
+
         return $userLogin;
     }
 
@@ -91,7 +93,7 @@ class UserFixtures extends BaseFixtures
     public function createUserLogin(): UserLogin
     {
         $timestamps = $this->faker->createTimeStamps();
-        $userLogin = new UserLogin();
+        $userLogin = new UserLogin($this->userPasswordHasher);
         $userLogin
             ->setRoles($this->faker->role())
             ->setPassword($this->userPasswordHasher->hashPassword($userLogin, "Password29!"))
@@ -106,12 +108,14 @@ class UserFixtures extends BaseFixtures
     /**
      * Create a specified number of User entities.
      *
-     * @param int $num The number of User entities to create.
+     * @param int $numUsers The number of User entities to create.
      */
-    public function createUsers(int $num): void
+    public function createUsers(int $numUsers): void
     {
-        $this->userAdminExists = false;
-        for ($u = 0; $u < $num; $u++) {
+        //! on fait cette verification depuis la bdd, pour eviter l'unicité de l'entité superadmin afin de pouvoir ajouter plus de fixtures avec "php bin/console doctrine:fixtures:load --append"
+        ($this->em->getRepository(User::class)->findBy(["surname" => "rihani"])) ? [$this->userAdminExists = true, $numUsers = 1] : $this->userAdminExists = false;
+
+        for ($u = 0; $u < $numUsers; $u++) {
             $timestamps = $this->faker->createTimeStamps();
             $user = new User();
             if (!$this->userAdminExists) {
@@ -147,8 +151,10 @@ class UserFixtures extends BaseFixtures
             $this->setPicture($user, $this->pictures);
 
             // Randomly assign the user to a business
-            $randomIndexBusiness = rand(0, count($this->businessEntities) - 1);
-            $user->setBusiness($this->businessEntities[$randomIndexBusiness]);
+
+
+            $randomIndex = rand(0, count($this->businessEntities) - 1);
+            $user->setBusiness($this->businessEntities[$randomIndex]);
 
             $this->setAbsenceEntity($user, $this->surnames);
 
@@ -162,12 +168,17 @@ class UserFixtures extends BaseFixtures
         }
     }
 
-    /**
-     * Create a number of Contact entities.
-     */
-    public function createContacts(int $num): void
+   
+    public function createContacts(int $numContacts): void
     {
-        for ($c = 0; $c < $num; $c++) {
+
+        //! on fait cette verification depuis la bdd, pour eviter l'unicité de l'entité superadmin afin de pouvoir ajouter plus de fixtures avec "php bin/console doctrine:fixtures:load --append"
+        if ($this->em->getRepository(Contact::class)->findAll() > 0) {
+            $numContacts = 5;
+        }
+        ;
+
+        for ($c = 0; $c < $numContacts; $c++) {
             $timestamps = $this->faker->createTimeStamps();
             $contact = new Contact();
             $contact
@@ -189,8 +200,8 @@ class UserFixtures extends BaseFixtures
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
             // Randomly assign the contact to a business
-            $randomIndexBusiness = rand(0, count($this->businessEntities) - 1);
-            $contact->setBusiness($this->businessEntities[$randomIndexBusiness]);
+            $randomIndex = rand(0, count($this->businessEntities) - 1);
+            $contact->setBusiness($this->businessEntities[$randomIndex]);
 
             // Set the absence information for the contact
             $this->setAbsenceEntity($contact, $this->surnames);
@@ -199,7 +210,6 @@ class UserFixtures extends BaseFixtures
             // Store the surnames for absence authoring
             $this->surnames[] = $contact->getSurname();
 
-            // Add a reference to retrieve contacts in other fixtures
             $this->addReference("contact_{$c}", $contact);
         }
     }
@@ -249,11 +259,6 @@ class UserFixtures extends BaseFixtures
     }
 
 
-    /**
-     * Create Note entities.
-     *
-     * @param array $users The array of User entities.
-     */
     private function createNotes(array $users): void
     {
         foreach ($users as $user) {
@@ -271,9 +276,7 @@ class UserFixtures extends BaseFixtures
             $this->em->persist($note);
         }
     }
-    /**
-     * Create Message entities.
-     */
+    
     private function createMessages(array $users, array $contacts): void
     {
         for ($m = 0; $m < 30; $m++) {
@@ -304,11 +307,7 @@ class UserFixtures extends BaseFixtures
             }
         }
     }
-    /**
-     * Get the dependencies for this fixture.
-     *
-     * @return array The array of fixture classes that this fixture depends on.
-     */
+  
     public function getDependencies()
     {
         return [

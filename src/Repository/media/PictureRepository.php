@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Repository\media;
+namespace App\Repository\Media;
 
-use App\Entity\media\Picture;
+use App\Entity\Media\Picture;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

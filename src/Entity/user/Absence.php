@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Entity\user;
+namespace App\Entity\User;
 
 use App\Entity\BaseEntity;
-use App\Repository\user\AbsenceRepository;
+use App\Repository\User\AbsenceRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;

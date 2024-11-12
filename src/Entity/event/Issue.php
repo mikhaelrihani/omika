@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Entity\event;
+namespace App\Entity\Event;
 
 use App\Entity\BaseEntity;
-use App\Entity\user\Contact;
-use App\Repository\event\IssueRepository;
+use App\Entity\User\Contact;
+use App\Repository\Event\IssueRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;

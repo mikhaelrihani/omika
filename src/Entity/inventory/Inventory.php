@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Entity\inventory;
+namespace App\Entity\Inventory;
 
 use App\Entity\BaseEntity;
-use App\Entity\product\Product;
-use App\Repository\inventory\InventoryRepository;
+use App\Entity\Product\Product;
+use App\Repository\Inventory\InventoryRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;

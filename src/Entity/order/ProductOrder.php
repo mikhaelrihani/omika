@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Entity\order;
+namespace App\Entity\Order;
 
 use App\Entity\BaseEntity;
-use App\Repository\order\ProductOrderRepository;
+use App\Repository\Order\ProductOrderRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\product\Product; 
+use App\Entity\Product\Product; 
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ProductOrderRepository::class)]
