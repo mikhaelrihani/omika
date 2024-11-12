@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Entity\recipe;
+namespace App\Entity\Recipe;
 use App\Entity\BaseEntity;
-use App\Repository\recipe\RecipeStepRepository;
+use App\Repository\Recipe\RecipeStepRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 

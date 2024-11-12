@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Repository\inventory;
+namespace App\Repository\Inventory;
 
-use App\Entity\inventory\Room;
+use App\Entity\Inventory\Room;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

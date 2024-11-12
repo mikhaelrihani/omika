@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Repository\recipe;
+namespace App\Repository\Recipe;
 
-use App\Entity\recipe\Unit;
+use App\Entity\Recipe\Unit;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

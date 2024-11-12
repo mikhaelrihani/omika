@@ -1,21 +1,23 @@
 <?php
 
-namespace App\Entity\user;
+namespace App\Entity\User;
 
 use App\Entity\BaseEntity;
-use App\Repository\user\UserRepository;
+use App\Entity\Event\Event;
+use App\Entity\Event\EventInfo;
+use App\Repository\User\UserRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\media\Picture;
+use App\Entity\Media\Picture;
 use App\Interface\entity\RecipientInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 #[UniqueEntity(fields: ['avatar'], message: 'This picture is already used as an avatar by another user.')]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-class User extends BaseEntity implements RecipientInterface 
+class User extends BaseEntity implements RecipientInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -96,10 +98,17 @@ class User extends BaseEntity implements RecipientInterface
     #[Assert\NotBlank(message: "Private note should not be blank.")]
     private ?string $privateNote = null;
 
+    /**
+     * @var Collection<int, Event>
+     */
+    #[ORM\ManyToMany(targetEntity: EventInfo::class, mappedBy: 'favoritedBy')]
+    private Collection $favoriteEvents;
+
     public function __construct()
     {
         parent::__construct();
         $this->absence = new ArrayCollection();
+        $this->favoriteEvents = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -291,5 +300,32 @@ class User extends BaseEntity implements RecipientInterface
         return $this;
     }
 
- 
+    /**
+     * @return Collection<int, Event>
+     */
+    public function getFavoriteEvents(): Collection
+    {
+        return $this->favoriteEvents;
+    }
+
+    public function addFavoriteEvent(Event $favoriteEvent): static
+    {
+        if (!$this->favoriteEvents->contains($favoriteEvent)) {
+            $this->favoriteEvents->add($favoriteEvent);
+            $favoriteEvent->addFavoritedBy($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFavoriteEvent(Event $favoriteEvent): static
+    {
+        if ($this->favoriteEvents->removeElement($favoriteEvent)) {
+            $favoriteEvent->removeFavoritedBy($this);
+        }
+
+        return $this;
+    }
+    
+
 }

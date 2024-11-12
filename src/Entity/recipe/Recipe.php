@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Entity\recipe;
+namespace App\Entity\Recipe;
 
 use App\Entity\BaseEntity;
-use App\Repository\recipe\RecipeRepository;
+use App\Repository\Recipe\RecipeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\product\Product; 
+use App\Entity\Product\Product; 
 
 
 #[ORM\Entity(repositoryClass: RecipeRepository::class)]

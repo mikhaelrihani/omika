@@ -3,9 +3,9 @@
 namespace App\Controller\Media;
 
 use App\Controller\BaseController;
-use App\Repository\carte\MenuRepository;
-use App\Repository\inventory\InventoryRepository;
-use App\Repository\recipe\RecipeRepository;
+use App\Repository\Carte\MenuRepository;
+use App\Repository\Inventory\InventoryRepository;
+use App\Repository\Recipe\RecipeRepository;
 use App\Service\PhpseclibService;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;

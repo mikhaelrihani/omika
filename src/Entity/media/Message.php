@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Entity\media;
+namespace App\Entity\Media;
 
 use App\Entity\BaseEntity;
-use App\Entity\user\Contact;
-use App\Repository\media\MessageRepository;
+use App\Entity\User\Contact;
+use App\Repository\Media\MessageRepository;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\user\User;
+use App\Entity\User\User;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**

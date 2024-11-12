@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Repository\inventory;
+namespace App\Repository\Inventory;
 
-use App\Entity\inventory\KitchenSpace;
+use App\Entity\Inventory\KitchenSpace;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Entity\carte;
+namespace App\Entity\Carte;
 
 use App\Entity\BaseEntity;
-use App\Repository\carte\DishCategoryRepository;
+use App\Repository\Carte\DishCategoryRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;

@@ -2,7 +2,7 @@
 
 namespace App\Repository\Event;
 
-use App\Entity\event\EventRecurring;
+use App\Entity\Event\EventRecurring;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

@@ -1,13 +1,12 @@
 <?php
 
-namespace App\Entity\inventory;
+namespace App\Entity\Inventory;
 
 use App\Entity\BaseEntity;
-use App\Repository\inventory\ProductInventoryRepository;
+use App\Repository\Inventory\ProductInventoryRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\product\product; 
-use Symfony\Component\Validator\Constraints as Assert;
+use App\Entity\Product\Product; 
 
 #[ORM\Entity(repositoryClass: ProductInventoryRepository::class)]
 class ProductInventory extends BaseEntity

@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Entity\user;
+namespace App\Entity\User;
 
 use App\Entity\BaseEntity;
-use App\Repository\user\BusinessRepository;
+use App\Repository\User\BusinessRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;

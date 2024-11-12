@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Entity\carte;
+namespace App\Entity\Carte;
 
 use App\Entity\BaseEntity;
-use App\Repository\carte\DishRepository;
+use App\Repository\Carte\DishRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\media\Picture; 
-use App\Entity\recipe\Recipe; 
+use App\Entity\Media\Picture; 
+use App\Entity\Recipe\Recipe; 
 use Symfony\Component\Validator\Constraints as Assert;
 
 
