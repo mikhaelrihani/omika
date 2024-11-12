@@ -154,4 +154,3 @@ class RecipeFixtures extends BaseFixtures implements DependentFixtureInterface
     }
 }
 
-
