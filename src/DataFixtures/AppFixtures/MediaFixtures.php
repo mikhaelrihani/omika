@@ -2,49 +2,19 @@
 
 namespace App\DataFixtures\AppFixtures;
 
-use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
-use App\Entity\media\Mime;
-use App\Entity\media\Picture;
-use App\Entity\media\Template;
-use App\Service\UnsplashApiService;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Entity\Media\Mime;
+use App\Entity\Media\Picture;
+use App\Entity\Media\Template;
 use Doctrine\Persistence\ObjectManager;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
-/**
- * Class MediaFixtures
- *
- * Fixture class responsible for loading media-related data into the database.
- */
-class MediaFixtures extends BaseFixtures 
+
+class MediaFixtures extends BaseFixtures
 {
-    /**
-     * @var UnsplashApiService $unsplashApiService Service for fetching images from Unsplash.
-     */
-    private UnsplashApiService $unsplashApiService;
+    //! for now we dont use unsplash api due to limitation of 50 pics of the free plan
 
-    /**
-     * MediaFixtures constructor.
-     *
-     * @param UnsplashApiService $unsplashApi The Unsplash API service.
-     * @param UserPasswordHasherInterface $userPasswordHasher The password hasher service.
-     * @param EntityManagerInterface $em The entity manager interface.
-     */
-    public function __construct(UnsplashApiService $unsplashApi, UserPasswordHasherInterface $userPasswordHasher, EntityManagerInterface $em)
-    {
-        parent::__construct($userPasswordHasher, $em);
-        $this->unsplashApiService = $unsplashApi;
-    }
-
-   
-    /**
-     * Load the media fixtures into the database.
-     */
     public function load(ObjectManager $manager): void
     {
-        $this->faker->addProvider(new AppProvider($this->faker));
-
         $mimes = $this->createMimes();
         $this->createTemplates();
         $this->createPictures($mimes);
@@ -62,18 +32,23 @@ class MediaFixtures extends BaseFixtures
     private function createMimes(): array
     {
         $MimeList = $this->faker->getMimelist();
-        $mimes = [];
-        foreach ($MimeList as $mimeName) {
 
-            $timestamps = $this->faker->createTimeStamps();
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if ($this->em->getRepository(Mime::class)->count([]) > 0) {
+            $mimes = $this->em->getRepository(Mime::class)->findAll();
+        } else {
+            $mimes = [];
+            foreach ($MimeList as $mimeName) {
+                $timestamps = $this->faker->createTimeStamps();
 
-            $mime = new Mime();
-            $mime
-                ->setName($mimeName)
-                ->setCreatedAt($timestamps[ 'createdAt' ])
-                ->setUpdatedAt($timestamps[ 'updatedAt' ]);
-            $mimes[] = $mime;
-            $this->em->persist($mime);
+                $mime = new Mime();
+                $mime
+                    ->setName($mimeName)
+                    ->setCreatedAt($timestamps[ 'createdAt' ])
+                    ->setUpdatedAt($timestamps[ 'updatedAt' ]);
+                $mimes[] = $mime;
+                $this->em->persist($mime);
+            }
         }
         return $mimes;
     }
