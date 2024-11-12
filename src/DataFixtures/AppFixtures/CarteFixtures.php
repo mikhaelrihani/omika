@@ -2,7 +2,6 @@
 
 namespace App\DataFixtures\AppFixtures;
 
-use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
 use App\Entity\Carte\DishCategory;
 use App\Entity\Carte\Dod;
@@ -12,51 +11,25 @@ use Doctrine\Persistence\ObjectManager;
 
 /**
  * Class CarteFixtures
- *
  * Fixture class responsible for loading carte-related data into the database.
  * This class creates and persists dish categories, menus, and daily offers (DOD) in the database.
  */
 class CarteFixtures extends BaseFixtures implements DependentFixtureInterface
 {
-    /**
-     * Load the carte fixtures into the database.
-     *
-     * This method is responsible for orchestrating the creation and persistence of dish categories,
-     * menus, and daily offers (DOD). It uses the Faker library to generate fake data and saves it to the database.
-     * 
-     * @param ObjectManager $manager The Doctrine ObjectManager instance.
-     */
+
     public function load(ObjectManager $manager): void
     {
-        $this->faker->addProvider(new AppProvider($this->faker)); // Add custom data provider for generating fake data
-
-        // Create dish categories and persist them to the database
         $this->createDishCategories();
-
-        // Create menus and persist them to the database
         $this->createMenus();
-
-        // Flush changes to the database after creating dish categories and menus
-        $this->em->flush();
-
-        // Create daily offers (DOD) and persist them to the database
         $this->createDod();
 
-        // Flush changes to the database after creating daily offers
-        $this->em->flush();
     }
 
-    /**
-     * Create DishCategories and persist them to the database.
-     *
-     * Generates a list of dish categories with names and pictures, and saves them into the database.
-     * Each dish category is initialized with creation and update timestamps.
-     */
     public function createDishCategories()
     {
         //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
         if ($this->em->getRepository(DishCategory::class)->count([]) === 0) {
-            
+
             $pictures = $this->retrieveEntities("picture", $this);
             $timestamps = $this->faker->createTimeStamps();
 
@@ -76,12 +49,6 @@ class CarteFixtures extends BaseFixtures implements DependentFixtureInterface
 
     }
 
-    /**
-     * Create Menus and persist them to the database.
-     *
-     * Generates a list of menus for each week of the year, with random data for various menu categories.
-     * Each menu is associated with an author and includes creation and update timestamps.
-     */
     public function createMenus()
     {
         //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
@@ -94,6 +61,7 @@ class CarteFixtures extends BaseFixtures implements DependentFixtureInterface
                 $weekStartDate = (new \DateTime())->setISODate((int) date('Y'), $m + 1);
 
                 // Define timestamps based on the week
+                // setTime avec Faker permet d'ajouter un élément d'aléatoire aux heures d'un même jour, utile pour simuler des événements à des horaires variables tout en conservant la même date.
                 $createdAt = \DateTimeImmutable::createFromMutable((clone $weekStartDate)->setTime($this->faker->numberBetween(0, 23), $this->faker->numberBetween(0, 59)));
                 $updatedAt = (clone $createdAt)->modify('+' . $this->faker->numberBetween(0, 7) . ' days');
 
@@ -115,15 +83,13 @@ class CarteFixtures extends BaseFixtures implements DependentFixtureInterface
                 $this->em->persist($menu);
                 $this->addReference("menus_{$m}", $menu);
             }
+            $this->em->flush();
         }
 
     }
 
     /**
-     * Create Daily Offers (DOD) and persist them to the database.
-     *
-     * Generates daily offers associated with each menu. Each daily offer includes a name, description,
-     * information, and order day, along with creation and update timestamps.
+     * Create Daily Offers (DOD) 
      */
     public function createDod()
     {
@@ -151,6 +117,7 @@ class CarteFixtures extends BaseFixtures implements DependentFixtureInterface
                     $this->em->persist($dod);
                 }
             }
+            $this->em->flush();
         }
 
 

@@ -2,30 +2,19 @@
 
 namespace App\DataFixtures\AppFixtures;
 
-use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
 use App\Entity\Media\Mime;
 use App\Entity\Media\Picture;
 use App\Entity\Media\Template;
 use Doctrine\Persistence\ObjectManager;
 
-/**
- * Class MediaFixtures
- *
- * Fixture class responsible for loading media-related data into the database.
- */
+
 class MediaFixtures extends BaseFixtures
 {
+    //! for now we dont use unsplash api due to limitation of 50 pics of the free plan
 
-
-
-    /**
-     * Load the media fixtures into the database.
-     */
     public function load(ObjectManager $manager): void
     {
-        $this->faker->addProvider(new AppProvider($this->faker));
-
         $mimes = $this->createMimes();
         $this->createTemplates();
         $this->createPictures($mimes);

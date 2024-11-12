@@ -2,7 +2,6 @@
 
 namespace App\DataFixtures\AppFixtures;
 
-use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
 use App\Entity\Order\Order;
 use App\Entity\Order\ProductOrder;
@@ -40,32 +39,20 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
     public function load(ObjectManager $manager): void
     {
 
-        $this->faker->addProvider(new AppProvider($this->faker));
-
         $this->users = $this->retrieveEntities('user', $this);
 
         $this->createUnits();
-
         $this->createProductTypes();
-
         $this->createSuppliers();
-
         $this->createProducts($this->numProduct);
-
         $this->createRuptures();
-
         $this->createOrders(20, );
-
         $this->products_Orders();
 
-        $this->em->flush();
     }
 
     /**
-     * Create Units and persist them to the database.
-     *
-     * Generates a list of units with names and symbols, and saves them into the database.
-     * Each unit is initialized with creation and update timestamps.
+     * Generates a list of units with names and symbols.
      */
     private function createUnits(): void
     {
@@ -142,7 +129,6 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
                 $days = [1, 2, 3, 4, 5, 6, 7];
 
                 // Récupérer des indices de jours de commande aléatoires
-                // Récupérer des indices de jours de commande aléatoires
                 $orderDaysEntries = (array) array_rand($days, rand(1, 3));
                 $orderDays = [];
 
@@ -202,9 +188,6 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
     }
 
     /**
-     * Create Products and persist them to the database.
-     *
-     * Generates a specified number of products, each with a unit, supplier, and product type.
      * Ensures that products with the same kitchen name share the same product type and at least one product is marked as a supplier favorite.
      *
      * @param int $numProduct The number of products to create.
@@ -212,13 +195,13 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
     private function createProducts(int $numProduct): void
     {
         $units = $this->retrieveEntities('unit', $this);
-         //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
-         if (empty($units)) {
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($units)) {
             $units = $this->em->getRepository(unit::class)->findAll();
-        } 
+        }
         $productTypes = $this->retrieveEntities('productType', $this);
         //! on fait cette verification pour "php bin/console doctrine:fixtures:load --append"
-        if(empty($productTypes)){
+        if (empty($productTypes)) {
             $productTypes = $this->em->getRepository(ProductType::class)->findAll();
         }
         $suppliers = $this->retrieveEntities('supplier', $this);
@@ -271,8 +254,6 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
     }
 
     /**
-     * Create Ruptures and persist them to the database.
-     *
      * Generates a list of ruptures (disruptions) with associated products and persists them to the database.
      * Each rupture is assigned to a unique product.
      */
@@ -308,11 +289,6 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
     }
 
     /**
-     * Create Orders and persist them to the database.
-     *
-     * Generates a list of orders with random suppliers, authors, statuses, and delivery dates.
-     * Each order is associated with a random supplier and user.
-     *
      * @param int $numOrder The number of orders to create.
      */
     private function createOrders(int $numOrder): void
@@ -347,8 +323,6 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
     }
 
     /**
-     * Create ProductOrder relationships and persist them to the database.
-     *
      * Creates associations between products and orders, ensuring that each order contains a set of products from the same supplier.
      * Each product is assigned a quantity and associated with an order.
      */
@@ -390,6 +364,7 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
                 array_splice($supplierProducts, $randomIndexProduct, 1);
             }
         }
+        $this->em->flush();
     }
 
     /**

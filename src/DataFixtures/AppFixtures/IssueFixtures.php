@@ -2,7 +2,6 @@
 
 namespace App\DataFixtures\AppFixtures;
 
-use App\DataFixtures\Provider\AppProvider;
 use App\Entity\Event\Issue;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
@@ -11,27 +10,9 @@ class IssueFixtures extends BaseFixtures implements DependentFixtureInterface
 {
     public function load(ObjectManager $manager): void
     {
-        $this->faker->addProvider(new AppProvider($this->faker));
-
-        // Créer des Issues (ici en tant qu'exemple)
         $this->createIssues();
-        $this->em->flush();
-
-        $manager->flush();
     }
 
-    /**
-     * Crée des incidents (issues) et les enregistre dans la base de données.
-     *
-     * Cette méthode génère une liste de 30 incidents en assignant des valeurs aléatoires aux propriétés
-     * de chaque incident, y compris l'auteur, les techniciens concernés, les dates, et d'autres détails.
-     * Chaque incident est créé avec des informations de suivi et un numéro d'identification unique.
-     * 
-     * La méthode utilise un utilisateur aléatoire comme auteur et attribue des techniciens ayant
-     * le titre "technicien" aux rôles de technicien contacté et technicien à venir.
-     *
-     * @return void
-     */
     public function createIssues()
     {
         $users = $this->retrieveEntities("user", $this);
@@ -81,14 +62,14 @@ class IssueFixtures extends BaseFixtures implements DependentFixtureInterface
                 ->setDescription($this->faker->sentence());
 
             $this->em->persist($issue);
+            $this->em->flush();
             $countNumber++;
         }
-
     }
+
     public function getDependencies(): array
     {
         return [
-
             UserFixtures::class,
         ];
     }

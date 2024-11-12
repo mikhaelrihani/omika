@@ -2,7 +2,6 @@
 
 namespace App\DataFixtures\AppFixtures;
 
-use App\DataFixtures\Provider\AppProvider;
 use App\DataFixtures\AppFixtures\BaseFixtures;
 use App\Entity\Media\Message;
 use App\Entity\Media\Note;
@@ -18,12 +17,10 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * Class UserFixtures
- *
  * Fixture class responsible for loading user-related data into the database.
  */
 class UserFixtures extends BaseFixtures
 {
-
 
     private array $businessEntities;
     /**
@@ -42,11 +39,7 @@ class UserFixtures extends BaseFixtures
     private bool $userAdminExists;
 
 
-    /**
-     * Load the user fixtures into the database.
-     *
-     * @param ObjectManager $manager The ObjectManager instance.
-     */
+   
     public function load(ObjectManager $manager): void
     {
         //! on fait cette verification pour eviter l'erreur "Notice: Undefined offset: 0" lorsqu'on a pas de business dans la bdd pour "php bin/console doctrine:fixtures:load --append"
@@ -54,8 +47,6 @@ class UserFixtures extends BaseFixtures
         if (empty($businessEntities)) {
             $this->businessEntities = $this->em->getRepository(Business::class)->findAll();
         }
-
-        $this->faker->addProvider(new AppProvider($this->faker));
         $this->pictures = $this->retrieveEntities('picture', $this);
         $this->createContacts(10);
         $this->createUsers(5);
@@ -177,9 +168,7 @@ class UserFixtures extends BaseFixtures
         }
     }
 
-    /**
-     * Create a number of Contact entities.
-     */
+   
     public function createContacts(int $numContacts): void
     {
 
@@ -221,7 +210,6 @@ class UserFixtures extends BaseFixtures
             // Store the surnames for absence authoring
             $this->surnames[] = $contact->getSurname();
 
-            // Add a reference to retrieve contacts in other fixtures
             $this->addReference("contact_{$c}", $contact);
         }
     }
@@ -271,11 +259,6 @@ class UserFixtures extends BaseFixtures
     }
 
 
-    /**
-     * Create Note entities.
-     *
-     * @param array $users The array of User entities.
-     */
     private function createNotes(array $users): void
     {
         foreach ($users as $user) {
@@ -293,9 +276,7 @@ class UserFixtures extends BaseFixtures
             $this->em->persist($note);
         }
     }
-    /**
-     * Create Message entities.
-     */
+    
     private function createMessages(array $users, array $contacts): void
     {
         for ($m = 0; $m < 30; $m++) {
@@ -326,11 +307,7 @@ class UserFixtures extends BaseFixtures
             }
         }
     }
-    /**
-     * Get the dependencies for this fixture.
-     *
-     * @return array The array of fixture classes that this fixture depends on.
-     */
+  
     public function getDependencies()
     {
         return [

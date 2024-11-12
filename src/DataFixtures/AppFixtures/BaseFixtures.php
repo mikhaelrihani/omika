@@ -2,6 +2,7 @@
 
 namespace App\DataFixtures\AppFixtures;
 
+use App\DataFixtures\Provider\AppProvider;
 use App\Entity\Carte\Dish;
 use App\Entity\Carte\DishCategory;
 use App\Entity\User\User;
@@ -12,6 +13,15 @@ use Doctrine\Persistence\ObjectManager;
 use Faker\Factory;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use App\Service\UnsplashApiService;
+
+//! The database will be captured at the time of loading the fixtures. This capture will then be updated by a cron job.
+//! However, the further the loading of fixtures is from the current date, the less relevant the active day range data will be.
+//! It is recommended to regularly reload the fixtures or create a cron job to reload them, for example every three days.
+
+//! to load the fixture make the following command :
+//! php bin/console cache:clear   && php bin/console doctrine:fixtures:load && php bin/console doctrine:fixtures:load --append 
+//! you can load until 5 to 6 times php bin/console doctrine:fixtures:load --append.
+//! there is a problem of memory usage that can happens or a freeze while loading event fixture(probably due to a null value), just try to reload
 
 class BaseFixtures extends Fixture implements FixtureInterface
 {
@@ -24,28 +34,32 @@ class BaseFixtures extends Fixture implements FixtureInterface
         
     ) {
         $this->faker = Factory::create("fr_FR");
+        $this->faker->addProvider(new AppProvider($this->faker));
     }
 
-    /**
-     * Retrieve entities by their references in a fixture.
-     *
-     * @param string $entityName The base name of the entity references.
-     * @param object $fixture The fixture object where the references are stored.
-     * @return array The array of entities retrieved by their references.
-     */
-    public function retrieveEntities(string $entityName, object $fixture): array
-    {
-        $entities = [];
+   /**
+ * Retrieve entities by reference prefix in a fixture.
+ *
+ * This method fetches all entities with a specified prefix from a fixture's reference repository, 
+ * making it easier to handle large sets of related entities without needing each individual reference.
+ *
+ * @param string $entityName The prefix of the entity references to retrieve.
+ * @param object $fixture The fixture object containing the reference repository.
+ * @return array The array of retrieved entities matching the prefix.
+ */
+public function retrieveEntities(string $entityName, object $fixture): array
+{
+    $entities = [];
 
-        foreach ($fixture->referenceRepository->getReferences() as $referenceKey => $entity) {
-            // Vérifie si le nom de la référence commence bien par l'entité ciblée
-            if (strpos($referenceKey, "{$entityName}_") === 0) {
-                $entities[] = $fixture->getReference($referenceKey);
-            }
+    foreach ($fixture->referenceRepository->getReferences() as $referenceKey => $entity) {
+        if (strpos($referenceKey, "{$entityName}_") === 0) {
+            $entities[] = $fixture->getReference($referenceKey);
         }
-
-        return $entities;
     }
+
+    return $entities;
+}
+
 
 
     /**
@@ -133,9 +147,7 @@ class BaseFixtures extends Fixture implements FixtureInterface
     }
 
     /**
-     * The load method where fixtures are executed.
-     *
-     * @param ObjectManager $manager The object manager instance.
+     * @param ObjectManager $manager 
      */
     public function load(ObjectManager $manager): void
     {
