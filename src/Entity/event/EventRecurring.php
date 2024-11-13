@@ -96,6 +96,12 @@ class EventRecurring extends BaseEntity
     #[ORM\Column(length: 255)]
     private ?string $description = null;
 
+    /**
+     * @var Collection<int, User>
+     */
+    #[ORM\ManyToMany(targetEntity: User::class)]
+    private Collection $sharedWith;
+
     public function __construct()
     {
         parent::__construct();
@@ -103,6 +109,7 @@ class EventRecurring extends BaseEntity
         $this->periodDates = new ArrayCollection();
         $this->weekDays = new ArrayCollection();
         $this->monthDays = new ArrayCollection();
+        $this->sharedWith = new ArrayCollection();
     }
 
     // Getters and Setters
@@ -356,6 +363,30 @@ class EventRecurring extends BaseEntity
     public function setDescription(string $description): static
     {
         $this->description = $description;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    public function getSharedWith(): Collection
+    {
+        return $this->sharedWith;
+    }
+
+    public function addSharedWith(User $sharedWith): static
+    {
+        if (!$this->sharedWith->contains($sharedWith)) {
+            $this->sharedWith->add($sharedWith);
+        }
+
+        return $this;
+    }
+
+    public function removeSharedWith(User $sharedWith): static
+    {
+        $this->sharedWith->removeElement($sharedWith);
 
         return $this;
     }

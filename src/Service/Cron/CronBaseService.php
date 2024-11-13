@@ -2,19 +2,25 @@
 
 namespace App\Service\Cron;
 
+use App\Entity\Event\Event;
+use App\Entity\Event\EventInfo;
 use App\Entity\Event\EventRecurring;
+use App\Entity\Event\EventSharedInfo;
+use App\Entity\Event\EventTask;
 use App\Repository\Event\EventRecurringRepository;
 use App\Repository\Event\EventRepository;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 
 class CronBaseService
 {
+    protected $now;
     public function __construct(
         protected EventRecurringRepository $eventRecurringRepository,
         protected EventRepository $eventRepository,
         protected EntityManagerInterface $em
     ) {
-
+        $now = DateTimeImmutable::createFromFormat('Y-m-d ', (new DateTimeImmutable())->format('Y-m-d'));
     }
 
     public function getEventRecurringParents(): array
@@ -44,117 +50,104 @@ class CronBaseService
         }
     }
 
+    public function handleMonthDays(EventRecurring $eventRecurring): void
+    {
+
+    }
+    public function handleWeekdays(EventRecurring $eventRecurring): void
+    {
+
+    }
+    public function handlePeriodDates(EventRecurring $eventRecurring): void
+    {
+
+    }
     public function handleEveryday(EventRecurring $eventRecurring): void
     {
         $this->createEverydayChildren($eventRecurring);
     }
 
-    private function createEverydayChildren(EventRecurring $eventRecurring): void
+    public function createEverydayChildren(EventRecurring $eventRecurring): void
     {
-        $originalEvent = $this->setEventBase();
-        $this->em->persist($originalEvent);
-
-        for ($i = 0; $i < $numberOfEventsChildren; $i++) {
-            $event = ($i === 0) ? $originalEvent : $this->duplicateEventBase($originalEvent);
-            $dueDate = $firstDueDate->modify("+{$i} days");
-            $this->setRecurringChildrensTimestamps($event, $dueDate, $updatedAtParent, $now);
-            $this->setRelations($event, $eventRecurring);
-        }
+        $event = $this->setRecurringEventBase($eventRecurring);
+        $this->setRelations($event, "todo");
+        $this->em->flush();
     }
+
 
     public function setRecurringEventBase(EventRecurring $eventRecurring): Event
     {
-        $createdBy =$eventRecurring->getCreatedBy();
-        $updatedBy = $eventRecurring->getUpdatedBy();
+        $event = (new Event())
+            ->setDescription($eventRecurring->getDescription())
+            ->setIsImportant(false)
+            ->setSide($eventRecurring->getSide())
+            ->setTitle($eventRecurring->getTitle())
+            ->setCreatedBy($eventRecurring->getCreatedBy()->getFullName())
+            ->setUpdatedBy($eventRecurring->getUpdatedBy()->getFullName())
+            ->setType($eventRecurring->getType())
+            ->setSection($eventRecurring->getSection())
+            ->setIsRecurring(true)
+            ->setActiveDay(0)
+            ->setDueDate($this->now)
+            ->setDateStatus("activeDayRange")
+            ->setCreatedAt($this->now)
+            ->setUpdatedAt($this->now);
 
-        $sections = $this->retrieveEntities("section", $this);
-        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
-        if (empty($sections)) {
-            $sections = $this->em->getRepository(Section::class)->findAll();
-        }
-        $section = $sections[array_rand($sections)];
+        $eventRecurring->addEvent($event);
 
-        $event = new Event();
-        $event
-            ->setDescription($this->faker->sentence)
-            ->setIsImportant($this->faker->boolean)
-            ->setSide($this->faker->randomElement(['kitchen', 'office']))
-            ->setTitle($this->faker->sentence)
-            ->setCreatedBy($createdBy)
-            ->setUpdatedBy($updatedBy)
-            ->setType($this->faker->randomElement(['task', 'info']))
-            ->setSection($section);
-
+        $this->em->persist($event);
         return $event;
     }
-//! ----------------------------------------------------------------
-    public function handlePeriodDates(EventRecurring $eventRecurring): void
+    public function setRelations(Event $event, string $status = null, int $count = null): void
     {
-        foreach ($data[ "periodDates" ] as $periodDate) {
-            $dueDate = $periodDate->getDate();
-            $diff = (int) $data[ "now" ]->diff($dueDate)->format('%r%a');
-            // Check active range validity
-            if ($diff > 7 || $diff < -30) {
-                continue; // Exclude dates outside of active range
-            } else {
-                $this->createChildren($eventRecurring, $dueDate, $data[ "updatedAtParent" ], $data[ "now" ]);
-
-            }
+        $type = $event->getType();
+        if ($type === "task") {
+            $this->setTask($event, $status);
+        } elseif ($type === "info") {
+            $this->setInfo($event, $count);
         }
     }
-   
-    public function handleMonthDays(EventRecurring $eventRecurring): void
+    public function setTask(Event $event, string $taskStatus): void
     {
-        // Définir le mois de début de la période de vérification
-        $currentMonthDate = ($data[ "earliestCreationDate" ])->modify('first day of this month');
+        $task = (new EventTask())
+            ->setTaskStatus($taskStatus)
+            ->setCreatedAt($this->now)
+            ->setUpdatedAt($this->now);
+        $this->em->persist($task);
 
-        // Définir la fin de la période de vérification (le mois après latestCreationDate)
-        $endPeriodDate = ($data[ "latestCreationDate" ])->modify('first day of next month');
-
-        // Parcourir chaque mois dans la période définie
-        while ($currentMonthDate <= $endPeriodDate) {
-            foreach ($data[ "monthDays" ] as $monthDay) {
-                $day = $monthDay->getDay(); // Jour spécifique dans le mois (ex : 13, 21, 27)
-
-                // Générer la date pour ce jour spécifique dans le mois courant
-                $dueDate = $currentMonthDate->modify("+{$day} days -1 day"); // -1 pour que "21" soit bien le 21e jour du mois
-
-                // Vérifier si la dueDate est dans la période cible
-                if ($dueDate >= $data[ "earliestCreationDate" ] && $dueDate <= $data[ "latestCreationDate" ]) {
-                    // Créer l'événement enfant pour ce jour et ce mois spécifiés
-
-                    $this->createChildren($eventRecurring, $dueDate, $data[ "updatedAtParent" ], $data[ "now" ]);
-                }
-            }
-
-            // Passer au mois suivant
-            $currentMonthDate = $currentMonthDate->modify('first day of next month');
-        }
+        $event->setTask($task);
     }
-   
-    public function handleWeekdays( EventRecurring $eventRecurring): void
+    public function setInfo(Event $event, int $count): EventInfo
     {
-        // Définir le début de la période de vérification sur le lundi de la semaine du earliestCreationDate
-        $currentWeekDate = $data[ "earliestCreationDate" ]->modify('this week');
+        $info = (new EventInfo())
+            ->setCreatedAt($this->now)
+            ->setUpdatedAt($this->now)
+            ->setIsFullyRead(false)
+            ->setUserReadInfoCount(0);
 
-        // Parcourir chaque semaine dans la période définie
-        while ($currentWeekDate <= $data[ "latestCreationDate" ]) {
-            foreach ($data[ "weekDays" ] as $weekDay) {
-                $day = $weekDay->getDay(); // Jour de la semaine (ex : 1 = Lundi, 2 = Mardi, etc.)
+        $count = $this->setEventSharedInfo($event->getEventRecurring(), $info);
+        $info->setSharedWithCount($count);
 
-                // Calculer la date cible pour le jour de la semaine spécifié
-                $dueDate = $currentWeekDate->modify("+{$day} days -1 day");
+        $this->em->persist($info);
+        $event->setInfo($info);
 
-                // Vérifier si la dueDate est dans la période cible
-                if ($dueDate >= $data[ "earliestCreationDate" ] && $dueDate <= $data[ "latestCreationDate" ]) {
-                    // Créer l'événement enfant pour ce jour et cette semaine spécifiés
-                    $this->createChildren($eventRecurring, $dueDate, $data[ "updatedAtParent" ], $data[ "now" ]);
-                }
-            }
-
-            // Passer à la semaine suivante
-            $currentWeekDate = $currentWeekDate->modify('next week');
-        }
+        return $info;
     }
 
+    public function setEventSharedInfo(EventRecurring $eventRecurring, EventInfo $info): int
+    {
+        $users = $eventRecurring->getSharedWith();
+        $count = count($users);
+        foreach ($users as $user) {
+            $eventSharedInfo = (new EventSharedInfo())
+                ->setUser($user)
+                ->setEventInfo($info)
+                ->setIsRead(false)
+                ->setCreatedAt($this->now)
+                ->setUpdatedAt($this->now);
+            $this->em->persist($eventSharedInfo);
+            $info->addEventSharedInfo($eventSharedInfo);
+        }
+        return $count;
+    }
 }

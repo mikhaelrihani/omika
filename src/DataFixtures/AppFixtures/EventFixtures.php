@@ -136,7 +136,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function setRelations(Event $event, EventRecurring $eventRecurring = null): void
     {
-        // Variables de base
         $createdAt = $event->getCreatedAt();
         $updatedAt = $event->getUpdatedAt();
         $now = DateTimeImmutable::createFromFormat('Y-m-d', (new DateTimeImmutable('now'))->format('Y-m-d'));
@@ -240,13 +239,14 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     private function handleInfoEvent(Event $event, ?EventRecurring $eventRecurring, DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt): void
     {
         $users = $this->em->getRepository(User::class)->findAll();
-
-        $randomUsers = $this->faker->randomElements($users, $this->faker->numberBetween(1, count($users)));
-
-        $info = new EventInfo();
-        $info->setCreatedAt($createdAt)
+        if ($eventRecurring) {
+            $users = $eventRecurring->getSharedWith()->toArray();
+        }
+        $randomUsers = $this->faker->randomElements($users, rand(1, count($users)));
+        $info = (new EventInfo())
+            ->setCreatedAt($createdAt)
             ->setUpdatedAt($updatedAt)
-            ->setSharedWithCount(count($randomUsers));
+            ->setSharedWithCount(count($users));
         $this->em->persist($info);
 
         $inforeadCounter = 0;
@@ -436,6 +436,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         }
         $section = $sections[array_rand($sections)];
 
+
         // Initialize the EventRecurring
         $eventRecurring = new EventRecurring();
         $eventRecurring
@@ -460,6 +461,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         } else {
             $eventRecurring->setEveryday(false);
         }
+
+        // assigner des utilisateurs partagés avec l'événement récurrent
+        if ($eventRecurring->getType() === "info") {
+            $users = $this->faker->randomElements($users, rand(1, count($users)));
+        }
+        foreach ($users as $user) {
+            $eventRecurring->addSharedWith($user);
+        }
+
         return $eventRecurring;
     }
     /**
