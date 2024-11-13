@@ -68,6 +68,9 @@ class EventRecurring extends BaseEntity
     #[ORM\Column]
     private ?bool $isEveryday = false;
 
+    #[ORM\Column(length: 255)]
+    private ?string $recurrenceType = null;
+
     public function __construct()
     {
         parent::__construct();
@@ -234,6 +237,18 @@ class EventRecurring extends BaseEntity
         $this->periodDates->clear();
         $this->weekDays->clear();
         $this->monthDays->clear();
+    }
+
+    public function getRecurrenceType(): ?string
+    {
+        return $this->recurrenceType;
+    }
+
+    public function setRecurrenceType(string $recurrenceType): static
+    {
+        $this->recurrenceType = $recurrenceType;
+
+        return $this;
     }
 
 }

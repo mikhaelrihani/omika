@@ -435,7 +435,9 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         // Determine if the event is daily or not
         if (rand(0, 1)) {
             $eventRecurring->resetRecurringDays();
-            $eventRecurring->setEveryday(true);
+            $eventRecurring
+                ->setEveryday(true)
+                ->setRecurrenceType("isEveryday");
         } else {
             $eventRecurring->setEveryday(false);
         }
@@ -459,7 +461,9 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $randomIndex = rand(1, 4);
 
         switch ($recurrenceType) {
+
             case 1: // Days of the month
+                $recurrenceType = "monthDays";
                 $monthDays = [];
                 for ($i = 0; $i < $randomIndex; $i++) {
                     $randDay1 = (int) $eventRecurring->getPeriodeStart()->format('d');
@@ -477,6 +481,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 break;
 
             case 2: // Days of the week
+                $recurrenceType = "weekDays";
                 $weekDays = [];
                 for ($i = 0; $i < $randomIndex; $i++) {
                     $randomDay = rand(1, 7);
@@ -490,6 +495,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 break;
 
             case 3: // Specific dates
+                $recurrenceType = "periodDates";
                 $periodDates = [];
                 $randomIndex = rand(3, 10);
                 $baseDate = $eventRecurring->getCreatedAt();// Date minimale autorisée
@@ -511,7 +517,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
                 break;
         }
-
+        $eventRecurring->setRecurrenceType($recurrenceType);
         return $eventRecurring;
     }
 
