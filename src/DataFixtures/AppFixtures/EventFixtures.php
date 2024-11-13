@@ -427,7 +427,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $users = $this->em->getRepository(User::class)->findAll();
         $createdBy = $this->faker->randomElement($users);
         $updatedBy = $this->faker->randomElement($users);
-      
+
+
+        $sections = $this->retrieveEntities("section", $this);
+        //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
+        if (empty($sections)) {
+            $sections = $this->em->getRepository(Section::class)->findAll();
+        }
+        $section = $sections[array_rand($sections)];
+
         // Initialize the EventRecurring
         $eventRecurring = new EventRecurring();
         $eventRecurring
@@ -436,7 +444,12 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setCreatedAt($createdAt)
             ->setUpdatedAt($updatedAt)
             ->setCreatedBy($createdBy)
-            ->setUpdatedBy($updatedBy);
+            ->setUpdatedBy($updatedBy)
+            ->setSection($section)
+            ->setDescription($this->faker->sentence)
+            ->setSide($this->faker->randomElement(['kitchen', 'office']))
+            ->setTitle($this->faker->sentence)
+            ->setType($this->faker->randomElement(['task', 'info']));
 
         // Determine if the event is daily or not
         if (rand(0, 1)) {
@@ -547,32 +560,40 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
                 continue; // Aucun événement enfant à créer pour ce parent
             }
 
-            // Handle everyday events
-            elseif ($data[ "everyday" ]) {
-                $this->handleEveryday($data, $eventRecurring);
-            }
-
-            // Handle period dates
-            elseif ($data[ "periodDates" ]) {
-                $this->handlePeriodDates($data, $eventRecurring);
-            }
-
-            // Handle month days
-            elseif ($data[ "monthDays" ]) {
-                $this->handleMonthDays($data, $eventRecurring);
-            }
-
-            // Handle week days
-            elseif ($data[ "weekDays" ]) {
-                $this->handleWeekdays($data, $eventRecurring);
-            }
-
+            $recurrenceType = $eventRecurring->getRecurrenceType();
+            match ($recurrenceType) {
+                "isEveryday" => $this->handleEveryday($data, $eventRecurring),
+                "weekDays" => $this->handleWeekDays($data, $eventRecurring),
+                "monthDays" => $this->handleMonthDays($data, $eventRecurring),
+                "periodDates" => $this->handlePeriodDates($data, $eventRecurring),
+                default => throw new \Exception("Recurrence type not found")
+            };
 
         }
         // après avoir flushé tous les evenements enfants d'un parent récurrent,
         // on s'occupe maintenant de la duplication des evenements enfants qui sont de type task et qui ont un statut unrealised
 
         $this->duplicateUnrealisedRecurringChildrens($eventRecurring);
+    }
+
+    public function setEventChildrenBase(EventRecurring $eventRecurring): Event
+    {
+        $createdByUser = $eventRecurring->getCreatedBy();
+        $updatedByUser = $eventRecurring->getUpdatedBy();
+        $createdBy = $createdByUser->getFullName();
+        $updatedBy = $updatedByUser->getFullName();
+        $event = new Event();
+        $event
+            ->setDescription($eventRecurring->getDescription())
+            ->setIsImportant($this->faker->boolean)
+            ->setSide($eventRecurring->getSide())
+            ->setTitle($eventRecurring->getTitle())
+            ->setCreatedBy($createdBy)
+            ->setUpdatedBy($updatedBy)
+            ->setType($eventRecurring->getType())
+            ->setSection($eventRecurring->getSection());
+
+        return $event;
     }
     /**
      * Gère la création d'événements enfants quotidiens pour un événement récurrent qui se produit chaque jour
@@ -598,7 +619,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function handlePeriodDates(array $data, EventRecurring $eventRecurring): void
     {
-        foreach ($data[ "periodDates" ] as $periodDate) {
+        $periodDates = $eventRecurring->getPeriodDates();
+        foreach ($periodDates as $periodDate) {
             $dueDate = $periodDate->getDate();
             $diff = (int) $data[ "now" ]->diff($dueDate)->format('%r%a');
             // Check active range validity
@@ -619,15 +641,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function handleMonthDays(array $data, EventRecurring $eventRecurring): void
     {
+        $monthDays = $eventRecurring->getMonthDays();
         // Définir le mois de début de la période de vérification
         $currentMonthDate = ($data[ "earliestCreationDate" ])->modify('first day of this month');
-
         // Définir la fin de la période de vérification (le mois après latestCreationDate)
         $endPeriodDate = ($data[ "latestCreationDate" ])->modify('first day of next month');
 
         // Parcourir chaque mois dans la période définie
         while ($currentMonthDate <= $endPeriodDate) {
-            foreach ($data[ "monthDays" ] as $monthDay) {
+            foreach ($monthDays as $monthDay) {
                 $day = $monthDay->getDay(); // Jour spécifique dans le mois (ex : 13, 21, 27)
 
                 // Générer la date pour ce jour spécifique dans le mois courant
@@ -654,12 +676,13 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function handleWeekdays(array $data, EventRecurring $eventRecurring): void
     {
+        $weekDays = $eventRecurring->getWeekDays();
         // Définir le début de la période de vérification sur le lundi de la semaine du earliestCreationDate
         $currentWeekDate = $data[ "earliestCreationDate" ]->modify('this week');
 
         // Parcourir chaque semaine dans la période définie
         while ($currentWeekDate <= $data[ "latestCreationDate" ]) {
-            foreach ($data[ "weekDays" ] as $weekDay) {
+            foreach ($weekDays as $weekDay) {
                 $day = $weekDay->getDay(); // Jour de la semaine (ex : 1 = Lundi, 2 = Mardi, etc.)
 
                 // Calculer la date cible pour le jour de la semaine spécifié
@@ -688,7 +711,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     private function createEverydayChildren(EventRecurring $eventRecurring, DateTimeImmutable $firstDueDate, int $numberOfEventsChildren, DateTimeImmutable $updatedAtParent, DateTimeImmutable $now): void
     {
-        $originalEvent = $this->setEventBase();
+        $originalEvent = $this->setEventChildrenBase($eventRecurring);
         $this->em->persist($originalEvent);
 
         for ($i = 0; $i < $numberOfEventsChildren; $i++) {
@@ -709,7 +732,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     private function createChildren(EventRecurring $eventRecurring, DateTimeImmutable $date, DateTimeImmutable $createdAtParent, DateTimeImmutable $now): void
     {
-        $event = $this->setEventBase();
+        $event = $this->setEventChildrenBase($eventRecurring);
         $this->setRecurringChildrensTimestamps($event, $date, $createdAtParent, $now);
         $this->setRelations($event, $eventRecurring);
     }
@@ -815,11 +838,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function getTimestampsDataForRecurringChildrens(EventRecurring $eventRecurring): array
     {
-        $periodDates = $eventRecurring->getPeriodDates();
-        $monthDays = $eventRecurring->getMonthDays();
-        $weekDays = $eventRecurring->getWeekDays();
-        $everyday = $eventRecurring->isEveryday();
-
         $now = DateTimeImmutable::createFromFormat('Y-m-d', (new DateTimeImmutable('now'))->format('Y-m-d'));
         $startDate = DateTimeImmutable::createFromFormat('Y-m-d', $eventRecurring->getPeriodeStart()->format('Y-m-d'));
         $updatedAtParent = DateTimeImmutable::createFromFormat('Y-m-d', $eventRecurring->getUpdatedAt()->format('Y-m-d'));
@@ -838,10 +856,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             "latestCreationDate"   => $latestCreationDate,
             "startDate"            => $startDate,
             "endDate"              => $endDate,
-            "everyday"             => $everyday,
-            "periodDates"          => $periodDates,
-            "monthDays"            => $monthDays,
-            "weekDays"             => $weekDays,
             "updatedAtParent"      => $updatedAtParent,
             "now"                  => $now,
         ];
