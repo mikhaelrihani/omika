@@ -3,6 +3,7 @@
 namespace App\Entity\Event;
 
 use App\Entity\BaseEntity;
+use App\Entity\User\User;
 use App\Repository\Event\EventRecurringRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -70,6 +71,14 @@ class EventRecurring extends BaseEntity
 
     #[ORM\Column(length: 255)]
     private ?string $recurrenceType = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?User $createdBy = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?User $updatedBy = null;
 
     public function __construct()
     {
@@ -247,6 +256,30 @@ class EventRecurring extends BaseEntity
     public function setRecurrenceType(string $recurrenceType): static
     {
         $this->recurrenceType = $recurrenceType;
+
+        return $this;
+    }
+
+    public function getCreatedBy(): ?User
+    {
+        return $this->createdBy;
+    }
+
+    public function setCreatedBy(?User $createdBy): static
+    {
+        $this->createdBy = $createdBy;
+
+        return $this;
+    }
+
+    public function getUpdatedBy(): ?User
+    {
+        return $this->updatedBy;
+    }
+
+    public function setUpdatedBy(?User $updatedBy): static
+    {
+        $this->updatedBy = $updatedBy;
 
         return $this;
     }

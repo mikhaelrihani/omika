@@ -424,13 +424,19 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $periodeStart = $this->faker->dateTimeImmutableBetween($createdAt->format('Y-m-d H:i:s'), $updatedAt->format('Y-m-d H:i:s'));
         $periodeEnd = $this->faker->dateTimeImmutableBetween($updatedAt->format('Y-m-d H:i:s'), "+1 month");
 
+        $users = $this->em->getRepository(User::class)->findAll();
+        $createdBy = $this->faker->randomElement($users);
+        $updatedBy = $this->faker->randomElement($users);
+      
         // Initialize the EventRecurring
         $eventRecurring = new EventRecurring();
         $eventRecurring
             ->setPeriodeStart($periodeStart)
             ->setPeriodeEnd($periodeEnd)
             ->setCreatedAt($createdAt)
-            ->setUpdatedAt($updatedAt);
+            ->setUpdatedAt($updatedAt)
+            ->setCreatedBy($createdBy)
+            ->setUpdatedBy($updatedBy);
 
         // Determine if the event is daily or not
         if (rand(0, 1)) {

@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20241109170359 extends AbstractMigration
+final class Version20241113101656 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -31,7 +31,7 @@ final class Version20241109170359 extends AbstractMigration
         $this->addSql('CREATE TABLE user_favoriteEvents (event_id INT NOT NULL, user_id INT NOT NULL, INDEX IDX_31E4A9D71F7E88B (event_id), INDEX IDX_31E4A9DA76ED395 (user_id), PRIMARY KEY(event_id, user_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE event_info (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', user_read_info_count INT NOT NULL, shared_with_count INT NOT NULL, is_fully_read TINYINT(1) NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE event_info_user (event_info_id INT NOT NULL, user_id INT NOT NULL, INDEX IDX_526D3AFAD8DC6857 (event_info_id), INDEX IDX_526D3AFAA76ED395 (user_id), PRIMARY KEY(event_info_id, user_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE event_recurring (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', periodeStart DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', periodeEnd DATETIME DEFAULT NULL COMMENT \'(DC2Type:datetime_immutable)\', is_everyday TINYINT(1) NOT NULL, INDEX EventRecurring_period_idx (periodeStart, periodeEnd), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE event_recurring (id INT AUTO_INCREMENT NOT NULL, created_by_id INT NOT NULL, updated_by_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', periodeStart DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', periodeEnd DATETIME DEFAULT NULL COMMENT \'(DC2Type:datetime_immutable)\', is_everyday TINYINT(1) NOT NULL, recurrence_type VARCHAR(255) NOT NULL, INDEX IDX_EAF93CD0B03A8386 (created_by_id), INDEX IDX_EAF93CD0896DBBDE (updated_by_id), INDEX EventRecurring_period_idx (periodeStart, periodeEnd), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE event_recurring_period_date (event_recurring_id INT NOT NULL, period_date_id INT NOT NULL, INDEX IDX_FA84F3B5C5AC3AD (event_recurring_id), INDEX IDX_FA84F3B437E9333 (period_date_id), PRIMARY KEY(event_recurring_id, period_date_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE event_recurring_week_day (event_recurring_id INT NOT NULL, week_day_id INT NOT NULL, INDEX IDX_8BF116E45C5AC3AD (event_recurring_id), INDEX IDX_8BF116E47DB83875 (week_day_id), PRIMARY KEY(event_recurring_id, week_day_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE event_recurring_month_day (event_recurring_id INT NOT NULL, month_day_id INT NOT NULL, INDEX IDX_B46580755C5AC3AD (event_recurring_id), INDEX IDX_B46580752F6ADB8 (month_day_id), PRIMARY KEY(event_recurring_id, month_day_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
@@ -93,6 +93,8 @@ final class Version20241109170359 extends AbstractMigration
         $this->addSql('ALTER TABLE user_favoriteEvents ADD CONSTRAINT FK_31E4A9DA76ED395 FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE event_info_user ADD CONSTRAINT FK_526D3AFAD8DC6857 FOREIGN KEY (event_info_id) REFERENCES event_info (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE event_info_user ADD CONSTRAINT FK_526D3AFAA76ED395 FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE');
+        $this->addSql('ALTER TABLE event_recurring ADD CONSTRAINT FK_EAF93CD0B03A8386 FOREIGN KEY (created_by_id) REFERENCES user (id)');
+        $this->addSql('ALTER TABLE event_recurring ADD CONSTRAINT FK_EAF93CD0896DBBDE FOREIGN KEY (updated_by_id) REFERENCES user (id)');
         $this->addSql('ALTER TABLE event_recurring_period_date ADD CONSTRAINT FK_FA84F3B5C5AC3AD FOREIGN KEY (event_recurring_id) REFERENCES event_recurring (id)');
         $this->addSql('ALTER TABLE event_recurring_period_date ADD CONSTRAINT FK_FA84F3B437E9333 FOREIGN KEY (period_date_id) REFERENCES period_date (id)');
         $this->addSql('ALTER TABLE event_recurring_week_day ADD CONSTRAINT FK_8BF116E45C5AC3AD FOREIGN KEY (event_recurring_id) REFERENCES event_recurring (id)');
@@ -159,6 +161,8 @@ final class Version20241109170359 extends AbstractMigration
         $this->addSql('ALTER TABLE user_favoriteEvents DROP FOREIGN KEY FK_31E4A9DA76ED395');
         $this->addSql('ALTER TABLE event_info_user DROP FOREIGN KEY FK_526D3AFAD8DC6857');
         $this->addSql('ALTER TABLE event_info_user DROP FOREIGN KEY FK_526D3AFAA76ED395');
+        $this->addSql('ALTER TABLE event_recurring DROP FOREIGN KEY FK_EAF93CD0B03A8386');
+        $this->addSql('ALTER TABLE event_recurring DROP FOREIGN KEY FK_EAF93CD0896DBBDE');
         $this->addSql('ALTER TABLE event_recurring_period_date DROP FOREIGN KEY FK_FA84F3B5C5AC3AD');
         $this->addSql('ALTER TABLE event_recurring_period_date DROP FOREIGN KEY FK_FA84F3B437E9333');
         $this->addSql('ALTER TABLE event_recurring_week_day DROP FOREIGN KEY FK_8BF116E45C5AC3AD');
