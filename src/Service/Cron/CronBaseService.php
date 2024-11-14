@@ -9,8 +9,10 @@ use App\Entity\Event\EventSharedInfo;
 use App\Entity\Event\EventTask;
 use App\Repository\Event\EventRecurringRepository;
 use App\Repository\Event\EventRepository;
+use App\Service\Event\EventRecurringService;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 class CronBaseService
 {
@@ -18,7 +20,9 @@ class CronBaseService
     public function __construct(
         protected EventRecurringRepository $eventRecurringRepository,
         protected EventRepository $eventRepository,
-        protected EntityManagerInterface $em
+        protected EntityManagerInterface $em,
+        protected EventRecurringService $eventRecurringService,
+        protected ParameterBagInterface $parameterBag
     ) {
         $now = DateTimeImmutable::createFromFormat('Y-m-d ', (new DateTimeImmutable())->format('Y-m-d'));
     }
@@ -35,20 +39,7 @@ class CronBaseService
         return $eventRecurringChildrens;
     }
 
-    public function handleEventRecurringParents()
-    {
-        $eventRecurringParents = $this->getEventRecurringParents();
-        foreach ($eventRecurringParents as $eventRecurring) {
-            $recurrenceType = $eventRecurring->getRecurrenceType();
-            match ($recurrenceType) {
-                "monthDays" => $this->handleMonthDays($eventRecurring),
-                "weekDays" => $this->handleWeekdays($eventRecurring),
-                "periodDates" => $this->handlePeriodDates($eventRecurring),
-                "everyday" => $this->handleEveryday($eventRecurring),
-                default => throw new \Exception("Recurrence type not found")
-            };
-        }
-    }
+    
 
     public function handleMonthDays(EventRecurring $eventRecurring): void
     {

@@ -45,7 +45,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         for ($e = 0; $e < $numEvents; $e++) {
 
             $event = $this->setEventBase();
-            $event = $this->setTimestamps($event);
+            $this->setTimestamps($event);
             $this->setRelations($event);
         }
     }
