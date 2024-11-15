@@ -76,12 +76,12 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
         }
 
         // je récupère les users avec lesquels l'info a été partagée et pour chacun on vérifie si l'info est non lue, dans ce cas on imcrémente de 1 le tag associé.
-        $eventsSharedInfos = $event->getInfo()->getEventSharedInfo();
+        $sharedWith = $event->getInfo()->getSharedWith();
         $users = [];
-        foreach ($eventsSharedInfos as $eventSharedInfo) {
+        foreach ( $sharedWith as $userInfo) {
 
-            if (!$eventSharedInfo->isRead()) {
-                $users[] = $eventSharedInfo->getUser();
+            if (!$userInfo->isRead()) {
+                $users[] = $userInfo->getUser();
             }
         }
 

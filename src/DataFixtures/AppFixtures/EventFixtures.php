@@ -7,10 +7,10 @@ use App\Entity\Event\Event;
 use App\Entity\Event\EventTask;
 use App\Entity\Event\EventInfo;
 use App\Entity\Event\EventRecurring;
-use App\Entity\Event\EventSharedInfo;
 use App\Entity\Event\MonthDay;
 use App\Entity\Event\PeriodDate;
 use App\Entity\Event\Section;
+use App\Entity\Event\UserInfo;
 use App\Entity\Event\WeekDay;
 use App\Entity\User\User;
 use DateInterval;
@@ -160,16 +160,17 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     private function handleTaskEvent(Event $event, ?EventRecurring $eventRecurring, int $diff): void
     {
+
         // Événements dans la plage active (passé)
         if ($diff >= -30 && $diff < 0) {
             $taskStatus = $this->faker->randomElement(['done', 'unrealised']);
 
             if ($taskStatus === 'unrealised') {
-                $this->setTaskStatus($event, 'unrealised');
+                $this->setTaskStatus($event, 'unrealised', $eventRecurring);
                 if (!$eventRecurring)
                     $this->duplicateNonRecurringUnrealisedEvent($event);
             } else {
-                $this->setTaskStatus($event, 'done');
+                $this->setTaskStatus($event, 'done', $eventRecurring);
             }
 
             if ($eventRecurring)
@@ -188,6 +189,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
         $this->em->persist($event);
         $this->em->flush();
+
         $id = $event->getId();
         $this->addReference("event_{$id}", $event);
 
@@ -203,7 +205,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     private function handleTaskStatus(Event $event, array $taskStatuses, EventRecurring $eventRecurring = null): void
     {
         $taskStatut = $this->faker->randomElement($taskStatuses);
-        $this->setTaskStatus($event, $taskStatut);
+        $this->setTaskStatus($event, $taskStatut, $eventRecurring);
 
         if ($eventRecurring) {
             $eventRecurring->addEvent($event);
@@ -216,16 +218,30 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      * @param Event $event L'événement auquel le statut de la tâche sera appliqué.
      * @param string $taskStatus Statut de tâche à assigner.
      */
-    public function setTaskStatus($event, $taskStatus): void
+    public function setTaskStatus($event, $taskStatus, $eventRecurring = null): void
     {
-        $newTask = new EventTask();
-        $newTask
+        $users = $this->em->getRepository(User::class)->findAll();
+        $users = $eventRecurring ?
+            $eventRecurring->getSharedWith()->toArray() :
+            $this->faker->randomElements($users, rand(1, count($users)));
+
+        $task = new EventTask();
+        $task
             ->setTaskStatus($taskStatus)
+            ->setSharedWithCount(count($users))
             ->setCreatedAt($event->getCreatedAt())
             ->setUpdatedAt($event->getUpdatedAt());
-        $this->em->persist($newTask);
+        $this->em->persist($task);
 
-        $event->setTask($newTask);
+        $event->setTask($task);
+
+        foreach ($users as $user) {
+            $task->addsharedWith($user);
+            $random = $this->faker->boolean(20);
+            if ($random) {
+                $event->addFavoritedBy($user);
+            }
+        }
     }
     /**
      * Configure les informations de partage pour un événement de type "info", incluant les utilisateurs
@@ -239,10 +255,10 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     private function handleInfoEvent(Event $event, ?EventRecurring $eventRecurring, DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt): void
     {
         $users = $this->em->getRepository(User::class)->findAll();
-        if ($eventRecurring) {
-            $users = $eventRecurring->getSharedWith()->toArray();
-        }
-        $randomUsers = $this->faker->randomElements($users, rand(1, count($users)));
+        $users = $eventRecurring ?
+            $eventRecurring->getSharedWith()->toArray() :
+            $this->faker->randomElements($users, rand(1, count($users)));
+
         $info = (new EventInfo())
             ->setCreatedAt($createdAt)
             ->setUpdatedAt($updatedAt)
@@ -250,24 +266,29 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->em->persist($info);
 
         $inforeadCounter = 0;
-        foreach ($randomUsers as $user) {
+        foreach ($users as $user) {
             $isRead = $this->faker->boolean(20);
-            $info->addSharedWith($user);
+
             if ($isRead)
                 $inforeadCounter++;
 
-            $eventSharedInfo = (new EventSharedInfo())
+            $userInfo = (new UserInfo())
                 ->setUser($user)
                 ->setEventInfo($info)
                 ->setIsRead($isRead)
                 ->setCreatedAt($createdAt)
                 ->setUpdatedAt($updatedAt);
-            $this->em->persist($eventSharedInfo);
-            $info->addEventSharedInfo($eventSharedInfo);
+            $this->em->persist($userInfo);
+            $info->addSharedWith($userInfo);
+
+            $random = $this->faker->boolean(20);
+            if ($random) {
+                $event->addFavoritedBy($user);
+            }
         }
 
         $info->setUserReadInfoCount($inforeadCounter)
-            ->setIsFullyRead($inforeadCounter === count($randomUsers));
+            ->setIsFullyRead($inforeadCounter === count($users));
         $event->setInfo($info);
         $event->setDueDate(DateTimeImmutable::createFromFormat('Y-m-d', $event->getDueDate()->format('Y-m-d')));
         $this->em->persist($event);
@@ -825,7 +846,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $event = $this->duplicateEventBase($originalEvent);
         $this->setTimestampsToDuplicatedEvent($event, $originalEvent);
         $taskStatus = ($nextDueDate === $now) ? 'late' : $this->faker->randomElement(['unrealised', 'done']);
-        $this->setTaskStatus($event, $taskStatus);
+        $this->setTaskStatus($event, $taskStatus, $eventRecurring);
         $event->setIsRecurring(True);
 
         $this->em->persist($event);

@@ -10,15 +10,21 @@ use App\Repository\Event\EventRepository;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 class EventService
 {
-    private $now;
+    protected $now;
+    protected $activeDayStart;
+    protected $activeDayEnd;
     public function __construct(
         protected EventRepository $eventRepository,
         protected EntityManagerInterface $em,
+        protected ParameterBagInterface $parameterBag
     ) {
         $now = DateTimeImmutable::createFromFormat('Y-m-d ', (new DateTimeImmutable())->format('Y-m-d'));
+        $activeDayStart = $this->parameterBag->get('active_day_start');
+        $activeDayEnd = $this->parameterBag->get('active_day_end');
     }
 
     public function createOneEvent(array $data): Event
@@ -41,7 +47,8 @@ class EventService
             ->setCreatedBy($data[ "createdBy" ])
             ->setUpdatedBy($data[ "updatedBy" ])
             ->setType($data[ "type" ])
-            ->setSection($data[ "section" ]);
+            ->setSection($data[ "section" ])
+            ->setDueDate($data[ "dueDate" ]);
 
         return $event;
     }
@@ -56,29 +63,46 @@ class EventService
         }
 
     }
-    public function setTimeStamps(Event $event): void
+    public function setTimestamps(Event $event): void
     {
+        $diff = (int) $this->now->diff($event->getDueDate())->format('%r%a');
+        if ($diff >= $this->activeDayStart && $diff <= $this->activeDayEnd) {
+            $dateStatus = "activeDayRange";
+            $activeDay = $diff;
+        } elseif ($diff >= -30 && $diff < $this->activeDayStart) {
+            $dateStatus = "past";
+            $activeDay = null;
+        } else {
+            $dateStatus = "future";
+            $activeDay = null;
+        }
+
         $event
-            ->setDueDate($this->now)
-            ->setActiveDay(0)
-            ->setDateStatus("activeDayRange");
+            ->setActiveDay($activeDay)
+            ->setDateStatus($dateStatus);
+
     }
 
-    public function setTask(Event $event, string $taskStatus): void
+    public function setTask(Event $event, string $taskStatus, Collection $users): void
     {
+        $count = count($users);
         $task = (new EventTask())
-            ->setTaskStatus($taskStatus);
+            ->setTaskStatus($taskStatus)
+            ->setSharedWithCount($count);
         $this->em->persist($task);
-
+        foreach ($users as $user) {
+            $task->addEventSharedTask($user);
+        }
         $event->setTask($task);
     }
+    
     public function setInfo(Event $event, Collection $users): EventInfo
     {
+        $count = count($users);
         $info = (new EventInfo())
             ->setIsFullyRead(false)
-            ->setUserReadInfoCount(0);
-        $count = count($users);
-        $info->setSharedWithCount($count);
+            ->setUserReadInfoCount(0)
+            ->setSharedWithCount($count);
 
         $this->em->persist($info);
         $event->setInfo($info);
@@ -98,8 +122,6 @@ class EventService
             $info->addEventSharedInfo($eventSharedInfo);
         }
     }
-
-
 
 
 }

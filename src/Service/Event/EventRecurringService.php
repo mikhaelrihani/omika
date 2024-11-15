@@ -134,12 +134,11 @@ class EventRecurringService
         }
     }
 
-
-    private function isWithinTargetPeriod(DateTimeImmutable $dueDate, DateTimeImmutable $earliestCreationDate, DateTimeImmutable $latestCreationDate): bool
+    public function isWithinTargetPeriod(DateTimeImmutable $dueDate, DateTimeImmutable $earliestCreationDate, DateTimeImmutable $latestCreationDate): bool
     {
         return $dueDate >= $earliestCreationDate && $dueDate <= $latestCreationDate;
     }
-
+  
     private function calculatePeriodLimits(EventRecurring $parent): array
     {
         $latestDate = (new DateTimeImmutable($this->now->format('Y-m-d')))->modify("+{$this->activeDayEnd} day");
@@ -155,7 +154,7 @@ class EventRecurringService
     {
         $child = $this->setOneChildBase($parent);
         $child->setDueDate($dueDate);
-        $this->setOneChildTimestamps($child);
+        $this->eventService->setTimestamps($child);
 
         $users = $parent->getSharedWith();
         $status = $parent->getType() ? "todo" : null;
@@ -181,25 +180,7 @@ class EventRecurringService
         return $child;
     }
 
-    public function setOneChildTimestamps(Event $child): void
-    {
-        $diff = (int) $this->now->diff($child->getDueDate())->format('%r%a');
-        if ($diff >= $this->activeDayStart && $diff <= $this->activeDayEnd) {
-            $dateStatus = "activeDayRange";
-            $activeDay = $diff;
-        } elseif ($diff >= -30 && $diff < $this->activeDayStart) {
-            $dateStatus = "past";
-            $activeDay = null;
-        } else {
-            $dateStatus = "future";
-            $activeDay = null;
-        }
-
-        $child
-            ->setActiveDay($activeDay)
-            ->setDateStatus($dateStatus);
-
-    }
+  
 
 
 }

@@ -29,7 +29,16 @@ class TagRepository extends ServiceEntityRepository
             ->getQuery()
             ->getOneOrNullResult();
     }
-
+    public function findOneByUserAndTag(User $user, Tag $tag): ?TagInfo
+    {
+        return $this->createQueryBuilder('t')
+            ->andWhere('t.user = :user')
+            ->andWhere('t.tag = :tag')
+            ->setParameter('user', $user)
+            ->setParameter('tag', $tag)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 
     //    /**
     //     * @return Tag[] Returns an array of Tag objects

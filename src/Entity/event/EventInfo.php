@@ -3,7 +3,6 @@
 namespace App\Entity\Event;
 
 use App\Entity\BaseEntity;
-use App\Entity\user\User;
 use App\Repository\Event\EventInfoRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -17,12 +16,6 @@ class EventInfo extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToMany(targetEntity: User::class)]
-    private Collection $sharedWith;
-
-    #[ORM\OneToMany(mappedBy: 'eventInfo', targetEntity: EventSharedInfo::class, cascade: ['persist', 'remove'])]
-    private Collection $eventSharedInfo;
-
     #[ORM\Column]
     private ?int $userReadInfoCount = null;
 
@@ -32,59 +25,21 @@ class EventInfo extends BaseEntity
     #[ORM\Column]
     private ?bool $isFullyRead = null;
 
+    /**
+     * @var Collection<int, UserInfo>
+     */
+    #[ORM\OneToMany(targetEntity: UserInfo::class, mappedBy: 'eventInfo', orphanRemoval: true)]
+    private Collection $sharedWith;
+
     public function __construct()
     {
         parent::__construct();
-        $this->sharedWith = new ArrayCollection();
-        $this->eventSharedInfo = new ArrayCollection();
+        $this->sharedWith = new ArrayCollection(); 
     }
 
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function addSharedWith(User $user): self
-    {
-        if (!$this->sharedWith->contains($user)) {
-            $this->sharedWith->add($user);
-        }
-        return $this;
-    }
-
-    public function removeSharedWith(User $user): self
-    {
-        $this->sharedWith->removeElement($user);
-        return $this;
-    }
-
-    public function getSharedWith(): Collection
-    {
-        return $this->sharedWith;
-    }
-
-    public function addEventSharedInfo(EventSharedInfo $eventSharedInfo): self
-    {
-        if (!$this->eventSharedInfo->contains($eventSharedInfo)) {
-            $this->eventSharedInfo->add($eventSharedInfo);
-            $eventSharedInfo->setEventInfo($this);
-        }
-        return $this;
-    }
-
-    public function removeEventSharedInfo(EventSharedInfo $eventSharedInfo): self
-    {
-        if ($this->eventSharedInfo->removeElement($eventSharedInfo)) {
-            if ($eventSharedInfo->getEventInfo() === $this) {
-                $eventSharedInfo->setEventInfo(null);
-            }
-        }
-        return $this;
-    }
-
-    public function getEventSharedInfo(): Collection
-    {
-        return $this->eventSharedInfo;
     }
 
     public function getUserReadInfoCount(): ?int
@@ -119,4 +74,36 @@ class EventInfo extends BaseEntity
         $this->isFullyRead = $isFullyRead;
         return $this;
     }
+
+    /**
+     * @return Collection<int, UserInfo>
+     */
+    public function getSharedWith(): Collection
+    {
+        return $this->sharedWith;
+    }
+
+    public function addSharedWith(UserInfo $sharedWith): static
+    {
+        if (!$this->sharedWith->contains($sharedWith)) {
+            $this->sharedWith->add($sharedWith);
+            $sharedWith->setEventInfo($this);
+        }
+
+        return $this;
+    }
+
+    public function removeSharedWith(UserInfo $sharedWith): static
+    {
+        if ($this->sharedWith->removeElement($sharedWith)) {
+            // set the owning side to null (unless already changed)
+            if ($sharedWith->getEventInfo() === $this) {
+                $sharedWith->setEventInfo(null);
+            }
+        }
+
+        return $this;
+    }
+
+  
 }
