@@ -60,10 +60,10 @@ class TagService
         }
 
         // je récupère les users avec lesquels l'info a été partagée et pour chacun on imcrémente de 1 le tag associé.
-        $eventsSharedInfos = $event->getInfo()->getEventSharedInfo();
+        $sharedWith = $event->getInfo()->getSharedWith();
         $users = [];
-        foreach ($eventsSharedInfos as $eventSharedInfo) {
-            $users[] = $eventSharedInfo->getUser();
+        foreach ( $sharedWith as $userInfo) {
+                $users[] = $userInfo->getUser();
         }
 
         // pour chaque user je cree un tag info en vérifiant que ce tag info n'existe pas déjà.

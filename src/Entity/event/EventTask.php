@@ -26,11 +26,13 @@ class EventTask extends BaseEntity
      * @var Collection<int, User>
      */
     #[ORM\ManyToMany(targetEntity: User::class)]
+    #[ORM\JoinTable(name: 'user_task')]
     private Collection $sharedWith;
 
     #[ORM\Column]
     private ?int $sharedWithCount = null;
 
+   
     public function __construct()
     {
         parent::__construct();
@@ -89,5 +91,6 @@ class EventTask extends BaseEntity
         return $this;
     }
 
+   
 
 }

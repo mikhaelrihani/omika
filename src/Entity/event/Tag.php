@@ -3,6 +3,7 @@
 namespace App\Entity\Event;
 
 use App\Entity\BaseEntity;
+use App\Entity\User\User;
 use App\Repository\Event\TagRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -27,11 +28,7 @@ class Tag extends BaseEntity
 
     #[ORM\Column(length: 255)]
     private string $date_status; // Statut de la date (ex. "past", "active_day_range", "future")
-
-    #[ORM\Column(type: Types::INTEGER, nullable: true)]
-    private ?int $task_count = null; // Compte des tâches actives, peut être null
-
-
+   
     #[ORM\Column(nullable: true)]
     private ?int $active_day = null;
 
@@ -44,10 +41,19 @@ class Tag extends BaseEntity
     #[ORM\Column(length: 255)]
     private ?string $side = null;
 
+    /**
+     * @var Collection<int, TagTask>
+     */
+    #[ORM\OneToMany(targetEntity: TagTask::class, mappedBy: 'tag', orphanRemoval: true)]
+    private Collection $tagTasks;
+
+
+   
     public function __construct()
     {
         parent::__construct();
         $this->tagInfos = new ArrayCollection();
+        $this->tagTasks = new ArrayCollection();
     }
 
 
@@ -88,18 +94,6 @@ class Tag extends BaseEntity
         $this->date_status = $date_status;
         return $this;
     }
-
-    public function getTaskCount(): int|null
-    {
-        return $this->task_count;
-    }
-
-    public function setTaskCount(?int $task_count): static
-    {
-        $this->task_count = $task_count;
-        return $this;
-    }
-
 
     public function getActiveDay(): ?int
     {
@@ -155,6 +149,41 @@ class Tag extends BaseEntity
         return $this;
     }
 
+    /**
+     * @return Collection<int, User>
+     */
+
+    /**
+     * @return Collection<int, TagTask>
+     */
+    public function getTagTasks(): Collection
+    {
+        return $this->tagTasks;
+    }
+
+    public function addTagTask(TagTask $tagTask): static
+    {
+        if (!$this->tagTasks->contains($tagTask)) {
+            $this->tagTasks->add($tagTask);
+            $tagTask->setTag($this);
+        }
+
+        return $this;
+    }
+
+    public function removeTagTask(TagTask $tagTask): static
+    {
+        if ($this->tagTasks->removeElement($tagTask)) {
+            // set the owning side to null (unless already changed)
+            if ($tagTask->getTag() === $this) {
+                $tagTask->setTag(null);
+            }
+        }
+
+        return $this;
+    }
+   
+  
 
 
 }

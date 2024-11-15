@@ -991,20 +991,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function getSampleEventBaseData(string $type): array
     {
-        $users = $this->retrieveEntities("user", $this);
+       
         $sections = $this->retrieveEntities("section", $this);
         //! on fait cette verification  pour "php bin/console doctrine:fixtures:load --append"
         if (empty($sections)) {
             $sections = $this->em->getRepository(Section::class)->findAll();
         }
         return [
-            "description" => $this->faker->sentence,
-            "title"       => $this->faker->sentence,
-            "isImportant" => $this->faker->boolean,
             "side"        => $this->faker->randomElement(['kitchen', 'office']),
             "type"        => $type,
-            "createdBy"   => $this->faker->randomElement($users)->getFullName(),
-            "updatedBy"   => $this->faker->randomElement($users)->getFullName(),
             "section"     => $sections[array_rand($sections)],
         ];
     }
@@ -1017,13 +1012,14 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
      */
     public function setSampleEventBase(Event $event, array $data): Event
     {
+        $users = $this->em->getRepository(User::class)->findAll();
         return $event
-            ->setDescription($data[ "description" ])
-            ->setIsImportant($data[ "isImportant" ])
+            ->setDescription($this->faker->sentence)
+            ->setIsImportant($this->faker->boolean)
             ->setSide($data[ "side" ])
-            ->setTitle($data[ "title" ])
-            ->setCreatedBy($data[ "createdBy" ])
-            ->setUpdatedBy($data[ "updatedBy" ])
+            ->setTitle($this->faker->sentence)
+            ->setCreatedBy($this->faker->randomElement($users)->getFullName())
+            ->setUpdatedBy($this->faker->randomElement($users)->getFullName())
             ->setType($data[ "type" ])
             ->setSection($data[ "section" ]);
     }
@@ -1040,13 +1036,13 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $timestamps = $this->faker->createTimeStamps('-15 days', 'now');
         $createdAt = $timestamps[ 'createdAt' ];
         $updatedAt = $timestamps[ 'updatedAt' ];
-        $nowDayOnly = DateTimeImmutable::createFromFormat('Y-m-d', (new DateTimeImmutable('now'))->format('Y-m-d'));
-        $dueDate = $nowDayOnly->modify("+{$day} days");
+        $now = DateTimeImmutable::createFromFormat('Y-m-d', (new DateTimeImmutable('now'))->format('Y-m-d'));
+        $dueDate = $now->modify("+{$day} days");
 
-        $activeDayInt = (int) $nowDayOnly->diff($dueDate)->format('%r%a');
+        $activeDayInt = (int) $now->diff($dueDate)->format('%r%a');
         $activeDay = ($activeDayInt >= -3 && $activeDayInt <= 7) ? $activeDayInt : null;
 
-        $dueDateDiff = (int) $nowDayOnly->diff($dueDate)->format('%r%a');
+        $dueDateDiff = (int) $now->diff($dueDate)->format('%r%a');
         $dateStatus = $dueDateDiff >= -3 && $dueDateDiff <= 7 ? "activeDayRange"
             : ($dueDateDiff >= -30 && $dueDateDiff < -3 ? "past" : "future");
 

@@ -5,6 +5,7 @@ namespace App\DataFixtures\AppFixtures;
 use App\Entity\Event\Event;
 use App\Entity\Event\Tag;
 use App\Entity\Event\TagInfo;
+use App\Entity\Event\TagTask;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 
@@ -67,8 +68,7 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
     private function setInfoTagCount(Tag $tag, Event $event): void
     {
         $tag
-            ->setUpdatedAt($event->getUpdatedAt())
-            ->setTaskCount(null);
+            ->setUpdatedAt($event->getUpdatedAt());
 
         if ($tag->getId() === null) {
             $this->em->persist($tag);
@@ -78,7 +78,7 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
         // je récupère les users avec lesquels l'info a été partagée et pour chacun on vérifie si l'info est non lue, dans ce cas on imcrémente de 1 le tag associé.
         $sharedWith = $event->getInfo()->getSharedWith();
         $users = [];
-        foreach ( $sharedWith as $userInfo) {
+        foreach ($sharedWith as $userInfo) {
 
             if (!$userInfo->isRead()) {
                 $users[] = $userInfo->getUser();
@@ -87,16 +87,14 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
 
         // pour chaque user je cree un tag info en vérifiant que ce tag info n'existe pas déjà.
         foreach ($users as $user) {
-
-            $tagInfo = $this->em->getRepository(TagInfo::class)->findOneByUserAndTag($user, $tag);
+            $tagInfo = $this->em->getRepository(TagInfo::class)->findOneByUserAndTag_info($user, $tag);
             if ($tagInfo) {
                 $count = $tagInfo->getUnreadInfoCount();
                 $count++;
                 $tagInfo->setUnreadInfoCount($count);
                 $tagInfo->setUpdatedAt($event->getCreatedAt());
             } else {
-                $tagInfo = new TagInfo();
-                $tagInfo
+                $tagInfo = (new TagInfo())
                     ->setUser($user)
                     ->setTag($tag)
                     ->setUnreadInfoCount(1)
@@ -111,26 +109,70 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
         $this->em->flush();
     }
 
+    /**
+     * Met à jour le compteur des tâches associées à un tag pour chaque utilisateur.
+     *
+     * Cette méthode gère l'association entre une tâche d'événement et un tag. 
+     * Pour chaque utilisateur avec lequel la tâche est partagée, elle met à jour 
+     * ou crée un enregistrement `TagTask` :
+     * - Si une entité `TagTask` existe déjà pour l'utilisateur et le tag, 
+     *   son compteur est incrémenté ou décrémenté selon le statut de la tâche.
+     * - Si aucune entité `TagTask` n'existe, une nouvelle est créée avec un compteur initialisé à 1.
+     *
+     * @param Tag $tag L'entité Tag à associer ou mettre à jour.
+     * @param Event $event L'entité Event contenant les détails de la tâche.
+     * 
+     *
+     * @return void
+     */
     private function setTaskTagCount(Tag $tag, Event $event): void
     {
-        // Récupérer le compteur actuel, ou initialiser à zéro si nul
-        $count = $tag->getTaskCount() ?? 0;
+        $tag->setUpdatedAt($event->getUpdatedAt());
 
-        // Vérifier le statut de la tâche de l'événement
-        $statut = $event->getTask()->getTaskStatus();
-        // Choisir si on décrémente pour unrealised ou on incrémente pour tout
-        if ($statut !== "unrealised") {
-            $count++;
-        } else {
-            $count = max(0, $count - 1); // Décrémenter uniquement si nécessaire
+        // Persist le tag si ce dernier n'a pas encore été sauvegardé en base.
+        if ($tag->getId() === null) {
+            $this->em->persist($tag);
+            $this->em->flush(); // Flush pour générer un ID pour le tag
         }
 
-        $tag->setTaskCount($count)
-            ->setUpdatedAt($event->getUpdatedAt());
-        $this->em->persist($tag);
+        // Récupère les utilisateurs associés à la tâche.
+        $users = $event->getTask()->getSharedWith();
+
+        // Met à jour ou crée un TagTask pour chaque utilisateur.
+        foreach ($users as $user) {
+            // Recherche une association existante entre le tag et l'utilisateur.
+           
+            $tagTask = $this->em->getRepository(TagTask::class)->findOneByUserAndTag_task($user, $tag);
+
+            if ($tagTask) {
+                // Mise à jour du compteur si l'entité existe.
+                $count = $tagTask->getTagCount();
+                $status = $event->getTask()->getTaskStatus();
+
+                // Incrémente ou décrémente selon le statut.
+                if ($status !== "unrealised") {
+                    $count++;
+                } else {
+                    $count = max(0, $count - 1); // Assure que le compteur ne passe pas en dessous de 0.
+                }
+                $tagTask->setTagCount($count);
+                $tagTask->setUpdatedAt($event->getCreatedAt());
+            } else {
+                // Création d'une nouvelle entité si aucune association n'existe.
+                $tagTask = (new TagTask())
+                    ->setUser($user)
+                    ->setTag($tag)
+                    ->setTagCount(1)
+                    ->setCreatedAt($event->getCreatedAt())
+                    ->setUpdatedAt($event->getCreatedAt());
+                $this->em->persist($tagTask);
+                $tag->addTagTask($tagTask);
+            }
+        }
+
+        // Sauvegarde toutes les modifications en base.
         $this->em->flush();
     }
-
 
 
     public function getDependencies(): array
