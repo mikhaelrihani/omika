@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20241115161926 extends AbstractMigration
+final class Version20241116180717 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -140,7 +140,7 @@ final class Version20241115161926 extends AbstractMigration
         $this->addSql('ALTER TABLE supplier_delivery_day ADD CONSTRAINT FK_A866D56D17D3B8A8 FOREIGN KEY (delivery_day_id) REFERENCES delivery_day (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE tag_info ADD CONSTRAINT FK_25868EE1BAD26311 FOREIGN KEY (tag_id) REFERENCES tag (id)');
         $this->addSql('ALTER TABLE tag_info ADD CONSTRAINT FK_25868EE1A76ED395 FOREIGN KEY (user_id) REFERENCES user (id)');
-        $this->addSql('ALTER TABLE tag_task ADD CONSTRAINT FK_BC716493BAD26311 FOREIGN KEY (tag_id) REFERENCES tag (id)');
+        $this->addSql('ALTER TABLE tag_task ADD CONSTRAINT FK_BC716493BAD26311 FOREIGN KEY (tag_id) REFERENCES tag (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE tag_task ADD CONSTRAINT FK_BC716493A76ED395 FOREIGN KEY (user_id) REFERENCES user (id)');
         $this->addSql('ALTER TABLE user ADD CONSTRAINT FK_8D93D649A89DB457 FOREIGN KEY (business_id) REFERENCES business (id)');
         $this->addSql('ALTER TABLE user ADD CONSTRAINT FK_8D93D649BC3F045D FOREIGN KEY (user_login_id) REFERENCES user_login (id)');
