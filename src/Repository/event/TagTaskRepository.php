@@ -27,14 +27,15 @@ class TagTaskRepository extends ServiceEntityRepository
      */
     public function findOneByUserAndTag_task(User $user, Tag $tag): ?TagTask
     {
-        return $this->createQueryBuilder('t')
-            ->andWhere('t.user = :user')
-            ->andWhere('t.tag = :tag')
+        return $this->createQueryBuilder('tt')
+            ->andWhere('tt.user = :user')
+            ->andWhere('tt.tag = :tag')
             ->setParameter('user', $user)
             ->setParameter('tag', $tag)
             ->getQuery()
             ->getOneOrNullResult();
     }
+    
     //    /**
     //     * @return TagTask[] Returns an array of TagTask objects
     //     */

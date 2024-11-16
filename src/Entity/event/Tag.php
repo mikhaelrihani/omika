@@ -3,7 +3,6 @@
 namespace App\Entity\Event;
 
 use App\Entity\BaseEntity;
-use App\Entity\User\User;
 use App\Repository\Event\TagRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -35,7 +34,7 @@ class Tag extends BaseEntity
     /**
      * @var Collection<int, TagInfo>
      */
-    #[ORM\OneToMany(targetEntity: TagInfo::class, mappedBy: 'tag', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: TagInfo::class, mappedBy: 'tag', cascade:["persist", "remove"], orphanRemoval: true)]
     private Collection $tagInfos;
 
     #[ORM\Column(length: 255)]
@@ -44,7 +43,7 @@ class Tag extends BaseEntity
     /**
      * @var Collection<int, TagTask>
      */
-    #[ORM\OneToMany(targetEntity: TagTask::class, mappedBy: 'tag', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: TagTask::class, mappedBy: 'tag', cascade:["persist", "remove"], orphanRemoval: true)]
     private Collection $tagTasks;
 
 

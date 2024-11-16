@@ -15,8 +15,8 @@ class TagTask extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'tagTasks')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\ManyToOne(targetEntity: Tag::class, inversedBy: 'tagTasks')]
+    #[ORM\JoinColumn(nullable: false, onDelete: "CASCADE")]
     private ?Tag $tag = null;
 
     #[ORM\ManyToOne]

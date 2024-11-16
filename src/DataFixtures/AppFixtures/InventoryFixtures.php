@@ -23,7 +23,7 @@ class InventoryFixtures extends BaseFixtures implements DependentFixtureInterfac
         $this->createKitchensSpaces();
         $this->createRooms();
         $this->createRoomProducts();
-        $this->createInventories(20);
+        $this->createInventories(10);
     }
 
     /**

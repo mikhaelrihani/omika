@@ -28,8 +28,11 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
         $events = $this->retrieveEntities("event", $this);
 
         foreach ($events as $event) {
-            // le seul event qui n'interagit pas avec un tag est un event info qui a été lu par tous les users. 
-            if (!$event->getInfo() || !$event->getInfo()->isFullyRead()) {
+            // le seul event qui n'interagit pas avec un tag est un event info qui a été lu par tous les users.
+
+            if ($event->getInfo() && $event->getInfo()->isFullyRead()) {
+                continue;
+            } else {
 
                 $day = $event->getDueDate();
                 $side = $event->getSide();
@@ -50,10 +53,14 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
                         ->setSide($side);
 
                     $this->em->persist($tag);
+
                 }
+                $this->em->flush();
                 $this->updateTagCount($tag, $event);
             }
+
         }
+
     }
 
 
@@ -69,12 +76,7 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
     {
         $tag
             ->setUpdatedAt($event->getUpdatedAt());
-
-        if ($tag->getId() === null) {
-            $this->em->persist($tag);
-            $this->em->flush(); // Flush pour générer un ID pour le tag en base pour la methode "findOneByUserAndTag"
-        }
-
+        // un tag est unique a sa section/day/side et est partage entre differents user
         // je récupère les users avec lesquels l'info a été partagée et pour chacun on vérifie si l'info est non lue, dans ce cas on imcrémente de 1 le tag associé.
         $sharedWith = $event->getInfo()->getSharedWith();
         $users = [];
@@ -85,7 +87,7 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
             }
         }
 
-        // pour chaque user je cree un tag info en vérifiant que ce tag info n'existe pas déjà.
+        // pour chaque user j associe le tag partagé avec un tag info en vérifiant que le tag info n'existe pas déjà, dans ce ca son cree la relation taginfo
         foreach ($users as $user) {
             $tagInfo = $this->em->getRepository(TagInfo::class)->findOneByUserAndTag_info($user, $tag);
             if ($tagInfo) {
@@ -102,6 +104,7 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
                     ->setUpdatedAt($event->getCreatedAt());
                 $this->em->persist($tagInfo);
                 $tag->addTagInfo($tagInfo);
+
             }
 
 
@@ -129,19 +132,13 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
     {
         $tag->setUpdatedAt($event->getUpdatedAt());
 
-        // Persist le tag si ce dernier n'a pas encore été sauvegardé en base.
-        if ($tag->getId() === null) {
-            $this->em->persist($tag);
-            $this->em->flush(); // Flush pour générer un ID pour le tag
-        }
-
         // Récupère les utilisateurs associés à la tâche.
         $users = $event->getTask()->getSharedWith();
 
         // Met à jour ou crée un TagTask pour chaque utilisateur.
         foreach ($users as $user) {
             // Recherche une association existante entre le tag et l'utilisateur.
-           
+
             $tagTask = $this->em->getRepository(TagTask::class)->findOneByUserAndTag_task($user, $tag);
 
             if ($tagTask) {

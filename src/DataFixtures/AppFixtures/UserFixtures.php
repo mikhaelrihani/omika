@@ -22,7 +22,7 @@ use Symfony\Component\Uid\Uuid;
 class UserFixtures extends BaseFixtures
 {
 
-    private array $businessEntities;
+    private ?array $businessEntities = null;
     /**
      * @var array $pictures Array of pictures retrieved for setting user avatars.
      */
