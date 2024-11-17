@@ -11,6 +11,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: EventTaskRepository::class)]
+#[ORM\HasLifecycleCallbacks]
 class EventTask extends BaseEntity
 {
     #[ORM\Id]
@@ -32,6 +33,13 @@ class EventTask extends BaseEntity
     #[ORM\JoinTable(name: 'user_task')]
     private Collection $sharedWith;
 
+    /**
+     * Count of users associated with this task.
+     * This value is updated whenever users are added or removed from the sharedWith collection.
+     *
+     * @var int|null
+     * @ORM\Column
+     */
     #[ORM\Column]
     private ?int $sharedWithCount = null;
 
@@ -65,20 +73,33 @@ class EventTask extends BaseEntity
     {
         return $this->sharedWith;
     }
-
+    /**
+     * Adds a user to the sharedWith collection.
+     * Synchronizes the sharedWithCount property after addition.
+     *
+     * @param User $user The user to associate with this task.
+     * @return static
+     */
     public function addsharedWith(User $user): static
     {
         if (!$this->sharedWith->contains($user)) {
             $this->sharedWith->add($user);
+            $this->syncCounts();
         }
 
         return $this;
     }
-
+    /**
+     * Removes a user from the sharedWith collection.
+     * Synchronizes the sharedWithCount property after removal.
+     *
+     * @param User $user The user to disassociate from this task.
+     * @return static
+     */
     public function removeSharedWith(User $user): static
     {
         $this->sharedWith->removeElement($user);
-
+        $this->syncCounts();
         return $this;
     }
 
@@ -98,6 +119,24 @@ class EventTask extends BaseEntity
     {
         return $this->event;
     }
-    
 
+    /**
+     * Lifecycle callback triggered before the entity is removed.
+     * Clears the sharedWith collection to clean up relations in the database.
+     * Synchronizes the sharedWithCount property to maintain consistency.
+     *
+     * @ORM\PreRemove
+     */
+    #[ORM\PreRemove]
+    public function cleanupRelations(): void
+    {
+        if ($this->sharedWith !== null) {
+            $this->sharedWith->clear();
+            $this->syncCounts(); // Maintenir les compteurs cohérents
+        }
+    }
+    public function syncCounts(): void
+    {
+        $this->sharedWithCount = $this->sharedWith->count();
+    }
 }

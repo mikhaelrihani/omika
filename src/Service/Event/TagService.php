@@ -227,4 +227,10 @@ class TagService
             return $this->responseService::error('An error occurred while decrementing the tag counter: ' . $e->getMessage(), null, 'TAG_DECREMENT_FAILED');
         }
     }
+
+    public function removeUserFromTags(User $user): void
+    {
+       
+        $this->em->flush();
+    }
 }

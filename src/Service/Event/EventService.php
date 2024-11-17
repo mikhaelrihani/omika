@@ -15,6 +15,7 @@ use App\Service\TagService;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Exception\ORMException;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 class EventService
@@ -189,65 +190,137 @@ class EventService
         }
     }
 
-    public function deleteEvent($event, $user)
+    /**
+     * Deletes an event and decrements its related tag counters.
+     * 
+     * This method removes the event from the database and decrements the counters
+     * of tags associated with the event.
+     *
+     * @param Event $event The event to be deleted.
+     * @param User $user The user requesting the deletion (used for tag counter adjustment).
+     * 
+     * @return ResponseService The response message indicating success or failure.
+     */
+    public function deleteEventandTagsRelated($event, $user)
     {
-        $this->em->remove($event);//! verifier l'effacement des relations
-        $response = $this->tagService->decrementTagCounterByOne($event, $user, false);
-        $this->em->flush();
-        return ResponseService::success('Event deleted successfully and ' . $response->getMessage());
+        try {
+            $this->em->remove($event);
+            $response = $this->tagService->decrementTagCounterByOne($event, $user, false);
+            $this->em->flush();
+            return ResponseService::success('Event deleted successfully and ' . $response->getMessage());
+        } catch (ORMException $e) {
+            return ResponseService::error('An error occurred while deleting the event: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            return ResponseService::error('An unexpected error occurred: ' . $e->getMessage());
+        }
     }
 
-    public function removeUserFromAllEventInfos(User $user): void
+    /**
+     * Removes the user from all EventInfos they are associated with.
+     * 
+     * This method updates the UserInfo entities, removes the user from the 
+     * sharedWith collection of EventInfo, and deletes the related EventInfo 
+     * if no other users are associated with it.
+     *
+     * @param User $user The user to be removed from all EventInfos.
+     * 
+     * @return void
+     */
+    public function removeUserFromAllEventInfos(User $user): ResponseService
     {
-        // Récupérer tous les UserInfo liés à l'utilisateur
-        $userInfos = $this->userInfoRepository->findBy(['user' => $user]);
+        try {
+            // Récupérer tous les UserInfo liés à l'utilisateur
+            $userInfos = $this->userInfoRepository->findBy(['user' => $user]);
 
-        // Pour chaque UserInfo, on met à jour l'EventInfo et l'utilisateur
-        foreach ($userInfos as $userInfo) {
-            $eventInfo = $userInfo->getEventInfo();
+            // Pour chaque UserInfo, on met à jour l'EventInfo et l'utilisateur
+            foreach ($userInfos as $userInfo) {
+                $eventInfo = $userInfo->getEventInfo();
 
-            // Si l'utilisateur a marqué l'info comme lue, on met à jour le compteur des utilisateurs ayant lu l'info
-            if ($userInfo->isRead()) {
-                $eventInfo->setUserReadInfoCount($eventInfo->getUserReadInfoCount() - 1);
-            }
-            // Retire le UserInfo de la collection sharedWith de l'EventInfo. 
-            // La méthode removeSharedWith appelle syncCounts pour mettre à jour les compteurs.
-            $eventInfo->removeSharedWith($userInfo);
-            // Suppression explicite du UserInfo, car orphanRemoval n'est plus activé
-            $this->em->remove($userInfo);
-            // Si aucune autre personne n'est associée à cet EventInfo, le supprimer
-            if ($eventInfo->getSharedWithCount() === 0) {
-                $this->em->remove($eventInfo);
-                // Si un Event est lié à cet EventInfo, le supprimer aussi
-                $event = $eventInfo->getEvent();
-                if ($event !== null) {
-                    $this->em->remove($event);
+                // Si l'utilisateur a marqué l'info comme lue, on met à jour le compteur des utilisateurs ayant lu l'info
+                if ($userInfo->isRead()) {
+                    $eventInfo->setUserReadInfoCount($eventInfo->getUserReadInfoCount() - 1);
+                }
+                // Retire le UserInfo de la collection sharedWith de l'EventInfo. 
+                // La méthode removeSharedWith appelle syncCounts pour mettre à jour les compteurs.
+                $eventInfo->removeSharedWith($userInfo);
+                // Suppression explicite du UserInfo, car orphanRemoval n'est plus activé
+                $this->em->remove($userInfo);
+                // Si aucune autre personne n'est associée à cet EventInfo, le supprimer
+                if ($eventInfo->getSharedWithCount() === 0) {
+                    $event = $eventInfo->getEvent();
+                    if ($event !== null) {
+                        $this->em->remove($event);
+                    }
                 }
             }
+            $this->em->flush();
+            return ResponseService::success('User removed from all EventInfos successfully');
+        } catch (ORMException $e) {
+            return ResponseService::error('An error occurred while removing the user from EventInfos: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            return ResponseService::error('An unexpected error occurred while removing the user: ' . $e->getMessage());
         }
-        $this->em->flush();
     }
 
-    public function removeUserFromAllEventTasks(User $user): void
+    /**
+     * Removes the user from all EventTasks they are associated with.
+     * 
+     * This method removes the user from the sharedWith collection of each EventTask,
+     * updates the sharedWithCount, and deletes the EventTask if no other users 
+     * are associated with it. If the EventTask is associated with an Event, 
+     * the Event will also be removed if no tasks are associated.
+     *
+     * @param User $user The user to be removed from all EventTasks.
+     * 
+     * @return void
+     */
+    public function removeUserFromAllEventTasks(User $user): ResponseService
     {
-        // Récupérer toutes les tâches associées à cet utilisateur
-        $eventTasks = $this->eventTaskRepository->findByUserInSharedWith($user);
+        try {
+            // Récupérer toutes les tâches associées à cet utilisateur
+            $eventTasks = $this->eventTaskRepository->findByUserInSharedWith($user);
 
-        foreach ($eventTasks as $eventTask) {
-            // Retirer l'utilisateur de la collection sharedWith
-            $eventTask->removeSharedWith($user);
+            foreach ($eventTasks as $eventTask) {
+                // Retirer l'utilisateur de la collection sharedWith
+                $eventTask->removeSharedWith($user);
 
-            // Mettre à jour le compteur partagé
-            $eventTask->setSharedWithCount($eventTask->getSharedWith()->count());
+                // Mettre à jour le compteur partagé
+                $eventTask->setSharedWithCount($eventTask->getSharedWith()->count());
 
-            // Si aucune autre personne n'est associée à cette tâche, supprimer complètement la tâche
-            if ($eventTask->getSharedWithCount() === 0) {
-                $this->em->remove($eventTask);
+                // Si aucune autre personne n'est associée à cette tâche, supprimer complètement la tâche et son event lié
+                if ($eventTask->getSharedWithCount() === 0) {
+                    $this->em->remove($eventTask);
+                }
             }
+            $this->em->flush();
+            return ResponseService::success('User removed from all EventTasks successfully');
+        } catch (ORMException $e) {
+            return ResponseService::error('An error occurred while removing the user from EventTasks: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            return ResponseService::error('An unexpected error occurred while removing the user: ' . $e->getMessage());
         }
+    }
 
-        // Enregistrer toutes les modifications dans la base de données
-        $this->em->flush();
+    /**
+     * Removes the user from all EventInfos and EventTasks they are associated with.
+     * 
+     * This method calls both `removeUserFromAllEventInfos()` and 
+     * `removeUserFromAllEventTasks()` to ensure that the user is removed from 
+     * all Event-related data.
+     *
+     * @param User $user The user to be removed from all Events.
+     * 
+     * @return void
+     */
+    public function removeUserFromAllEvents(User $user): ResponseService
+    {
+        try {
+            $this->removeUserFromAllEventInfos($user);
+            $this->removeUserFromAllEventTasks($user);
+            return ResponseService::success('User removed from all events successfully');
+        } catch (\Exception $e) {
+            return ResponseService::error('An unexpected error occurred while removing the user from all events: ' . $e->getMessage());
+        }
     }
 
 }
