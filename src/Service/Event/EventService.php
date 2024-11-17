@@ -6,8 +6,12 @@ use App\Entity\Event\Event;
 use App\Entity\Event\EventInfo;
 use App\Entity\Event\EventTask;
 use App\Entity\Event\UserInfo;
+use App\Entity\User\User;
 use App\Repository\Event\EventRepository;
+use App\Repository\Event\EventTaskRepository;
+use App\Repository\Event\UserInfoRepository;
 use App\Service\ResponseService;
+use App\Service\TagService;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -22,7 +26,11 @@ class EventService
     public function __construct(
         protected EventRepository $eventRepository,
         protected EntityManagerInterface $em,
-        protected ParameterBagInterface $parameterBag
+        protected ParameterBagInterface $parameterBag,
+        protected TagService $tagService,
+        protected UserInfoRepository $userInfoRepository,
+        protected EventTaskRepository $eventTaskRepository
+
     ) {
         $this->now = DateTimeImmutable::createFromFormat('Y-m-d ', (new DateTimeImmutable())->format('Y-m-d'));
         $this->activeDayStart = $this->parameterBag->get('active_day_start');
@@ -180,4 +188,61 @@ class EventService
             $info->addSharedWith($sharedInfo);
         }
     }
+
+    public function deleteEvent($event, $user)
+    {
+        $this->em->remove($event);//! verifier l'effacement des relations
+        $response = $this->tagService->decrementTagCounterByOne($event, $user, false);
+        $this->em->flush();
+        return ResponseService::success('Event deleted successfully and ' . $response->getMessage());
+    }
+
+    public function removeUserFromAllEventInfos(User $user): void
+    {
+        // Récupérer tous les UserInfo liés à l'utilisateur
+        $userInfos = $this->userInfoRepository->findBy(['user' => $user]);
+
+        // Pour chaque UserInfo, on met à jour l'EventInfo et l'utilisateur
+        foreach ($userInfos as $userInfo) {
+            $eventInfo = $userInfo->getEventInfo();
+
+            // Si l'utilisateur a marqué l'info comme lue, on met à jour le compteur des utilisateurs ayant lu l'info
+            if ($userInfo->isRead()) {
+                $eventInfo->setUserReadInfoCount($eventInfo->getUserReadInfoCount() - 1);
+            }
+            // Retire le UserInfo de la collection sharedWith de l'EventInfo. 
+            // OrphanRemoval supprime automatiquement l'entité UserInfo de la base de données. 
+            // La méthode removeSharedWith appelle syncCounts pour mettre à jour les compteurs.
+            $eventInfo->removeSharedWith($userInfo);
+            
+            // Si aucune autre personne n'est associée à cet EventInfo, le supprimer
+            if ($eventInfo->getSharedWithCount() === 0) {
+                $this->em->remove($eventInfo);
+            }
+        }
+        $this->em->flush();
+    }
+
+    public function removeUserFromAllEventTasks(User $user): void
+    {
+        // Récupérer toutes les tâches associées à cet utilisateur
+        $eventTasks = $this->eventTaskRepository->findByUserInSharedWith($user);
+
+        foreach ($eventTasks as $eventTask) {
+            // Retirer l'utilisateur de la collection sharedWith
+            $eventTask->removeSharedWith($user);
+
+            // Mettre à jour le compteur partagé
+            $eventTask->setSharedWithCount($eventTask->getSharedWith()->count());
+
+            // Si aucune autre personne n'est associée à cette tâche, supprimer complètement la tâche
+            if ($eventTask->getSharedWithCount() === 0) {
+                $this->em->remove($eventTask);
+            }
+        }
+
+        // Enregistrer toutes les modifications dans la base de données
+        $this->em->flush();
+    }
+
 }

@@ -18,6 +18,9 @@ class EventTask extends BaseEntity
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
+    #[ORM\OneToOne(mappedBy: 'task', cascade: ['remove'], orphanRemoval: true)]
+    private ?Event $event = null;
+
     #[ORM\Column(length: 50, nullable: false)]
     #[Assert\NotBlank(message: "Task status should not be blank.")]
     private ?string $taskStatus = null;
@@ -32,7 +35,7 @@ class EventTask extends BaseEntity
     #[ORM\Column]
     private ?int $sharedWithCount = null;
 
-   
+
     public function __construct()
     {
         parent::__construct();
@@ -91,6 +94,10 @@ class EventTask extends BaseEntity
         return $this;
     }
 
-   
+    public function getEvent(): ?Event
+    {
+        return $this->event;
+    }
+    
 
 }

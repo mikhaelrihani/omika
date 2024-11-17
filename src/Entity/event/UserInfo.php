@@ -15,10 +15,10 @@ class UserInfo extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\ManyToOne(orphanRemoval: true)]
+    #[ORM\JoinColumn(nullable: true)] // Doit être nullable pour permettre de mettre user à null
     private ?User $user = null;
-
+    
     #[ORM\ManyToOne(inversedBy: 'sharedWith')]
     #[ORM\JoinColumn(nullable: false)]
     private ?EventInfo $eventInfo = null;
@@ -26,7 +26,7 @@ class UserInfo extends BaseEntity
     #[ORM\Column]
     private ?bool $isRead = null;
 
-    
+
     public function getId(): ?int
     {
         return $this->id;
@@ -68,7 +68,7 @@ class UserInfo extends BaseEntity
         return $this;
     }
 
-    
 
-   
+
+
 }

@@ -14,7 +14,8 @@ class TagService
     public function __construct(
         protected EntityManagerInterface $em,
         protected ResponseService $responseService // Injecter ResponseService pour l'utiliser dans toute la classe
-    ) {}
+    ) {
+    }
 
     /**
      * Crée un tag pour un événement donné et met à jour son compteur de tags.
@@ -177,10 +178,11 @@ class TagService
      *
      * @param Event $event L'événement pour lequel le compteur de tags doit être décrémenté.
      * @param User $user L'utilisateur associé au compteur de tags.
+     * @param bool $flush Indique si l'entité doit être flushée après la mise à jour.
      *
      * @return ResponseService
      */
-    public function decrementTagCounterByOne(Event $event, User $user): ResponseService
+    public function decrementTagCounterByOne(Event $event, User $user, $flush = true): ResponseService
     {
         try {
             $day = $event->getDueDate();
@@ -216,7 +218,9 @@ class TagService
                 $tagInfo->setUpdatedAt($event->getCreatedAt());
             }
 
-            $this->em->flush();
+            if ($flush) {
+                $this->em->flush(); // Flush si explicitement demandé
+            }
 
             return $this->responseService::success('Tag count decremented successfully.');
         } catch (\Exception $e) {

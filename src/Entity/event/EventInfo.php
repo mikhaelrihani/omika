@@ -16,6 +16,10 @@ class EventInfo extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
+
+    #[ORM\OneToOne(targetEntity: Event::class, mappedBy: 'eventInfo', cascade: ['remove'], orphanRemoval: true)]
+    private ?Event $event = null;
+
     #[ORM\Column]
     private ?int $userReadInfoCount = null;
 
@@ -34,7 +38,7 @@ class EventInfo extends BaseEntity
     public function __construct()
     {
         parent::__construct();
-        $this->sharedWith = new ArrayCollection(); 
+        $this->sharedWith = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -88,6 +92,7 @@ class EventInfo extends BaseEntity
         if (!$this->sharedWith->contains($sharedWith)) {
             $this->sharedWith->add($sharedWith);
             $sharedWith->setEventInfo($this);
+            $this->syncCounts(); // Synchroniser tous les compteurs
         }
 
         return $this;
@@ -96,14 +101,26 @@ class EventInfo extends BaseEntity
     public function removeSharedWith(UserInfo $sharedWith): static
     {
         if ($this->sharedWith->removeElement($sharedWith)) {
-            // set the owning side to null (unless already changed)
+            // Dissocier proprement le UserInfo de l'EventInfo
             if ($sharedWith->getEventInfo() === $this) {
                 $sharedWith->setEventInfo(null);
             }
+            $this->syncCounts(); // Synchroniser tous les compteurs
         }
 
         return $this;
     }
 
-  
+    public function syncCounts(): void
+    {
+        $this->sharedWithCount = $this->sharedWith->count();
+        $this->userReadInfoCount = $this->sharedWith->filter(fn(UserInfo $userInfo) => $userInfo->isRead())->count();
+        $this->isFullyRead = $this->userReadInfoCount === $this->sharedWithCount;
+    }
+
+    public function getEvent(): ?Event
+    {
+        return $this->event;
+    }
+
 }
