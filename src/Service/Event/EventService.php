@@ -211,13 +211,18 @@ class EventService
                 $eventInfo->setUserReadInfoCount($eventInfo->getUserReadInfoCount() - 1);
             }
             // Retire le UserInfo de la collection sharedWith de l'EventInfo. 
-            // OrphanRemoval supprime automatiquement l'entité UserInfo de la base de données. 
             // La méthode removeSharedWith appelle syncCounts pour mettre à jour les compteurs.
             $eventInfo->removeSharedWith($userInfo);
-            
+            // Suppression explicite du UserInfo, car orphanRemoval n'est plus activé
+            $this->em->remove($userInfo);
             // Si aucune autre personne n'est associée à cet EventInfo, le supprimer
             if ($eventInfo->getSharedWithCount() === 0) {
                 $this->em->remove($eventInfo);
+                // Si un Event est lié à cet EventInfo, le supprimer aussi
+                $event = $eventInfo->getEvent();
+                if ($event !== null) {
+                    $this->em->remove($event);
+                }
             }
         }
         $this->em->flush();
