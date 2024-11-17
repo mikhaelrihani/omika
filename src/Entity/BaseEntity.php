@@ -9,7 +9,7 @@ use Doctrine\ORM\Mapping\PreUpdate;
 
 #[ORM\MappedSuperclass]
 #[HasLifecycleCallbacks]
-abstract class BaseEntity
+abstract class BaseEntity 
 {
     #[ORM\Column(type: 'datetime_immutable', nullable: false)]
     protected ?\DateTimeImmutable $createdAt = null;

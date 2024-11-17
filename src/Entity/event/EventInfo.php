@@ -31,7 +31,7 @@ class EventInfo extends BaseEntity
      *
      * @var Event|null
      */
-    #[ORM\OneToOne(targetEntity: Event::class, mappedBy: 'eventInfo', cascade: ['remove'], orphanRemoval: true)]
+    #[ORM\OneToOne(targetEntity: Event::class, mappedBy: 'info', cascade: ['remove'], orphanRemoval: true)]
     private ?Event $event = null;
 
     /**

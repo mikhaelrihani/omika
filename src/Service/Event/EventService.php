@@ -221,15 +221,14 @@ class EventService
      * This method updates the UserInfo entities, removes the user from the 
      * sharedWith collection of EventInfo, and deletes the related EventInfo 
      * if no other users are associated with it.
-     *
      * @param User $user The user to be removed from all EventInfos.
-     * 
      * @return void
      */
     public function removeUserFromAllEventInfos(User $user): ResponseService
     {
         try {
             // Récupérer tous les UserInfo liés à l'utilisateur
+            /** @var UserInfo[] $userInfos */
             $userInfos = $this->userInfoRepository->findBy(['user' => $user]);
 
             // Pour chaque UserInfo, on met à jour l'EventInfo et l'utilisateur
@@ -273,12 +272,13 @@ class EventService
     {
         try {
             // Récupérer toutes les tâches associées à cet utilisateur
+
             $eventTasks = $this->eventTaskRepository->findByUserInSharedWith($user);
 
             foreach ($eventTasks as $eventTask) {
                 // Retirer l'utilisateur de la collection sharedWith
                 $eventTask->removeSharedWith($user);
-               
+
                 // Mettre à jour le compteur partagé
                 $eventTask->setSharedWithCount($eventTask->getSharedWith()->count());
 
@@ -317,5 +317,62 @@ class EventService
             return ResponseService::error('An unexpected error occurred while removing the user from all events: ' . $e->getMessage());
         }
     }
+
+
+    /**
+     * Filters events from the database based on one or more criteria: dueDate, side, section, or status.
+     * 
+     * This method directly queries the database using the provided parameters. If no criteria
+     * are specified, all events are returned. Returns a structured response indicating
+     * success or failure.
+     *
+     * **Warning:** Since this method queries the database, frequent use with complex filters
+     * may impact performance. Consider caching results for recurring queries if necessary.
+     *
+     * @param DateTimeImmutable|null $dueDate The due date to filter by, or null to ignore.
+     * @param string|null $side The side to filter by, or null to ignore.
+     * @param string|null $section The section to filter by, or null to ignore.
+     * @param string|null $status The task status to filter by, or null to ignore.
+     * 
+     * @return ResponseService A ResponseService object containing the filtered events or an error message.
+     */
+    public function filterEvents(
+        ?DateTimeImmutable $dueDate,
+        ?string $side,
+        ?string $section,
+        ?string $status
+    ): ResponseService {
+        try {
+            // Create query builder to build the query dynamically
+            $qb = $this->eventRepository->createQueryBuilder('e');
+
+            if ($dueDate) {
+                $qb->andWhere('e.dueDate = :dueDate')->setParameter('dueDate', $dueDate);
+            }
+            if ($side) {
+                $qb->andWhere('e.side = :side')->setParameter('side', $side);
+            }
+            if ($section) {
+                $qb->andWhere('e.section = :section')->setParameter('section', $section);
+            }
+            if ($status) {
+                $qb->join('e.task', 't')
+                    ->andWhere('t.taskStatus = :status')
+                    ->setParameter('status', $status);
+            }
+
+            // Execute the query to fetch results
+            $filteredEvents = $qb->getQuery()->getResult();
+
+            // Return success response with data
+            return ResponseService::success('Events filtered successfully.', $filteredEvents);
+        } catch (\Exception $e) {
+            // Return error response with exception details
+            return ResponseService::error('An error occurred while filtering events: ' . $e->getMessage());
+        }
+    }
+
+
+
 
 }

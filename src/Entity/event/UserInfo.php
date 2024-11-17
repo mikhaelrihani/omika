@@ -15,7 +15,7 @@ class UserInfo extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-   
+    #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true)] // Doit être nullable pour permettre de mettre user à null
     private ?User $user = null;
     

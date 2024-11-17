@@ -16,6 +16,13 @@ class EventTaskRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, EventTask::class);
     }
+    
+    /**
+     * Finds EventTasks where the given user is in the sharedWith collection.
+     *
+     * @param User $user The user to search for.
+     * @return EventTask[] List of matching EventTasks.
+     */
     public function findByUserInSharedWith(User $user): array
     {
         return $this->createQueryBuilder('et')
@@ -25,6 +32,6 @@ class EventTaskRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
-    
+
 
 }
