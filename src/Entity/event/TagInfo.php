@@ -18,12 +18,13 @@ class TagInfo extends BaseEntity
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'tagInfos')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: false, onDelete: "CASCADE")]
     private ?tag $tag = null;
 
     #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?user $user = null;
+    #[ORM\JoinColumn(nullable: false, onDelete: "CASCADE")]
+    private ?User $user = null;
+    
 
     #[ORM\Column(nullable: true)]
     private ?int $unreadInfoCount = null;

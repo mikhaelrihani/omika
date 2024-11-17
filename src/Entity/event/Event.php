@@ -54,8 +54,8 @@ class Event extends BaseEntity
     #[Assert\NotBlank(message: "Type should not be blank.")]
     private ?string $type = null;
 
-    #[ORM\ManyToOne(targetEntity: Section::class, cascade: ["persist"])]
-    #[ORM\JoinColumn(nullable: true)]
+    #[ORM\ManyToOne(targetEntity: Section::class)]
+    #[ORM\JoinColumn(nullable: false)]
     private ?Section $section = null;
 
 

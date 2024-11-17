@@ -228,9 +228,5 @@ class TagService
         }
     }
 
-    public function removeUserFromTags(User $user): void
-    {
-       
-        $this->em->flush();
-    }
+   
 }

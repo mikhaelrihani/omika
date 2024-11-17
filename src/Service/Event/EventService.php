@@ -201,7 +201,7 @@ class EventService
      * 
      * @return ResponseService The response message indicating success or failure.
      */
-    public function deleteEventandTagsRelated($event, $user)
+    public function removeEventAndUpdateTagCounters($event, $user)
     {
         try {
             $this->em->remove($event);
@@ -235,11 +235,6 @@ class EventService
             // Pour chaque UserInfo, on met à jour l'EventInfo et l'utilisateur
             foreach ($userInfos as $userInfo) {
                 $eventInfo = $userInfo->getEventInfo();
-
-                // Si l'utilisateur a marqué l'info comme lue, on met à jour le compteur des utilisateurs ayant lu l'info
-                if ($userInfo->isRead()) {
-                    $eventInfo->setUserReadInfoCount($eventInfo->getUserReadInfoCount() - 1);
-                }
                 // Retire le UserInfo de la collection sharedWith de l'EventInfo. 
                 // La méthode removeSharedWith appelle syncCounts pour mettre à jour les compteurs.
                 $eventInfo->removeSharedWith($userInfo);
@@ -283,7 +278,7 @@ class EventService
             foreach ($eventTasks as $eventTask) {
                 // Retirer l'utilisateur de la collection sharedWith
                 $eventTask->removeSharedWith($user);
-
+               
                 // Mettre à jour le compteur partagé
                 $eventTask->setSharedWithCount($eventTask->getSharedWith()->count());
 
