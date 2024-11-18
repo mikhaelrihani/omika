@@ -195,23 +195,18 @@ class EventService
      * Removes an event and updates the tag counters for associated users.
      *
      * This method deletes the provided event entity from the database and adjusts
-     * the associated tag counters for a given list of users. It optionally flushes 
-     * the changes to the database after processing.
-     *
+     * the associated tag counters for a given list of users. 
      * @param Event $event The event to be deleted.
-     * @param Collection $users The users associated with the event.
-     * @param bool $flush Whether to flush the changes to the database after processing. Defaults to true.
-     *
      * @return ResponseService A ResponseService object indicating success or failure of the operation.
      *
      * @throws ORMException If a database error occurs during the event removal.
      * @throws \Exception For any unexpected errors during processing.
      */
-    public function removeEventAndUpdateTagCounters(Event $event, Collection $users, bool $flush = true): ResponseService
+    public function removeEventAndUpdateTagCounters(Event $event): ResponseService
     {
         try {
             $this->em->remove($event);
-            $response = $this->tagService->decrementTagCounterByOneForMultipleUsers($event, $users, $flush);
+            $response = $this->tagService->decrementSharedUsersTagCountByOne($event);
             $this->em->flush();
             return ResponseService::success('Event deleted successfully and ' . $response->getMessage());
         } catch (ORMException $e) {
@@ -376,4 +371,37 @@ class EventService
             return ResponseService::error('An error occurred while filtering events: ' . $e->getMessage());
         }
     }
+
+    //! --------------------------------------------------------------------------------------------
+    // late , late pending+2days..., pending late
+    // if past unrealised..
+    // see list of status
+
+    public function handleTagFromUpdatedStatusByUser(Event $event, user $user = null)
+    {
+        if ($event->getType() === "task") {
+            $status = $event->getTask()->getTaskStatus();
+            if ($status === "done") {
+                // the user ticked the task as done from a previous status (todo,pending,late)
+                //! dans le set status penser a mettre en memoire une variable pour le status precedent(undo)
+                $this->tagService->decrementSharedUsersTagCountByOne($event);
+            } else if ($status === "todo") {
+                // the user ticked back the task from done to todo
+                $this->tagService->incrementSharedUsersTagTaskCount($event);
+            }
+        } else if ($event->getType() === "info") {
+            // if the user open the event info page
+            $userInfo = $this->userInfoRepository->findOneBy(["user" => $user, "eventInfo" => $event->getInfo()]);
+            $userInfo->setIsRead(true);
+            $event->getInfo()->syncCounts();
+            $this->tagService->decrementOneUserTagCountByOne($event, $user);
+        }
+        $this->em->flush();
+    }
+
+    //! public function duplicateEvent(Event $originalEvent){
+    // }
+
+    //! public function handleTagFromUpdatedStatusByCron(Event $event){
+    //}
 }

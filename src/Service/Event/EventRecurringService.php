@@ -8,7 +8,6 @@ use App\Repository\Event\EventRecurringRepository;
 use App\Repository\Event\EventRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\BrowserKit\Response;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use App\Service\ResponseService;
 use App\Service\TagService;
@@ -34,8 +33,6 @@ class EventRecurringService
         $this->activeDayEnd = $this->parameterBag->get('active_day_end');
     }
 
-
-
     /**
      * Retrieves child events that are marked as recurring from the database.
      *
@@ -49,270 +46,11 @@ class EventRecurringService
         try {
             $childrens = $this->eventRepository->findBy(["isRecurring" => true]);
             return ResponseService::success('Children events retrieved successfully', ['childrens' => $childrens]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return ResponseService::error('Error retrieving children events: ' . $e->getMessage());
         }
     }
-
-
-    /**
-     * Creates child events for a recurring event and updates associated tags.
-     *
-     * This method generates child events based on the recurrence settings of the given recurring event.
-     * For each child event created, a tag is created or updated using the tag service.
-     *
-     * @param EventRecurring $eventRecurring The recurring event for which children events are to be created.
-     *
-     * @return void
-     */
-    public function createChildrens(EventRecurring $eventRecurring): ResponseService
-    {
-        try {
-            $childrens = $this->handleRecurrenceType($eventRecurring);
-            foreach ($childrens as $child) {
-                $this->tagService->createOrUpdateTag($child);
-            }
-            return ResponseService::success('Recurring event children created successfully', ['childrens' => $childrens]);
-        } catch (\Exception $e) {
-
-            return ResponseService::error(
-                'An error occurred while creating recurring event children: ' . $e->getMessage(),
-                null,
-                'RECURRING_EVENT_CREATION_FAILED'
-            );
-        }
-
-    }
-
-    /**
-     * Gère le type de récurrence de l'événement parent.
-     *
-     * @param EventRecurring $parent L'événement parent récurrent.
-     * @return ResponseService
-     */
-    public function handleRecurrenceType(EventRecurring $parent): ResponseService
-    {
-        try {
-            $recurrenceType = $parent->getRecurrenceType();
-            switch ($recurrenceType) {
-                case "monthDays":
-                    $this->handleMonthDays($parent);
-                    break;
-                case "weekDays":
-                    $this->handleWeekdays($parent);
-                    break;
-                case "periodDates":
-                    $this->handlePeriodDates($parent);
-                    break;
-                case "everyday":
-                    $this->handleEveryday($parent);
-                    break;
-                default:
-                    return ResponseService::error('Recurrence type not found');
-            }
-            return ResponseService::success('Recurrence handled successfully');
-        } catch (\Exception $e) {
-            return ResponseService::error('Error handling recurrence type: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Gère la récurrence par jours de mois.
-     *
-     * @param EventRecurring $parent
-     * @return ResponseService
-     */
-    public function handleMonthDays(EventRecurring $parent): ResponseService
-    {
-        try {
-            $monthDays = $parent->getMonthDays();
-            [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent);
-
-            $currentMonthDate = $earliestCreationDate->modify('first day of this month');
-            $endPeriodDate = $latestCreationDate->modify('first day of next month');
-
-            while ($currentMonthDate <= $endPeriodDate) {
-                foreach ($monthDays as $monthDay) {
-                    $day = $monthDay->getDay();
-                    $dueDate = $currentMonthDate->modify("+{$day} days -1 day");
-
-                    if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
-                        $this->createOneChild($parent, $dueDate);
-                    }
-                }
-                $currentMonthDate = $currentMonthDate->modify('first day of next month');
-            }
-            return ResponseService::success('Month days recurrence handled successfully');
-        } catch (\Exception $e) {
-            return ResponseService::error('Error handling month days recurrence: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Gère la récurrence par jours de la semaine.
-     *
-     * @param EventRecurring $parent
-     * @return ResponseService
-     */
-    public function handleWeekdays(EventRecurring $parent): ResponseService
-    {
-        try {
-            $weekDays = $parent->getWeekDays();
-            [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent);
-
-            $currentWeekDate = $earliestCreationDate->modify('this week');
-
-            while ($currentWeekDate <= $latestCreationDate) {
-                foreach ($weekDays as $weekDay) {
-                    $day = $weekDay->getDay();
-                    $dueDate = $currentWeekDate->modify("+{$day} days -1 day");
-
-                    if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
-                        $this->createOneChild($parent, $dueDate);
-                    }
-                }
-                $currentWeekDate = $currentWeekDate->modify('next week');
-            }
-            return ResponseService::success('Weekdays recurrence handled successfully');
-        } catch (\Exception $e) {
-            return ResponseService::error('Error handling weekdays recurrence: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Gère la récurrence par dates fixes.
-     *
-     * @param EventRecurring $parent
-     * @return ResponseService
-     */
-    public function handlePeriodDates(EventRecurring $parent): ResponseService
-    {
-        try {
-            [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent);
-            $dates = $parent->getPeriodDates();
-
-            foreach ($dates as $date) {
-                $dueDate = $date->getDate();
-
-                if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
-                    $this->createOneChild($parent, $dueDate);
-                }
-            }
-            return ResponseService::success('Period dates recurrence handled successfully');
-        } catch (\Exception $e) {
-            return ResponseService::error('Error handling period dates recurrence: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Gère la récurrence tous les jours.
-     *
-     * @param EventRecurring $parent
-     * @return ResponseService
-     */
-    public function handleEveryday(EventRecurring $parent): ResponseService
-    {
-        try {
-            [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent);
-            $diff = (int) $earliestCreationDate->diff($latestCreationDate)->format('%r%a');
-
-            for ($i = 0; $i <= $diff; $i++) {
-                $dueDate = $earliestCreationDate->modify("+{$i} day");
-
-                if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
-                    $this->createOneChild($parent, $dueDate);
-                }
-            }
-            return ResponseService::success('Everyday recurrence handled successfully');
-        } catch (\Exception $e) {
-            return ResponseService::error('Error handling everyday recurrence: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Vérifie si une date est dans la période cible.
-     *
-     * @param DateTimeImmutable $dueDate
-     * @param DateTimeImmutable $earliestCreationDate
-     * @param DateTimeImmutable $latestCreationDate
-     * @return bool
-     */
-    public function isWithinTargetPeriod(DateTimeImmutable $dueDate, DateTimeImmutable $earliestCreationDate, DateTimeImmutable $latestCreationDate): bool
-    {
-        return $dueDate >= $earliestCreationDate && $dueDate <= $latestCreationDate;
-    }
-
-    /**
-     * Calcule les limites de la période en fonction des paramètres de l'événement récurrent.
-     *
-     * @param EventRecurring $parent
-     * @return array
-     */
-    private function calculatePeriodLimits(EventRecurring $parent): array|ResponseService
-    {
-        try {
-            $latestDate = (new DateTimeImmutable($this->now->format('Y-m-d')))->modify("+{$this->activeDayEnd} day");
-            $latestCreationDate = min($latestDate, $parent->getPeriodeEnd());
-
-            $earliestCreationDate = max($this->now, $parent->getPeriodeStart());
-            $earliestCreationDate = new DateTimeImmutable($earliestCreationDate->format('Y-m-d'));
-
-            return [$earliestCreationDate, $latestCreationDate];
-        } catch (\Exception $e) {
-            return ResponseService::error('Error calculating period limits: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Crée un événement enfant pour un événement récurrent.
-     *
-     * @param EventRecurring $parent
-     * @param DateTimeImmutable $dueDate
-     * @return void
-     */
-    public function createOneChild(EventRecurring $parent, DateTimeImmutable $dueDate): ResponseService
-    {
-        try {
-            $child = $this->setOneChildBase($parent);
-            $child->setDueDate($dueDate);
-            $this->eventService->setTimestamps($child);
-
-            $users = $parent->getSharedWith();
-            $status = $parent->getType() ? "todo" : null;
-            $this->eventService->setRelations($child, $status, $users);
-
-            $this->em->persist($child);
-            $parent->addEvent($child);
-            $this->em->flush();
-            return ResponseService::success('Child event created successfully');
-        } catch (\Exception $e) {
-            return ResponseService::error('Error creating child event: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Définit les propriétés de base d'un événement enfant.
-     *
-     * @param EventRecurring $parent
-     * @return Event
-     */
-    public function setOneChildBase(EventRecurring $parent): Event
-    {
-        $child = (new Event())
-            ->setDescription($parent->getDescription())
-            ->setIsImportant(false)
-            ->setSide($parent->getSide())
-            ->setTitle($parent->getTitle())
-            ->setCreatedBy($parent->getCreatedBy()->getFullName())
-            ->setUpdatedBy($parent->getUpdatedBy()->getFullName())
-            ->setType($parent->getType())
-            ->setSection($parent->getSection())
-            ->setIsRecurring(true);
-
-        return $child;
-    }
-
-    /**
+ /**
      * Handles the update of the children events of a recurring event.
      *
      * This method processes the children events of the given recurring event to ensure that:
@@ -371,6 +109,7 @@ class EventRecurringService
             );
         }
     }
+
     /**
      * Deletes a recurring event along with its associated child events and updates tag counters.
      *
@@ -400,4 +139,313 @@ class EventRecurringService
         }
     }
 
+    /**
+     * Creates children events for a recurring event and handles their associated tags.
+     * 
+     * This method generates child events for a recurring event based on its recurrence type
+     * and ensures that each child event has its associated tag properly handled.
+     * 
+     * @param EventRecurring $eventRecurring The recurring event for which child events will be created.
+     * 
+     * @return ResponseService Returns a success response with the created child events if the operation is successful.
+     *                         Returns an error response if an exception occurs during the process.
+     * 
+     * @throws \Exception If an error occurs during the creation of child events or tag handling, it is caught
+     *                    and an error response is returned.
+     */
+    public function createChildrens(EventRecurring $eventRecurring): ResponseService
+    {
+        try {
+            $childrens = $this->handleRecurrenceType($eventRecurring);
+            foreach ($childrens as $child) {
+                $this->tagService->handleTag($child);
+            }
+            return ResponseService::success('Recurring event children created successfully', ['childrens' => $childrens]);
+        } catch (Exception $e) {
+
+            return ResponseService::error(
+                'An error occurred while creating recurring event children: ' . $e->getMessage(),
+                null,
+                'RECURRING_EVENT_CREATION_FAILED'
+            );
+        }
+
+    }
+
+     /**
+     * Creates a single child event for a recurring event.
+     *
+     * This method creates a child event based on the given recurring event and due date.
+     * The child event is created with the same properties as the parent event, except for the timestamps.
+     * The child event is then persisted to the database and associated with the parent event.
+     *
+     * @param EventRecurring $parent The parent recurring event for which the child event is to be created.
+     * @param DateTimeImmutable $dueDate The due date for the child event.
+     *
+     * @return ResponseService Returns a success response if the child event is created successfully,
+     *                         or an error response if an exception occurs during the process.
+     */
+    public function createOneChild(EventRecurring $parent, DateTimeImmutable $dueDate): ResponseService
+    {
+        try {
+            $child = $this->setOneChildBase($parent);
+            $child->setDueDate($dueDate);
+            $this->eventService->setTimestamps($child);
+
+            $users = $parent->getSharedWith();
+            $status = $parent->getType() ? "todo" : null;
+            $this->eventService->setRelations($child, $status, $users);
+
+            $this->em->persist($child);
+            $parent->addEvent($child);
+            $this->em->flush();
+            return ResponseService::success('Child event created successfully');
+        } catch (Exception $e) {
+            return ResponseService::error('Error creating child event: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Sets the base properties of a child event based on a recurring event.
+     *
+     * This method creates a new child event based on the properties of the given recurring event.
+     * The child event is created with the same properties as the parent event, except for the timestamps.
+     *
+     * @param EventRecurring $parent The recurring event from which the child event properties are derived.
+     *
+     * @return Event The child event with the base properties set from the parent event.
+     */
+    public function setOneChildBase(EventRecurring $parent): Event
+    {
+        $child = (new Event())
+            ->setDescription($parent->getDescription())
+            ->setIsImportant(false)
+            ->setSide($parent->getSide())
+            ->setTitle($parent->getTitle())
+            ->setCreatedBy($parent->getCreatedBy()->getFullName())
+            ->setUpdatedBy($parent->getUpdatedBy()->getFullName())
+            ->setType($parent->getType())
+            ->setSection($parent->getSection())
+            ->setIsRecurring(true);
+
+        return $child;
+    }
+    /**
+     * Handles the recurrence type of a recurring event.
+     *
+     * This method processes the recurrence type of the given recurring event and creates child events accordingly.
+     * The method calls the appropriate handler method based on the recurrence type of the event.
+     *
+     * @param EventRecurring $parent The recurring event whose recurrence type is to be handled.
+     *
+     * @return ResponseService Response object indicating success or error.
+     */
+    public function handleRecurrenceType(EventRecurring $parent): ResponseService
+    {
+        try {
+            $recurrenceType = $parent->getRecurrenceType();
+            switch ($recurrenceType) {
+                case "monthDays":
+                    $this->handleMonthDays($parent);
+                    break;
+                case "weekDays":
+                    $this->handleWeekdays($parent);
+                    break;
+                case "periodDates":
+                    $this->handlePeriodDates($parent);
+                    break;
+                case "everyday":
+                    $this->handleEveryday($parent);
+                    break;
+                default:
+                    return ResponseService::error('Recurrence type not found');
+            }
+            return ResponseService::success('Recurrence handled successfully');
+        } catch (Exception $e) {
+            return ResponseService::error('Error handling recurrence type: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Handles the generation of recurring child events based on specific days of the month.
+     * 
+     * This method processes a parent recurring event and creates child events on specified
+     * days of the month, within a defined period of recurrence.
+     * 
+     * @param EventRecurring $parent The parent recurring event that contains the configuration for the recurrence.
+     * 
+     * @return ResponseService Returns a success response if the child events are generated successfully,
+     *                         or an error response if an exception occurs during the process.
+     * 
+     * @throws \Exception If an error occurs while handling the recurrence, it is caught and returned in the error response.
+     */
+    public function handleMonthDays(EventRecurring $parent): ResponseService
+    {
+        try {
+            $monthDays = $parent->getMonthDays();
+            [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent);
+
+            $currentMonthDate = $earliestCreationDate->modify('first day of this month');
+            $endPeriodDate = $latestCreationDate->modify('first day of next month');
+
+            while ($currentMonthDate <= $endPeriodDate) {
+                foreach ($monthDays as $monthDay) {
+                    $day = $monthDay->getDay();
+                    $dueDate = $currentMonthDate->modify("+{$day} days -1 day");
+
+                    if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
+                        $this->createOneChild($parent, $dueDate);
+                    }
+                }
+                $currentMonthDate = $currentMonthDate->modify('first day of next month');
+            }
+            return ResponseService::success('Month days recurrence handled successfully');
+        } catch (Exception $e) {
+            return ResponseService::error('Error handling month days recurrence: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Handles the generation of recurring child events based on specific days of the week.
+     * 
+     * This method processes a parent recurring event and creates child events on specified
+     * days of the week, within a defined period of recurrence.
+     * 
+     * @param EventRecurring $parent The parent recurring event that contains the configuration for the recurrence.
+     * 
+     * @return ResponseService Returns a success response if the child events are generated successfully,
+     *                         or an error response if an exception occurs during the process.
+     * 
+     * @throws \Exception If an error occurs while handling the recurrence, it is caught and returned in the error response.
+     */
+    public function handleWeekdays(EventRecurring $parent): ResponseService
+    {
+        try {
+            $weekDays = $parent->getWeekDays();
+            [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent);
+
+            $currentWeekDate = $earliestCreationDate->modify('this week');
+
+            while ($currentWeekDate <= $latestCreationDate) {
+                foreach ($weekDays as $weekDay) {
+                    $day = $weekDay->getDay();
+                    $dueDate = $currentWeekDate->modify("+{$day} days -1 day");
+
+                    if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
+                        $this->createOneChild($parent, $dueDate);
+                    }
+                }
+                $currentWeekDate = $currentWeekDate->modify('next week');
+            }
+            return ResponseService::success('Weekdays recurrence handled successfully');
+        } catch (Exception $e) {
+            return ResponseService::error('Error handling weekdays recurrence: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Handles the generation of recurring child events based on specific dates in a period.
+     * 
+     * This method processes a parent recurring event and creates child events for each specified date
+     * within the recurrence period defined by the parent event.
+     * 
+     * @param EventRecurring $parent The parent recurring event that defines the period and the dates for recurrence.
+     * 
+     * @return ResponseService Returns a success response if the child events are generated successfully,
+     *                         or an error response if an exception occurs during the process.
+     * 
+     * @throws \Exception If an error occurs while handling the recurrence, it is caught and returned in the error response.
+     */
+    public function handlePeriodDates(EventRecurring $parent): ResponseService
+    {
+        try {
+            [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent);
+            $dates = $parent->getPeriodDates();
+
+            foreach ($dates as $date) {
+                $dueDate = $date->getDate();
+
+                if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
+                    $this->createOneChild($parent, $dueDate);
+                }
+            }
+            return ResponseService::success('Period dates recurrence handled successfully');
+        } catch (Exception $e) {
+            return ResponseService::error('Error handling period dates recurrence: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Handles the generation of recurring child events for everyday recurrence.
+     * 
+     * This method processes a parent recurring event and creates child events for each day
+     * within the recurrence period defined by the parent event.
+     * 
+     * @param EventRecurring $parent The parent recurring event that defines the period for recurrence.
+     * 
+     * @return ResponseService Returns a success response if the child events are generated successfully,
+     *                         or an error response if an exception occurs during the process.
+     * 
+     * @throws \Exception If an error occurs while handling the recurrence, it is caught and returned in the error response.
+     */
+    public function handleEveryday(EventRecurring $parent): ResponseService
+    {
+        try {
+            [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent);
+            $diff = (int) $earliestCreationDate->diff($latestCreationDate)->format('%r%a');
+
+            for ($i = 0; $i <= $diff; $i++) {
+                $dueDate = $earliestCreationDate->modify("+{$i} day");
+
+                if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
+                    $this->createOneChild($parent, $dueDate);
+                }
+            }
+            return ResponseService::success('Everyday recurrence handled successfully');
+        } catch (Exception $e) {
+            return ResponseService::error('Error handling everyday recurrence: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Checks if a given date is within the target period defined by the earliest and latest creation dates.
+     *
+     * @param DateTimeImmutable $dueDate The date to check if it falls within the target period.
+     * @param DateTimeImmutable $earliestCreationDate The earliest creation date for the target period.
+     * @param DateTimeImmutable $latestCreationDate The latest creation date for the target period.
+     *
+     * @return bool Returns true if the due date is within the target period, false otherwise.
+     */
+    public function isWithinTargetPeriod(DateTimeImmutable $dueDate, DateTimeImmutable $earliestCreationDate, DateTimeImmutable $latestCreationDate): bool
+    {
+        return $dueDate >= $earliestCreationDate && $dueDate <= $latestCreationDate;
+    }
+
+    /**
+     * Calculates the limits of the period for creating child events.
+     *
+     * This method calculates the earliest and latest dates for creating child events based on the
+     * active day start and end configuration values, as well as the period start and end dates of the parent event.
+     *
+     * @param EventRecurring $parent The parent recurring event for which the period limits are to be calculated.
+     *
+     * @return array|ResponseService Returns an array containing the earliest and latest creation dates if successful,
+     *                               or an error response if an exception occurs during the process.
+     */
+    private function calculatePeriodLimits(EventRecurring $parent): array|ResponseService
+    {
+        try {
+            $latestDate = (new DateTimeImmutable($this->now->format('Y-m-d')))->modify("+{$this->activeDayEnd} day");
+            $latestCreationDate = min($latestDate, $parent->getPeriodeEnd());
+
+            $earliestCreationDate = max($this->now, $parent->getPeriodeStart());
+            $earliestCreationDate = new DateTimeImmutable($earliestCreationDate->format('Y-m-d'));
+
+            return [$earliestCreationDate, $latestCreationDate];
+        } catch (Exception $e) {
+            return ResponseService::error('Error calculating period limits: ' . $e->getMessage());
+        }
+    }
+
+   
 }
