@@ -10,6 +10,8 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use App\Service\ResponseService;
+use App\Service\TagService;
+use Doctrine\Common\Collections\ArrayCollection;
 
 class EventRecurringService
 {
@@ -22,6 +24,7 @@ class EventRecurringService
         protected EventRepository $eventRepository,
         protected EntityManagerInterface $em,
         protected EventService $eventService,
+        protected TagService $tagService,
         protected ParameterBagInterface $parameterBag
     ) {
         $this->now = DateTimeImmutable::createFromFormat('Y-m-d ', (new DateTimeImmutable())->format('Y-m-d'));
@@ -29,33 +32,42 @@ class EventRecurringService
         $this->activeDayEnd = $this->parameterBag->get('active_day_end');
     }
 
-    /**
-     * Récupère tous les événements parents récurrents.
-     *
-     * @return ResponseService
-     */
-    public function getParents(): ResponseService
-    {
-        try {
-            $parents = $this->eventRecurringRepository->findAll();
-            return ResponseService::success('Parents events retrieved successfully', ['parents' => $parents]);
-        } catch (\Exception $e) {
-            return ResponseService::error('Error retrieving parent events: ' . $e->getMessage());
-        }
-    }
+
 
     /**
-     * Récupère tous les événements enfants récurrents.
+     * Retrieves child events that are marked as recurring from the database.
      *
-     * @return ResponseService
+     * This method queries the database to fetch all events that have the "isRecurring" flag set to true.
+     * It returns the retrieved child events along with a success message, or an error message if the operation fails.
+     *
+     * @return ResponseService Response object indicating success or error with the list of children events if successful.
      */
-    public function getChildrens(): ResponseService
+    public function getChildrensFromDatabase(): ResponseService
     {
         try {
             $childrens = $this->eventRepository->findBy(["isRecurring" => true]);
             return ResponseService::success('Children events retrieved successfully', ['childrens' => $childrens]);
         } catch (\Exception $e) {
             return ResponseService::error('Error retrieving children events: ' . $e->getMessage());
+        }
+    }
+
+
+    /**
+     * Creates child events for a recurring event and updates associated tags.
+     *
+     * This method generates child events based on the recurrence settings of the given recurring event.
+     * For each child event created, a tag is created or updated using the tag service.
+     *
+     * @param EventRecurring $eventRecurring The recurring event for which children events are to be created.
+     *
+     * @return void
+     */
+    public function createChildrens(EventRecurring $eventRecurring): void
+    {
+        $childrens = $this->handleRecurrenceType($eventRecurring);
+        foreach ($childrens as $child) {
+            $this->tagService->createOrUpdateTag($child);
         }
     }
 
@@ -112,7 +124,7 @@ class EventRecurringService
                     $dueDate = $currentMonthDate->modify("+{$day} days -1 day");
 
                     if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
-                        $this->createOneEverydayChild($parent, $dueDate);
+                        $this->createOneChild($parent, $dueDate);
                     }
                 }
                 $currentMonthDate = $currentMonthDate->modify('first day of next month');
@@ -143,7 +155,7 @@ class EventRecurringService
                     $dueDate = $currentWeekDate->modify("+{$day} days -1 day");
 
                     if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
-                        $this->createOneEverydayChild($parent, $dueDate);
+                        $this->createOneChild($parent, $dueDate);
                     }
                 }
                 $currentWeekDate = $currentWeekDate->modify('next week');
@@ -170,7 +182,7 @@ class EventRecurringService
                 $dueDate = $date->getDate();
 
                 if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
-                    $this->createOneEverydayChild($parent, $dueDate);
+                    $this->createOneChild($parent, $dueDate);
                 }
             }
             return ResponseService::success('Period dates recurrence handled successfully');
@@ -195,7 +207,7 @@ class EventRecurringService
                 $dueDate = $earliestCreationDate->modify("+{$i} day");
 
                 if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
-                    $this->createOneEverydayChild($parent, $dueDate);
+                    $this->createOneChild($parent, $dueDate);
                 }
             }
             return ResponseService::success('Everyday recurrence handled successfully');
@@ -245,7 +257,7 @@ class EventRecurringService
      * @param DateTimeImmutable $dueDate
      * @return void
      */
-    public function createOneEverydayChild(EventRecurring $parent, DateTimeImmutable $dueDate): ResponseService
+    public function createOneChild(EventRecurring $parent, DateTimeImmutable $dueDate): ResponseService
     {
         try {
             $child = $this->setOneChildBase($parent);
@@ -285,5 +297,65 @@ class EventRecurringService
             ->setIsRecurring(true);
 
         return $child;
+    }
+
+    /**
+     * Updates the status of events associated with a recurring event.
+     *
+     * This method processes the children events of the given recurring event to ensure that:
+     * - All tasks with a "todo" status are removed along with their tag counters.
+     * - Any task with a status other than "todo" is updated to "warning".
+     * - All infos are removed along with their tag counters.
+     * - Tasks or infos with user interactions are flagged as "obsolete" and require user action;
+     *   User update them by deleting it or keeping it and manage the event status as he wants. 
+     * After processing the children, the method creates new child events
+     * based on the updated recurring event.
+     *
+     * @param EventRecurring $eventRecurring The recurring event whose child events are to be updated.
+     * 
+     * @return ResponseService Response object indicating success or error.
+     */
+    public function updateEventStatusAfterRecurringEventUpdate(EventRecurring $eventRecurring): ResponseService
+    {
+        try {
+            $childrens = $eventRecurring->getEvents();
+            foreach ($childrens as $child) {
+                // Process only future events
+                if ($child->getDueDate() >= $this->now) {
+                    if ($child->getType() === 'task') {
+                        if ($child->getTask()->getTaskStatus() === "todo") {
+                            $users = $child->getTask()->getSharedWith();
+                            $this->eventService->removeEventAndUpdateTagCounters($child, $users);
+                        } else {
+                            $child->getTask()->setTaskStatus("warning");
+                        }
+                    } elseif ($child->getType() === 'info') {
+                        $shareWith = $child->getInfo()->getSharedWith();
+                        $users = new ArrayCollection();
+
+                        foreach ($shareWith as $userInfo) {
+                            $users->add($userInfo->getUser());
+                        }
+                        $this->eventService->removeEventAndUpdateTagCounters($child, $users);
+
+                    } else {
+                        continue;// Skip events of unknown type
+                    }
+                } else {
+                    continue; // Skip past events
+                }
+            }
+            $this->em->flush();
+            $this->createChildrens($eventRecurring);
+
+            return ResponseService::success('Recurring event children updated successfully.');
+        } catch (\Exception $e) {
+            // Handle any unexpected errors
+            return ResponseService::error(
+                'An error occurred while updating recurring event children: ' . $e->getMessage(),
+                null,
+                'RECURRING_EVENT_UPDATE_FAILED'
+            );
+        }
     }
 }

@@ -190,22 +190,28 @@ class EventService
         }
     }
 
+
     /**
-     * Deletes an event and decrements its related tag counters.
-     * 
-     * This method removes the event from the database and decrements the counters
-     * of tags associated with the event.
+     * Removes an event and updates the tag counters for associated users.
+     *
+     * This method deletes the provided event entity from the database and adjusts
+     * the associated tag counters for a given list of users. It optionally flushes 
+     * the changes to the database after processing.
      *
      * @param Event $event The event to be deleted.
-     * @param User $user The user requesting the deletion (used for tag counter adjustment).
-     * 
-     * @return ResponseService The response message indicating success or failure.
+     * @param Collection $users The users associated with the event.
+     * @param bool $flush Whether to flush the changes to the database after processing. Defaults to true.
+     *
+     * @return ResponseService A ResponseService object indicating success or failure of the operation.
+     *
+     * @throws ORMException If a database error occurs during the event removal.
+     * @throws \Exception For any unexpected errors during processing.
      */
-    public function removeEventAndUpdateTagCounters($event, $user)
+    public function removeEventAndUpdateTagCounters(Event $event, Collection $users, bool $flush = true): ResponseService
     {
         try {
             $this->em->remove($event);
-            $response = $this->tagService->decrementTagCounterByOne($event, $user, false);
+            $response = $this->tagService->decrementTagCounterByOneForMultipleUsers($event, $users, $flush);
             $this->em->flush();
             return ResponseService::success('Event deleted successfully and ' . $response->getMessage());
         } catch (ORMException $e) {
@@ -214,6 +220,7 @@ class EventService
             return ResponseService::error('An unexpected error occurred: ' . $e->getMessage());
         }
     }
+
 
     /**
      * Removes the user from all EventInfos they are associated with.
@@ -368,15 +375,5 @@ class EventService
         } catch (\Exception $e) {
             return ResponseService::error('An error occurred while filtering events: ' . $e->getMessage());
         }
-    }
-
-   
-
-   
-
-   
-    public function updateEventStatusAfterRecurringEventUpdate($eventRecurring)
-    {
-
     }
 }

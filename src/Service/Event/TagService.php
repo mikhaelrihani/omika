@@ -8,6 +8,7 @@ use App\Entity\Event\TagInfo;
 use App\Entity\Event\TagTask;
 use App\Entity\User\User;
 use DateTimeImmutable;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 
 class TagService
@@ -238,6 +239,30 @@ class TagService
             return $this->responseService::error('An error occurred while decrementing the tag counter: ' . $e->getMessage(), null, 'TAG_DECREMENT_FAILED');
         }
     }
+    /**
+     * Decrements the tag counter by one for multiple users associated with a given event.
+     *
+     * This method iterates through the provided collection of users and applies the
+     * `decrementTagCounterByOne` method to each user in relation to the specified event.
+     *
+     * @param User[] $users An array or iterable of User entities for whom the tag counter will be decremented.
+     * @param Event $event The event associated with the tag counter update.
+     *
+     * @return ResponseService
+     */
+    public function decrementTagCounterByOneForMultipleUsers(Event $event, Collection $users, $flush = true): ResponseService
+    {
+        try {
+            foreach ($users as $user) {
+                $this->decrementTagCounterByOne($event, $user, $flush);
+            }
+            return $this->responseService::success('Tag count decremented successfully for multiple users.');
+        } catch (\Exception $e) {
+            return $this->responseService::error('An error occurred while decrementing the tag counter for multiple users: ' . $e->getMessage(), null, 'TAG_DECREMENT_FAILED');
+        }
+
+    }
+
     /**
      * Deletes tags that are older than yesterday.
      *
