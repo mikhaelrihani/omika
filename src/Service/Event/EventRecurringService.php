@@ -8,10 +8,12 @@ use App\Repository\Event\EventRecurringRepository;
 use App\Repository\Event\EventRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\BrowserKit\Response;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use App\Service\ResponseService;
 use App\Service\TagService;
 use Doctrine\Common\Collections\ArrayCollection;
+use Exception;
 
 class EventRecurringService
 {
@@ -42,7 +44,7 @@ class EventRecurringService
      *
      * @return ResponseService Response object indicating success or error with the list of children events if successful.
      */
-    public function getChildrensFromDatabase(): ResponseService
+    public function getAllChildrensFromDatabase(): ResponseService
     {
         try {
             $childrens = $this->eventRepository->findBy(["isRecurring" => true]);
@@ -63,12 +65,23 @@ class EventRecurringService
      *
      * @return void
      */
-    public function createChildrens(EventRecurring $eventRecurring): void
+    public function createChildrens(EventRecurring $eventRecurring): ResponseService
     {
-        $childrens = $this->handleRecurrenceType($eventRecurring);
-        foreach ($childrens as $child) {
-            $this->tagService->createOrUpdateTag($child);
+        try {
+            $childrens = $this->handleRecurrenceType($eventRecurring);
+            foreach ($childrens as $child) {
+                $this->tagService->createOrUpdateTag($child);
+            }
+            return ResponseService::success('Recurring event children created successfully', ['childrens' => $childrens]);
+        } catch (\Exception $e) {
+
+            return ResponseService::error(
+                'An error occurred while creating recurring event children: ' . $e->getMessage(),
+                null,
+                'RECURRING_EVENT_CREATION_FAILED'
+            );
         }
+
     }
 
     /**
@@ -300,7 +313,7 @@ class EventRecurringService
     }
 
     /**
-     * Updates the status of events associated with a recurring event.
+     * Handles the update of the children events of a recurring event.
      *
      * This method processes the children events of the given recurring event to ensure that:
      * - All tasks with a "todo" status are removed along with their tag counters.
@@ -315,7 +328,7 @@ class EventRecurringService
      * 
      * @return ResponseService Response object indicating success or error.
      */
-    public function updateEventStatusAfterRecurringEventUpdate(EventRecurring $eventRecurring): ResponseService
+    public function handleRecurringEventUpdate(EventRecurring $eventRecurring): ResponseService
     {
         try {
             $childrens = $eventRecurring->getEvents();
@@ -349,7 +362,7 @@ class EventRecurringService
             $this->createChildrens($eventRecurring);
 
             return ResponseService::success('Recurring event children updated successfully.');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Handle any unexpected errors
             return ResponseService::error(
                 'An error occurred while updating recurring event children: ' . $e->getMessage(),
@@ -358,4 +371,33 @@ class EventRecurringService
             );
         }
     }
+    /**
+     * Deletes a recurring event along with its associated child events and updates tag counters.
+     *
+     * This method removes all child events associated with the given recurring event, updates the tag counters
+     * for all users associated with the event, and then deletes the recurring event itself from the database.
+     *
+     * @param EventRecurring $eventRecurring The recurring event to be deleted.
+     *
+     * @return ResponseService Response object indicating success or failure of the operation.
+     *
+     * @throws \Exception If an error occurs during the deletion process.
+     */
+    public function deleteRecurringEvent(EventRecurring $eventRecurring): ResponseService
+    {
+        try {
+            $childrens = $eventRecurring->getEvents();
+            $users = $eventRecurring->getSharedWith();
+            foreach ($childrens as $child) {
+                $this->eventService->removeEventAndUpdateTagCounters($child, $users);
+            }
+            $this->em->remove($eventRecurring);
+            $this->em->flush();
+            return ResponseService::success('Recurring event deleted successfully');
+
+        } catch (Exception $e) {
+            return ResponseService::error('An error occurred while deleting recurring event: ' . $e->getMessage());
+        }
+    }
+
 }
