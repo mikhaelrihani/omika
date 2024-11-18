@@ -7,6 +7,7 @@ use App\Entity\Event\Tag;
 use App\Entity\Event\TagInfo;
 use App\Entity\Event\TagTask;
 use App\Entity\User\User;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 
 class TagService
@@ -18,13 +19,23 @@ class TagService
     }
 
     /**
-     * Crée un tag pour un événement donné et met à jour son compteur de tags.
-     * 
-     * @param Event $event L'événement auquel associer un tag.
-     * 
-     * @return ResponseService
+     * Creates or updates a tag associated with the given event.
+     *
+     * This method checks if a tag already exists for the combination of `day`, `side`,
+     * and `section` from the provided event. If the tag does not exist, it creates a new one.
+     * After creating or retrieving the tag, the method updates its associated counters
+     * based on the event data.
+     *
+     * Directly interacts with the database using a repository method to find the tag.
+     *
+     * @param Event $event The event used to create or update the tag.
+     *
+     * @return ResponseService Returns a success response if the tag is created or updated successfully.
+     *                         If an exception occurs, returns an error response with the error details.
+     *
+     * @throws \Exception If an unexpected error occurs during the tag creation or update process.
      */
-    public function createTag(Event $event): ResponseService
+    public function createOrUpdateTag(Event $event): ResponseService
     {
         try {
             $day = $event->getDueDate();
@@ -68,9 +79,9 @@ class TagService
         try {
             $type = $event->getType();
             if ($type === "task") {
-                $this->setTaskTagCount($tag, $event);
+                $this->updateTagTaskCount($tag, $event);
             } else {
-                $this->setInfoTagCount($tag, $event);
+                $this->updateTagInfoCount($tag, $event);
             }
 
             return $this->responseService::success('Tag count updated successfully.');
@@ -87,7 +98,7 @@ class TagService
      * 
      * @return ResponseService
      */
-    private function setInfoTagCount(Tag $tag, Event $event): ResponseService
+    private function updateTagInfoCount(Tag $tag, Event $event): ResponseService
     {
         try {
             $tag->setUpdatedAt($event->getUpdatedAt());
@@ -135,7 +146,7 @@ class TagService
      * 
      * @return ResponseService
      */
-    private function setTaskTagCount(Tag $tag, Event $event): ResponseService
+    private function updateTagTaskCount(Tag $tag, Event $event): ResponseService
     {
         try {
             $tag->setUpdatedAt($event->getUpdatedAt());
@@ -227,6 +238,111 @@ class TagService
             return $this->responseService::error('An error occurred while decrementing the tag counter: ' . $e->getMessage(), null, 'TAG_DECREMENT_FAILED');
         }
     }
+    /**
+     * Deletes tags that are older than yesterday.
+     *
+     * This method identifies tags that have a `day` field corresponding to either
+     * yesterday or the day before yesterday and deletes them from the database.
+     * The operation directly interacts with the database using Doctrine's QueryBuilder
+     * for optimal performance.
+     *
+     * @return ResponseService Returns a success message if the tags are deleted successfully,
+     *                         or an error message if an exception occurs.
+     *
+     * @throws \Exception If an unexpected error occurs during the tag deletion process.
+     */
+    public function deletePastTag(): ResponseService
+    {
+        try {
+            $yesterday = new DateTimeImmutable("yesterday");
+            $dayBeforeYesterday = new DateTimeImmutable("yesterday -1 day");
 
-   
+            $tags = $this->em->createQueryBuilder()
+                ->select('t')
+                ->from(Tag::class, 't')
+                ->where('t.day IN (:days)')
+                ->setParameter('days', [$dayBeforeYesterday, $yesterday])
+                ->getQuery()
+                ->getResult();
+
+            foreach ($tags as $tag) {
+                $this->em->remove($tag);
+            }
+
+            $this->em->flush();
+
+            return $this->responseService::success('Past tags deleted successfully.');
+        } catch (\Exception $e) {
+            return $this->responseService::error(
+                'An error occurred while deleting past tags: ' . $e->getMessage(),
+                null,
+                'TAG_DELETION_FAILED'
+            );
+        }
+    }
+
+    /**
+     * Updates the tag count after a task event is marked as completed.
+     *
+     * This method checks if the event is of type `task` and its associated task's
+     * status is `done`. If true, it decrements the tag counter for all users
+     * associated with the task.
+     *
+     * @param Event $event The event whose task completion triggers the tag count update.
+     *
+     * @return ResponseService Returns a success response if the tag count was updated successfully.
+     *                         Returns an error response with details if an exception occurs.
+     *
+     * @throws \Exception If an error occurs during the tag count update process.
+     */
+    public function updateTagCountAfterEventTaskCompleted(Event $event): ResponseService
+    {
+        try {
+            if ($event->getType() === 'task' && $event->getTask()->getTaskStatus() === 'done') {
+                $users = $event->getTask()->getSharedWith();
+                foreach ($users as $user) {
+                    $this->decrementTagCounterByOne($event, $user, true);
+                }
+            }
+            return $this->responseService::success('Tag count updated after task completion.');
+        } catch (\Exception $e) {
+            return $this->responseService::error(
+                'An error occurred while updating tag count after task completion: ' . $e->getMessage(),
+                null,
+                'TAG_COUNT_UPDATE_FAILED'
+            );
+        }
+    }
+
+
+    /**
+     * Updates the tag count after an info event is read by a single user.
+     *
+     * This method checks if the event is of type `info`. If true, it decrements
+     * the tag counter for the specified user associated with the info event.
+     *
+     * @param Event $event The event whose information is read by the user.
+     * @param User $user The user who read the info event.
+     *
+     * @return ResponseService Returns a success response if the tag count was updated successfully.
+     *                         Returns an error response with details if an exception occurs.
+     *
+     * @throws \Exception If an error occurs during the tag count update process.
+     */
+    public function updateTagCountAfterEventInfoIsReadByOneUser(Event $event, User $user): ResponseService
+    {
+        try {
+            if ($event->getType() === 'info') {
+                $this->decrementTagCounterByOne($event, $user, true);
+            }
+            return $this->responseService::success('Tag count updated after info is read.');
+        } catch (\Exception $e) {
+            return $this->responseService::error(
+                'An error occurred while updating tag count after info is read: ' . $e->getMessage(),
+                null,
+                'TAG_COUNT_UPDATE_FAILED'
+            );
+        }
+    }
+
 }

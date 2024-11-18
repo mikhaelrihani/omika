@@ -364,15 +364,19 @@ class EventService
             // Execute the query to fetch results
             $filteredEvents = $qb->getQuery()->getResult();
 
-            // Return success response with data
             return ResponseService::success('Events filtered successfully.', $filteredEvents);
         } catch (\Exception $e) {
-            // Return error response with exception details
             return ResponseService::error('An error occurred while filtering events: ' . $e->getMessage());
         }
     }
 
+   
 
+   
 
+   
+    public function updateEventStatusAfterRecurringEventUpdate($eventRecurring)
+    {
 
+    }
 }
