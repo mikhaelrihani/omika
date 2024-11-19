@@ -347,7 +347,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
     public function duplicateEventBase(Event $originalEvent): Event
     {
 
-        // Create a new Event instance
         $event = new Event();
         // Copy properties from the original event to the new event
         $event

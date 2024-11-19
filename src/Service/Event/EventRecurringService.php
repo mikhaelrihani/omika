@@ -140,7 +140,7 @@ class EventRecurringService
     }
 
     /**
-     * Creates children events for a recurring event and handles their associated tags.
+     * Creates children events for a recurring event and creates their associated tags.
      * 
      * This method generates child events for a recurring event based on its recurrence type
      * and ensures that each child event has its associated tag properly handled.
@@ -158,7 +158,7 @@ class EventRecurringService
         try {
             $childrens = $this->handleRecurrenceType($eventRecurring);
             foreach ($childrens as $child) {
-                $this->tagService->handleTag($child);
+                $this->tagService->createTag($child);
             }
             return ResponseService::success('Recurring event children created successfully', ['childrens' => $childrens]);
         } catch (Exception $e) {
