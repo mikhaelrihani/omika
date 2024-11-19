@@ -33,7 +33,11 @@ class CronBaseService
         $eventRecurringChildrens = $this->eventRepository->findBy(["isRecurring" => "true"]);
         return $eventRecurringChildrens;
     }
+    //! public function duplicateEvent(Event $originalEvent){
+    // }
 
-    
+    //! public function handleTagFromUpdatedStatusByCron(Event $event){
+    //}
+
 
 }

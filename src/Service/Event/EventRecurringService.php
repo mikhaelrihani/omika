@@ -50,7 +50,7 @@ class EventRecurringService
             return ResponseService::error('Error retrieving children events: ' . $e->getMessage());
         }
     }
- /**
+    /**
      * Handles the update of the children events of a recurring event.
      *
      * This method processes the children events of the given recurring event to ensure that:
@@ -76,7 +76,7 @@ class EventRecurringService
                     if ($child->getType() === 'task') {
                         if ($child->getTask()->getTaskStatus() === "todo") {
                             $users = $child->getTask()->getSharedWith();
-                            $this->eventService->removeEventAndUpdateTagCounters($child, $users);
+                            $this->eventService->removeEventAndUpdateTagCounters($child);
                         } else {
                             $child->getTask()->setTaskStatus("warning");
                         }
@@ -87,7 +87,7 @@ class EventRecurringService
                         foreach ($shareWith as $userInfo) {
                             $users->add($userInfo->getUser());
                         }
-                        $this->eventService->removeEventAndUpdateTagCounters($child, $users);
+                        $this->eventService->removeEventAndUpdateTagCounters($child);
 
                     } else {
                         continue;// Skip events of unknown type
@@ -128,7 +128,7 @@ class EventRecurringService
             $childrens = $eventRecurring->getEvents();
             $users = $eventRecurring->getSharedWith();
             foreach ($childrens as $child) {
-                $this->eventService->removeEventAndUpdateTagCounters($child, $users);
+                $this->eventService->removeEventAndUpdateTagCounters($child);
             }
             $this->em->remove($eventRecurring);
             $this->em->flush();
@@ -172,7 +172,7 @@ class EventRecurringService
 
     }
 
-     /**
+    /**
      * Creates a single child event for a recurring event.
      *
      * This method creates a child event based on the given recurring event and due date.
@@ -194,7 +194,7 @@ class EventRecurringService
 
             $users = $parent->getSharedWith();
             $status = $parent->getType() ? "todo" : null;
-            $this->eventService->setRelations($child, $status, $users);
+            $this->eventService->setRelations($child, $users);
 
             $this->em->persist($child);
             $parent->addEvent($child);
@@ -447,5 +447,5 @@ class EventRecurringService
         }
     }
 
-   
+
 }

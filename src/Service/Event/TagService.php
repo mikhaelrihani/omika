@@ -7,8 +7,8 @@ use App\Entity\Event\Tag;
 use App\Entity\Event\TagInfo;
 use App\Entity\Event\TagTask;
 use App\Entity\User\User;
+use App\Service\Event\EventService;
 use DateTimeImmutable;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 
@@ -17,53 +17,51 @@ class TagService
     protected DateTimeImmutable $now;
     public function __construct(
         protected EntityManagerInterface $em,
-        protected ResponseService $responseService // Injecter ResponseService pour l'utiliser dans toute la classe
+        protected ResponseService $responseService,
+        protected EventService $eventService
     ) {
         $this->now = DateTimeImmutable::createFromFormat('Y-m-d ', (new DateTimeImmutable())->format('Y-m-d'));
     }
 
-    //! --------------------------------------------------------------------------------------------
-    /**
-     * Increments the tag count for a specific event.
-     * 
-     * This method checks the event type and increments the tag count accordingly.
-     * If the event is a task, it increments the task count for all users associated with the task.
-     * If the event is an info, it increments the unread info count for all users associated with the info.
-     * 
-     * @param Event $event The event for which the tag count is updated.
-     * 
-     * @return ResponseService Returns a success response if the tag count is updated successfully.
-     *                         Returns an error response if an exception occurs during the process.
-     * 
-     * @throws \Exception If an error occurs while updating the tag count, it is caught and returned in the error response.
-     */
-    public function handleTag(Event $event): ResponseService
-    {
-        try {
-            $type = $event->getType();
-            $type === "task" ?
-                $this->incrementSharedUsersTagTaskCount($event) :
-                $this->incrementSharedUsersTagInfoCount($event);
 
-            return $this->responseService::success('Tag count updated successfully.');
-        } catch (Exception $e) {
-            return $this->responseService::error('An error occurred while updating the tag count: ' . $e->getMessage(), null, 'TAG_COUNT_UPDATE_FAILED');
-        }
-    }
+    //! --------------------------------------------------------------------------------------------
+
     /**
-     * Creates a new `Tag` entity based on the provided event.
+     * Creates a new tag for the given event.
      * 
-     * This method initializes a new `Tag` object using details from the given `Event`,
-     * persists it to the database, and returns a success response.
+     * This method handles the creation of a tag associated with an event. It first creates the base tag using
+     * `createTagBase` and then establishes the necessary relationships using `setTagRelation`.
      * 
-     * @param Event $event The event containing the information to populate the new tag.
+     * @param Event $event The event for which the tag is being created.
      * 
-     * @return ResponseService Returns a success response if the tag is created successfully,
-     * or an error response if an exception occurs during the process.
+     * @return ResponseService Returns a success response if the tag is created successfully or an error response in case of failure.
      * 
-     * @throws \Exception If any error occurs during the tag creation process, it is caught and returned in the error response.
+     * @throws Exception If any error occurs during the tag creation process, it is caught and returned in the error response.
      */
     public function createTag(Event $event): ResponseService
+    {
+        try {
+            $this->createTagBase($event);
+            $this->setTagRelation($event);
+            return $this->responseService::success('Tag created successfully.');
+        } catch (Exception $e) {
+            return $this->responseService::error('An error occurred while creating the tag: ' . $e->getMessage(), null, 'TAG_CREATION_FAILED');
+        }
+    }
+
+    /**
+     * Creates the base tag entity for the given event.
+     * 
+     * This method initializes and persists a `Tag` entity based on the details of the provided event,
+     * including section, due date, date status, active day, and side.
+     * 
+     * @param Event $event The event for which the base tag is being created.
+     * 
+     * @return ResponseService Returns a success response if the tag is created successfully or an error response in case of failure.
+     * 
+     * @throws Exception If any error occurs during the tag creation process, it is caught and returned in the error response.
+     */
+    public function createTagBase(Event $event): ResponseService
     {
         try {
             $tag = new Tag();
@@ -81,6 +79,33 @@ class TagService
             return $this->responseService::error($e->getMessage());
         }
     }
+
+    /**
+     * Sets the relationship between the tag and users associated with the given event.
+     * 
+     * Depending on the type of the event (`task` or `info`), this method increments the appropriate
+     * tag count for all shared users.
+     * 
+     * @param Event $event The event whose tag relationships need to be updated.
+     * 
+     * @return ResponseService Returns a success response if the operation is successful or an error response in case of failure.
+     * 
+     * @throws Exception If any error occurs during the process, it is caught and returned in the error response.
+     */
+    public function setTagRelation(Event $event): ResponseService
+    {
+        try {
+            $type = $event->getType();
+            $type === "task" ?
+                $this->incrementSharedUsersTagTaskCount($event) :
+                $this->incrementSharedUsersTagInfoCount($event);
+
+            return $this->responseService::success('Tag count updated successfully.');
+        } catch (Exception $e) {
+            return $this->responseService::error('An error occurred while updating the tag count: ' . $e->getMessage(), null, 'TAG_COUNT_UPDATE_FAILED');
+        }
+    }
+
     /**
      * Finds a `Tag` entity associated with a given event.
      * 
@@ -107,32 +132,45 @@ class TagService
     }
 
     /**
-     * Retrieves the collection of users associated with a specific event.
+     * Updates the tag count based on a user's action on an event.
      * 
-     * This method determines the type of the event (`info` or other) and retrieves the corresponding
-     * list of users who are associated with it. For `info` type events, it extracts users from
-     * the `SharedWith` relationship of the `Info` entity. For other types (e.g., `task`), it fetches users
-     * from the `SharedWith` relationship of the `Task` entity.
+     * This method adjusts the tag counters for tasks or info events depending on the user's interaction. 
+     * For tasks, the adjustment depends on the provided status (`todo`, `done`, `pending`). 
+     * For info events, it decreases the user's tag count when the event is accessed.
      * 
-     * @param Event $event The event for which to retrieve the associated users.
+     * @param Event $event The event associated with the user's action.
+     * @param User|null $user (Optional) The user performing the action, required for info events.
      * 
-     * @return Collection Returns a collection of users associated with the event.
+     * @return ResponseService Returns a success response if the tag count is updated successfully.
+     * 
+     * @throws \InvalidArgumentException If the event type is invalid or the status is unsupported.
      */
-    public function getUsers(Event $event): Collection
+    public function updateTagCountOnUserAction(Event $event, user $user = null): ResponseService
     {
-        if ($event->getType() === "info") {
-            $usersinfo = $event->getInfo()->getSharedWith();
-            $users = [];
-            foreach ($usersinfo as $userInfo) {
-                $users[] = $userInfo->getUser();
+        try {
+            if ($event->getType() === "task") {
+                $status = $event->getTask()->getTaskStatus();
+                match ($status) {
+                    // the user ticked the task as done from a previous status (todo,pending,late)
+                    "todo" => $this->incrementSharedUsersTagTaskCount($event),
+                    // the user ticked back the task from done to todo
+                    "done" => $this->decrementSharedUsersTagCountByOne($event),
+                    // the user ticked back the task status from done to pending
+                    "pending" => $this->decrementSharedUsersTagCountByOne($event),
+                    default => null
+                };
+
+            } else if ($event->getType() === "info") {
+                // if the user opened the event info page
+                $this->decrementOneUserTagCountByOne($event, $user);
             }
-        } else {
-            $users = $event->getTask()->getSharedWith();
+            return $this->responseService::success('Tag count updated successfully.');
+        } catch (Exception $e) {
+            return $this->responseService::error('An error occurred while updating the tag count: ' . $e->getMessage(), null, 'TAG_COUNT_UPDATE_FAILED');
         }
-        return $users;
     }
 
-    /**
+     /**
      * Deletes tags that are older than yesterday.
      *
      * This method identifies tags that have a `day` field corresponding to either
@@ -361,7 +399,7 @@ class TagService
     {
         try {
             // Récupère les utilisateurs associés à la tâche.
-            $users = $this->getUsers($event);
+            $users = $this->eventService->getUsers($event);
 
             // Met à jour ou crée un TagTask pour chaque utilisateur.
             foreach ($users as $user) {
@@ -434,7 +472,7 @@ class TagService
      */
     public function decrementSharedUsersTagCountByOne(Event $event): ResponseService
     {
-        $users = $this->getUsers($event);
+        $users = $this->eventService->getUsers($event);
         try {
             foreach ($users as $user) {
                 $this->decrementOneUserTagCountByOne($event, $user, false);
@@ -449,4 +487,5 @@ class TagService
 
     //! --------------------------------------------------------------------------------------------
 
+    
 }

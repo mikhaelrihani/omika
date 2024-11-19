@@ -16,6 +16,7 @@ use DateTimeImmutable;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
+use Exception;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 class EventService
@@ -46,15 +47,20 @@ class EventService
      */
     public function createOneEvent(array $data): ResponseService
     {
-        $event = $this->setEventBase($data);
-        if ($event === null) {
-            return ResponseService::error('Error creating event: Invalid event data');
+        try {
+            $event = $this->setEventBase($data);
+            if ($event === null) {
+                return ResponseService::error('Error creating event: Invalid event data');
+            }
+
+            $this->setTimestamps($event);
+            $this->setRelations($event, $data[ "users" ]);
+            $this->em->flush();
+            return ResponseService::success('Event created successfully', ['event' => $event]);
+
+        } catch (Exception $e) {
+            return ResponseService::error('Error creating event: ' . $e->getMessage());
         }
-
-        $this->setTimestamps($event);
-        $this->setRelations($event, $data[ "status" ], $data[ "users" ]);
-
-        return ResponseService::success('Event created successfully', ['event' => $event]);
     }
 
     /**
@@ -79,27 +85,36 @@ class EventService
                 ->setDueDate($data[ "dueDate" ]);
 
             return $event;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Retourne une erreur avec un message précis
             return ResponseService::error('Error setting event base properties: ' . $e->getMessage());
         }
     }
 
     /**
-     * Définit les relations pour un événement, en fonction du type (task ou info).
-     *
-     * @param Event $event L'événement à modifier.
-     * @param string|null $status Le statut de la tâche, s'il s'agit d'une tâche.
-     * @param Collection $users Les utilisateurs associés à l'événement.
+     * Retrieves the collection of users associated with a specific event.
+     * 
+     * This method determines the type of the event (`info` or other) and retrieves the corresponding
+     * list of users who are associated with it. For `info` type events, it extracts users from
+     * the `SharedWith` relationship of the `Info` entity. For other types (e.g., `task`), it fetches users
+     * from the `SharedWith` relationship of the `Task` entity.
+     * 
+     * @param Event $event The event for which to retrieve the associated users.
+     * 
+     * @return Collection Returns a collection of users associated with the event.
      */
-    public function setRelations(Event $event, string $status = null, Collection $users): void
+    public function getUsers(Event $event): Collection
     {
-        $type = $event->getType();
-        if ($type === "task") {
-            $this->setTask($event, $status, $users);
-        } elseif ($type === "info") {
-            $this->setInfo($event, $users);
+        if ($event->getType() === "info") {
+            $usersinfo = $event->getInfo()->getSharedWith();
+            $users = [];
+            foreach ($usersinfo as $userInfo) {
+                $users[] = $userInfo->getUser();
+            }
+        } else {
+            $users = $event->getTask()->getSharedWith();
         }
+        return $users;
     }
 
     /**
@@ -128,6 +143,22 @@ class EventService
     }
 
     /**
+     * Définit les relations pour un événement, en fonction du type (task ou info).
+     *
+     * @param Event $event L'événement à modifier.
+     * @param Collection $users Les utilisateurs associés à l'événement.
+     */
+    public function setRelations(Event $event, Collection $users): void
+    {
+        $type = $event->getType();
+        if ($type === "task") {
+            $this->setTask($event, "todo", $users);
+        } elseif ($type === "info") {
+            $this->setInfo($event, $users);
+        }
+    }
+
+    /**
      * Définit la tâche associée à un événement.
      *
      * @param Event $event L'événement auquel associer une tâche.
@@ -137,10 +168,9 @@ class EventService
      */
     public function setTask(Event $event, string $taskStatus, Collection $users): void
     {
-        $count = count($users);
         $task = (new EventTask())
             ->setTaskStatus($taskStatus)
-            ->setSharedWithCount($count);
+            ->setSharedWithCount($users->count());
 
         $this->em->persist($task);
         foreach ($users as $user) {
@@ -158,11 +188,10 @@ class EventService
      */
     public function setInfo(Event $event, Collection $users): EventInfo
     {
-        $count = count($users);
         $info = (new EventInfo())
             ->setIsFullyRead(false)
             ->setUserReadInfoCount(0)
-            ->setSharedWithCount($count);
+            ->setSharedWithCount($users->count());
 
         $this->em->persist($info);
         $event->setInfo($info);
@@ -190,6 +219,27 @@ class EventService
         }
     }
 
+    /**
+     * Marks an info event as read for a specific user.
+     * 
+     * This method updates the `isRead` status of a `UserInfo` entity to `true` for the given user and
+     * the corresponding `Info` entity of the event. Additionally, it synchronizes the counts of the 
+     * associated `Info` entity.
+     * 
+     * @param Event $event The event whose info is marked as read.
+     * @param User $user The user who has read the info.
+     * 
+     * @return void
+     * 
+     * @throws Exception If the corresponding UserInfo entity is not found.
+     */
+    public function infoIsRead(Event $event, User $user): void
+    {
+        $userInfo = $this->userInfoRepository->findOneBy(["user" => $user, "eventInfo" => $event->getInfo()]);
+        $userInfo->setIsRead(true);
+        $event->getInfo()->syncCounts();
+    }
+
 
     /**
      * Removes an event and updates the tag counters for associated users.
@@ -200,7 +250,7 @@ class EventService
      * @return ResponseService A ResponseService object indicating success or failure of the operation.
      *
      * @throws ORMException If a database error occurs during the event removal.
-     * @throws \Exception For any unexpected errors during processing.
+     * @throws Exception For any unexpected errors during processing.
      */
     public function removeEventAndUpdateTagCounters(Event $event): ResponseService
     {
@@ -211,7 +261,7 @@ class EventService
             return ResponseService::success('Event deleted successfully and ' . $response->getMessage());
         } catch (ORMException $e) {
             return ResponseService::error('An error occurred while deleting the event: ' . $e->getMessage());
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return ResponseService::error('An unexpected error occurred: ' . $e->getMessage());
         }
     }
@@ -253,7 +303,7 @@ class EventService
             return ResponseService::success('User removed from all EventInfos successfully');
         } catch (ORMException $e) {
             return ResponseService::error('An error occurred while removing the user from EventInfos: ' . $e->getMessage());
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return ResponseService::error('An unexpected error occurred while removing the user: ' . $e->getMessage());
         }
     }
@@ -293,7 +343,7 @@ class EventService
             return ResponseService::success('User removed from all EventTasks successfully');
         } catch (ORMException $e) {
             return ResponseService::error('An error occurred while removing the user from EventTasks: ' . $e->getMessage());
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return ResponseService::error('An unexpected error occurred while removing the user: ' . $e->getMessage());
         }
     }
@@ -315,7 +365,7 @@ class EventService
             $this->removeUserFromAllEventInfos($user);
             $this->removeUserFromAllEventTasks($user);
             return ResponseService::success('User removed from all events successfully');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return ResponseService::error('An unexpected error occurred while removing the user from all events: ' . $e->getMessage());
         }
     }
@@ -367,7 +417,7 @@ class EventService
             $filteredEvents = $qb->getQuery()->getResult();
 
             return ResponseService::success('Events filtered successfully.', $filteredEvents);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return ResponseService::error('An error occurred while filtering events: ' . $e->getMessage());
         }
     }
@@ -376,32 +426,6 @@ class EventService
     // late , late pending+2days..., pending late
     // if past unrealised..
     // see list of status
-
-    public function handleTagFromUpdatedStatusByUser(Event $event, user $user = null)
-    {
-        if ($event->getType() === "task") {
-            $status = $event->getTask()->getTaskStatus();
-            if ($status === "done") {
-                // the user ticked the task as done from a previous status (todo,pending,late)
-                //! dans le set status penser a mettre en memoire une variable pour le status precedent(undo)
-                $this->tagService->decrementSharedUsersTagCountByOne($event);
-            } else if ($status === "todo") {
-                // the user ticked back the task from done to todo
-                $this->tagService->incrementSharedUsersTagTaskCount($event);
-            }
-        } else if ($event->getType() === "info") {
-            // if the user open the event info page
-            $userInfo = $this->userInfoRepository->findOneBy(["user" => $user, "eventInfo" => $event->getInfo()]);
-            $userInfo->setIsRead(true);
-            $event->getInfo()->syncCounts();
-            $this->tagService->decrementOneUserTagCountByOne($event, $user);
-        }
-        $this->em->flush();
-    }
-
-    //! public function duplicateEvent(Event $originalEvent){
-    // }
-
-    //! public function handleTagFromUpdatedStatusByCron(Event $event){
-    //}
+    //! dans le set status penser a mettre en memoire une variable pour le status precedent(undo)
+   
 }
