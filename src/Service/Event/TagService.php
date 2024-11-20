@@ -172,7 +172,7 @@ class TagService
 
      /**
      * Deletes tags that are older than yesterday.
-     *
+     * we delete past tags because they are no longer relevant , tags are made to inform about the current day events or future events only.
      * This method identifies tags that have a `day` field corresponding to either
      * yesterday or the day before yesterday and deletes them from the database.
      * The operation directly interacts with the database using Doctrine's QueryBuilder
