@@ -82,7 +82,8 @@ class EventService
                 ->setUpdatedBy($data[ "updatedBy" ])
                 ->setType($data[ "type" ])
                 ->setSection($data[ "section" ])
-                ->setDueDate($data[ "dueDate" ]);
+                ->setDueDate($data[ "dueDate" ])
+                ->setFirstDueDate($data[ "dueDate" ]);
 
             return $event;
         } catch (Exception $e) {
@@ -151,11 +152,9 @@ class EventService
     public function setRelations(Event $event, Collection $users): void
     {
         $type = $event->getType();
-        if ($type === "task") {
-            $this->setTask($event, "todo", $users);
-        } elseif ($type === "info") {
+        $type === "task" ?
+            $this->setTask($event, "todo", $users) :
             $this->setInfo($event, $users);
-        }
     }
 
     /**
@@ -170,7 +169,8 @@ class EventService
     {
         $task = (new EventTask())
             ->setTaskStatus($taskStatus)
-            ->setSharedWithCount($users->count());
+            ->setSharedWithCount($users->count())
+            ->setPending($taskStatus === "pending");
 
         $this->em->persist($task);
         foreach ($users as $user) {
@@ -191,7 +191,8 @@ class EventService
         $info = (new EventInfo())
             ->setIsFullyRead(false)
             ->setUserReadInfoCount(0)
-            ->setSharedWithCount($users->count());
+            ->setSharedWithCount($users->count())
+            ->setOld(false);
 
         $this->em->persist($info);
         $event->setInfo($info);
@@ -427,5 +428,5 @@ class EventService
     // if past unrealised..
     // see list of status
     //! dans le set status penser a mettre en memoire une variable pour le status precedent(undo)
-   
+
 }

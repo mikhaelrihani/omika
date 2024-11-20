@@ -43,6 +43,10 @@ class EventTask extends BaseEntity
     #[ORM\Column]
     private ?int $sharedWithCount = null;
 
+    #[ORM\Column]
+    private ?bool $isPending = null;
+
+   
 
     public function __construct()
     {
@@ -139,4 +143,18 @@ class EventTask extends BaseEntity
     {
         $this->sharedWithCount = $this->sharedWith->count();
     }
+
+    public function isPending(): ?bool
+    {
+        return $this->isPending;
+    }
+
+    public function setPending(bool $isPending): static
+    {
+        $this->isPending = $isPending;
+
+        return $this;
+    }
+
+  
 }

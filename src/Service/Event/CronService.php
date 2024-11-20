@@ -8,6 +8,7 @@ use App\Repository\Event\EventRecurringRepository;
 use App\Repository\Event\EventRepository;
 use App\Service\TagService;
 use DateTimeImmutable;
+use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
@@ -62,37 +63,43 @@ class CronService
                 if ($taskStatus === 'done') {
                     continue;
                 } else {
-                    $yesterdayEvent->getTask()->setStatus('unrealised');
-                    $this->handleOneYesterdayEvent($yesterdayEvent, $users, $taskStatus);
+                    $yesterdayEvent->getTask()->setTaskStatus('unrealised');
+                    $this->createTodayEvent($yesterdayEvent, $users);
                 }
             } else if ($yesterdayEvent->getInfo) {
-                $this->handleOneYesterdayEvent($yesterdayEvent, $users);
-
-                // $userInfos = $yesterdayEvent->getInfo()->getSharedWith();
-                // foreach ($userInfos as $userInfo) {
-                //     if ($userInfo->getIsRead() === true) {
-                //         continue;
-                //     } else {
-                //         $this->handleOneYesterdayEvent($yesterdayEvent, $users);
-                //     }
-                // }
+                $isFullyRead = $yesterdayEvent->getInfo()->getIsFullyRead();
+                if ($isFullyRead) {
+                    continue;
+                } else {
+                    $userInfos = $yesterdayEvent->getInfo()->getSharedWith();
+                    $users = new ArrayCollection();
+                    foreach ($userInfos as $userInfo) {
+                        if ($userInfo->getIsRead() === true) {
+                            continue;
+                        } else {
+                            $users->add($userInfo->getUser());
+                        }
+                    }
+                    $this->createTodayEvent($yesterdayEvent, $users);
+                }
             }
         }
     }
 
-    public function handleOneYesterdayEvent(Event $yesterdayEvent, Collection $users, string $taskStatus = null)
+    public function createTodayEvent(Event $yesterdayEvent, Collection $users)
     {
         $todayEvent = $this->duplicateEventBase($yesterdayEvent);
-
+        $todayEvent->setFirstDueDate($yesterdayEvent->getFirstDueDate());
         $this->eventService->setRelations($todayEvent, $users);
         if ($todayEvent->getTask()) {
             $todayEvent->getTask()->setTaskStatus("late");
+            $todayEvent->getTask()->setPending(true);
+        } else {
+            $todayEvent->getInfo()->setOld(true);
         }
         $this->eventService->setTimestamps($todayEvent);
         $this->em->flush();
-
     }
-
     public function duplicateEventBase(Event $originalEvent): Event
     {
         $event = (new Event())
@@ -106,11 +113,6 @@ class CronService
             ->setSection($originalEvent->getSection());
         return $event;
     }
-
-
-
-
-
 
     public function updateTagCount(Event $event)
     {

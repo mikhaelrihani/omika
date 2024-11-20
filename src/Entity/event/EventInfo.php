@@ -66,6 +66,11 @@ class EventInfo extends BaseEntity
     #[ORM\OneToMany(targetEntity: UserInfo::class, mappedBy: 'eventInfo', orphanRemoval: true)]
     private Collection $sharedWith;
 
+    #[ORM\Column(nullable: true)]
+    private ?bool $isOld = null;
+
+
+
     /**
      * Initializes the EventInfo entity and its collections.
      */
@@ -217,4 +222,18 @@ class EventInfo extends BaseEntity
     {
         return $this->event;
     }
+
+    public function isOld(): ?bool
+    {
+        return $this->isOld;
+    }
+
+    public function setOld(?bool $isOld): static
+    {
+        $this->isOld = $isOld;
+
+        return $this;
+    }
+
+   
 }

@@ -86,6 +86,9 @@ class Event extends BaseEntity
     #[ORM\JoinTable(name: 'user_favoriteEvents')]
     private Collection $favoritedBy;
 
+    #[ORM\Column]
+    private ?\DateTimeImmutable $firstDueDate = null;
+
 
     public function __construct()
     {
@@ -284,6 +287,18 @@ class Event extends BaseEntity
     public function removeFavoritedBy(User $favoritedBy): static
     {
         $this->favoritedBy->removeElement($favoritedBy);
+        return $this;
+    }
+
+    public function getFirstDueDate(): ?\DateTimeImmutable
+    {
+        return $this->firstDueDate;
+    }
+
+    public function setFirstDueDate(\DateTimeImmutable $firstDueDate): static
+    {
+        $this->firstDueDate = $firstDueDate;
+
         return $this;
     }
 
