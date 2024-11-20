@@ -149,11 +149,11 @@ class EventService
      * @param Event $event L'événement à modifier.
      * @param Collection $users Les utilisateurs associés à l'événement.
      */
-    public function setRelations(Event $event, Collection $users): void
+    public function setRelations(Event $event, Collection $users, string $taskStatus = "todo"): void
     {
         $type = $event->getType();
         $type === "task" ?
-            $this->setTask($event, "todo", $users) :
+            $this->setTask($event, $taskStatus, $users) :
             $this->setInfo($event, $users);
     }
 
