@@ -86,6 +86,12 @@ services:
         autoconfigure: true
         public: true # Or omit this line for default behavior
 
+    App\Service\Event\EventService:
+        lazy: true
+        # Make the services lazy-loaded so they are only initialized when explicitly needed to bypass the circular reference issue.
+    App\Service\Event\TagService:
+        lazy: true
+
 
       
 

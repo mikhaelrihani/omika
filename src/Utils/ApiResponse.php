@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Service;
+namespace App\Utils;
 
-class ResponseService
+class ApiResponse
 {
 
-    public function __construct(private bool $success, private string $message, private ?array $data = null, private ?string $errorCode = null)
+    private function __construct(private bool $success, private string $message, private ?array $data = null, private ?string $errorCode = null)
     {
 
     }

@@ -9,8 +9,8 @@ use App\Repository\Event\EventRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
-use App\Service\ResponseService;
-use App\Service\TagService;
+use App\Service\Event\TagService;
+use App\Utils\ApiResponse;
 use Doctrine\Common\Collections\ArrayCollection;
 use Exception;
 
@@ -28,9 +28,9 @@ class EventRecurringService
         protected TagService $tagService,
         protected ParameterBagInterface $parameterBag
     ) {
-        $this->now = DateTimeImmutable::createFromFormat('Y-m-d ', (new DateTimeImmutable())->format('Y-m-d'));
-        $this->activeDayStart = $this->parameterBag->get('active_day_start');
-        $this->activeDayEnd = $this->parameterBag->get('active_day_end');
+        $this->now = new DateTimeImmutable('today');
+        $this->activeDayStart = $this->parameterBag->get('activeDayStart');
+        $this->activeDayEnd = $this->parameterBag->get('activeDayEnd');
     }
 
     /**
@@ -39,15 +39,15 @@ class EventRecurringService
      * This method queries the database to fetch all events that have the "isRecurring" flag set to true.
      * It returns the retrieved child events along with a success message, or an error message if the operation fails.
      *
-     * @return ResponseService Response object indicating success or error with the list of children events if successful.
+     * @return ApiResponse Response object indicating success or error with the list of children events if successful.
      */
-    public function getAllChildrensFromDatabase(): ResponseService
+    public function getAllChildrensFromDatabase(): ApiResponse
     {
         try {
             $childrens = $this->eventRepository->findBy(["isRecurring" => true]);
-            return ResponseService::success('Children events retrieved successfully', ['childrens' => $childrens]);
+            return ApiResponse::success('Children events retrieved successfully', ['childrens' => $childrens]);
         } catch (Exception $e) {
-            return ResponseService::error('Error retrieving children events: ' . $e->getMessage());
+            return ApiResponse::error('Error retrieving children events: ' . $e->getMessage());
         }
     }
     /**
@@ -64,9 +64,9 @@ class EventRecurringService
      *
      * @param EventRecurring $eventRecurring The recurring event whose child events are to be updated.
      * 
-     * @return ResponseService Response object indicating success or error.
+     * @return ApiResponse Response object indicating success or error.
      */
-    public function handleRecurringEventUpdate(EventRecurring $eventRecurring): ResponseService
+    public function handleRecurringEventUpdate(EventRecurring $eventRecurring): ApiResponse
     {
         try {
             $childrens = $eventRecurring->getEvents();
@@ -99,10 +99,10 @@ class EventRecurringService
             $this->em->flush();
             $this->createChildrens($eventRecurring);
 
-            return ResponseService::success('Recurring event children updated successfully.');
+            return ApiResponse::success('Recurring event children updated successfully.');
         } catch (Exception $e) {
             // Handle any unexpected errors
-            return ResponseService::error(
+            return ApiResponse::error(
                 'An error occurred while updating recurring event children: ' . $e->getMessage(),
                 null,
                 'RECURRING_EVENT_UPDATE_FAILED'
@@ -118,11 +118,11 @@ class EventRecurringService
      *
      * @param EventRecurring $eventRecurring The recurring event to be deleted.
      *
-     * @return ResponseService Response object indicating success or failure of the operation.
+     * @return ApiResponse Response object indicating success or failure of the operation.
      *
      * @throws \Exception If an error occurs during the deletion process.
      */
-    public function deleteRecurringEvent(EventRecurring $eventRecurring): ResponseService
+    public function deleteRecurringEvent(EventRecurring $eventRecurring): ApiResponse
     {
         try {
             $childrens = $eventRecurring->getEvents();
@@ -132,10 +132,10 @@ class EventRecurringService
             }
             $this->em->remove($eventRecurring);
             $this->em->flush();
-            return ResponseService::success('Recurring event deleted successfully');
+            return ApiResponse::success('Recurring event deleted successfully');
 
         } catch (Exception $e) {
-            return ResponseService::error('An error occurred while deleting recurring event: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while deleting recurring event: ' . $e->getMessage());
         }
     }
 
@@ -147,23 +147,23 @@ class EventRecurringService
      * 
      * @param EventRecurring $eventRecurring The recurring event for which child events will be created.
      * 
-     * @return ResponseService Returns a success response with the created child events if the operation is successful.
+     * @return ApiResponse Returns a success response with the created child events if the operation is successful.
      *                         Returns an error response if an exception occurs during the process.
      * 
      * @throws \Exception If an error occurs during the creation of child events or tag handling, it is caught
      *                    and an error response is returned.
      */
-    public function createChildrens(EventRecurring $eventRecurring): ResponseService
+    public function createChildrens(EventRecurring $eventRecurring): ApiResponse
     {
         try {
             $childrens = $this->handleRecurrenceType($eventRecurring);
             foreach ($childrens as $child) {
                 $this->tagService->createTag($child);
             }
-            return ResponseService::success('Recurring event children created successfully', ['childrens' => $childrens]);
+            return ApiResponse::success('Recurring event children created successfully', ['childrens' => $childrens]);
         } catch (Exception $e) {
 
-            return ResponseService::error(
+            return ApiResponse::error(
                 'An error occurred while creating recurring event children: ' . $e->getMessage(),
                 null,
                 'RECURRING_EVENT_CREATION_FAILED'
@@ -182,10 +182,10 @@ class EventRecurringService
      * @param EventRecurring $parent The parent recurring event for which the child event is to be created.
      * @param DateTimeImmutable $dueDate The due date for the child event.
      *
-     * @return ResponseService Returns a success response if the child event is created successfully,
+     * @return ApiResponse Returns a success response if the child event is created successfully,
      *                         or an error response if an exception occurs during the process.
      */
-    public function createOneChild(EventRecurring $parent, DateTimeImmutable $dueDate): ResponseService
+    public function createOneChild(EventRecurring $parent, DateTimeImmutable $dueDate): ApiResponse
     {
         try {
             $child = $this->setOneChildBase($parent);
@@ -199,9 +199,9 @@ class EventRecurringService
             $this->em->persist($child);
             $parent->addEvent($child);
             $this->em->flush();
-            return ResponseService::success('Child event created successfully');
+            return ApiResponse::success('Child event created successfully');
         } catch (Exception $e) {
-            return ResponseService::error('Error creating child event: ' . $e->getMessage());
+            return ApiResponse::error('Error creating child event: ' . $e->getMessage());
         }
     }
 
@@ -238,9 +238,9 @@ class EventRecurringService
      *
      * @param EventRecurring $parent The recurring event whose recurrence type is to be handled.
      *
-     * @return ResponseService Response object indicating success or error.
+     * @return ApiResponse Response object indicating success or error.
      */
-    public function handleRecurrenceType(EventRecurring $parent): ResponseService
+    public function handleRecurrenceType(EventRecurring $parent): ApiResponse
     {
         try {
             $recurrenceType = $parent->getRecurrenceType();
@@ -258,11 +258,11 @@ class EventRecurringService
                     $this->handleEveryday($parent);
                     break;
                 default:
-                    return ResponseService::error('Recurrence type not found');
+                    return ApiResponse::error('Recurrence type not found');
             }
-            return ResponseService::success('Recurrence handled successfully');
+            return ApiResponse::success('Recurrence handled successfully');
         } catch (Exception $e) {
-            return ResponseService::error('Error handling recurrence type: ' . $e->getMessage());
+            return ApiResponse::error('Error handling recurrence type: ' . $e->getMessage());
         }
     }
 
@@ -274,12 +274,12 @@ class EventRecurringService
      * 
      * @param EventRecurring $parent The parent recurring event that contains the configuration for the recurrence.
      * 
-     * @return ResponseService Returns a success response if the child events are generated successfully,
+     * @return ApiResponse Returns a success response if the child events are generated successfully,
      *                         or an error response if an exception occurs during the process.
      * 
      * @throws \Exception If an error occurs while handling the recurrence, it is caught and returned in the error response.
      */
-    public function handleMonthDays(EventRecurring $parent): ResponseService
+    public function handleMonthDays(EventRecurring $parent): ApiResponse
     {
         try {
             $monthDays = $parent->getMonthDays();
@@ -299,9 +299,9 @@ class EventRecurringService
                 }
                 $currentMonthDate = $currentMonthDate->modify('first day of next month');
             }
-            return ResponseService::success('Month days recurrence handled successfully');
+            return ApiResponse::success('Month days recurrence handled successfully');
         } catch (Exception $e) {
-            return ResponseService::error('Error handling month days recurrence: ' . $e->getMessage());
+            return ApiResponse::error('Error handling month days recurrence: ' . $e->getMessage());
         }
     }
 
@@ -313,12 +313,12 @@ class EventRecurringService
      * 
      * @param EventRecurring $parent The parent recurring event that contains the configuration for the recurrence.
      * 
-     * @return ResponseService Returns a success response if the child events are generated successfully,
+     * @return ApiResponse Returns a success response if the child events are generated successfully,
      *                         or an error response if an exception occurs during the process.
      * 
      * @throws \Exception If an error occurs while handling the recurrence, it is caught and returned in the error response.
      */
-    public function handleWeekdays(EventRecurring $parent): ResponseService
+    public function handleWeekdays(EventRecurring $parent): ApiResponse
     {
         try {
             $weekDays = $parent->getWeekDays();
@@ -337,9 +337,9 @@ class EventRecurringService
                 }
                 $currentWeekDate = $currentWeekDate->modify('next week');
             }
-            return ResponseService::success('Weekdays recurrence handled successfully');
+            return ApiResponse::success('Weekdays recurrence handled successfully');
         } catch (Exception $e) {
-            return ResponseService::error('Error handling weekdays recurrence: ' . $e->getMessage());
+            return ApiResponse::error('Error handling weekdays recurrence: ' . $e->getMessage());
         }
     }
 
@@ -351,12 +351,12 @@ class EventRecurringService
      * 
      * @param EventRecurring $parent The parent recurring event that defines the period and the dates for recurrence.
      * 
-     * @return ResponseService Returns a success response if the child events are generated successfully,
+     * @return ApiResponse Returns a success response if the child events are generated successfully,
      *                         or an error response if an exception occurs during the process.
      * 
      * @throws \Exception If an error occurs while handling the recurrence, it is caught and returned in the error response.
      */
-    public function handlePeriodDates(EventRecurring $parent): ResponseService
+    public function handlePeriodDates(EventRecurring $parent): ApiResponse
     {
         try {
             [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent);
@@ -369,9 +369,9 @@ class EventRecurringService
                     $this->createOneChild($parent, $dueDate);
                 }
             }
-            return ResponseService::success('Period dates recurrence handled successfully');
+            return ApiResponse::success('Period dates recurrence handled successfully');
         } catch (Exception $e) {
-            return ResponseService::error('Error handling period dates recurrence: ' . $e->getMessage());
+            return ApiResponse::error('Error handling period dates recurrence: ' . $e->getMessage());
         }
     }
 
@@ -383,12 +383,12 @@ class EventRecurringService
      * 
      * @param EventRecurring $parent The parent recurring event that defines the period for recurrence.
      * 
-     * @return ResponseService Returns a success response if the child events are generated successfully,
+     * @return ApiResponse Returns a success response if the child events are generated successfully,
      *                         or an error response if an exception occurs during the process.
      * 
      * @throws \Exception If an error occurs while handling the recurrence, it is caught and returned in the error response.
      */
-    public function handleEveryday(EventRecurring $parent): ResponseService
+    public function handleEveryday(EventRecurring $parent): ApiResponse
     {
         try {
             [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent);
@@ -401,9 +401,9 @@ class EventRecurringService
                     $this->createOneChild($parent, $dueDate);
                 }
             }
-            return ResponseService::success('Everyday recurrence handled successfully');
+            return ApiResponse::success('Everyday recurrence handled successfully');
         } catch (Exception $e) {
-            return ResponseService::error('Error handling everyday recurrence: ' . $e->getMessage());
+            return ApiResponse::error('Error handling everyday recurrence: ' . $e->getMessage());
         }
     }
 
@@ -429,10 +429,10 @@ class EventRecurringService
      *
      * @param EventRecurring $parent The parent recurring event for which the period limits are to be calculated.
      *
-     * @return array|ResponseService Returns an array containing the earliest and latest creation dates if successful,
+     * @return array|ApiResponse Returns an array containing the earliest and latest creation dates if successful,
      *                               or an error response if an exception occurs during the process.
      */
-    private function calculatePeriodLimits(EventRecurring $parent): array|ResponseService
+    private function calculatePeriodLimits(EventRecurring $parent): array|ApiResponse
     {
         try {
             $latestDate = (new DateTimeImmutable($this->now->format('Y-m-d')))->modify("+{$this->activeDayEnd} day");
@@ -443,7 +443,7 @@ class EventRecurringService
 
             return [$earliestCreationDate, $latestCreationDate];
         } catch (Exception $e) {
-            return ResponseService::error('Error calculating period limits: ' . $e->getMessage());
+            return ApiResponse::error('Error calculating period limits: ' . $e->getMessage());
         }
     }
 

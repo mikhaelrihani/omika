@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Service;
+namespace App\Service\Event;
 
 use App\Entity\Event\Event;
 use App\Entity\Event\Tag;
@@ -8,6 +8,7 @@ use App\Entity\Event\TagInfo;
 use App\Entity\Event\TagTask;
 use App\Entity\User\User;
 use App\Service\Event\EventService;
+use App\Utils\ApiResponse;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
@@ -17,10 +18,9 @@ class TagService
     protected DateTimeImmutable $now;
     public function __construct(
         protected EntityManagerInterface $em,
-        protected ResponseService $responseService,
         protected EventService $eventService
     ) {
-        $this->now = DateTimeImmutable::createFromFormat('Y-m-d ', (new DateTimeImmutable())->format('Y-m-d'));
+        $this->now = new DateTimeImmutable('today');
     }
 
 
@@ -34,18 +34,18 @@ class TagService
      * 
      * @param Event $event The event for which the tag is being created.
      * 
-     * @return ResponseService Returns a success response if the tag is created successfully or an error response in case of failure.
+     * @return ApiResponse Returns a success response if the tag is created successfully or an error response in case of failure.
      * 
      * @throws Exception If any error occurs during the tag creation process, it is caught and returned in the error response.
      */
-    public function createTag(Event $event): ResponseService
+    public function createTag(Event $event): ApiResponse
     {
         try {
             $this->createTagBase($event);
             $this->setTagRelation($event);
-            return $this->responseService::success('Tag created successfully.');
+            return ApiResponse::success('Tag created successfully.');
         } catch (Exception $e) {
-            return $this->responseService::error('An error occurred while creating the tag: ' . $e->getMessage(), null, 'TAG_CREATION_FAILED');
+            return ApiResponse::error('An error occurred while creating the tag: ' . $e->getMessage(), null, 'TAG_CREATION_FAILED');
         }
     }
 
@@ -57,27 +57,19 @@ class TagService
      * 
      * @param Event $event The event for which the base tag is being created.
      * 
-     * @return ResponseService Returns a success response if the tag is created successfully or an error response in case of failure.
-     * 
-     * @throws Exception If any error occurs during the tag creation process, it is caught and returned in the error response.
      */
-    public function createTagBase(Event $event): ResponseService
+    public function createTagBase(Event $event)
     {
-        try {
-            $tag = new Tag();
-            $tag
-                ->setSection($event->getSection()->getName())
-                ->setDay($event->getDueDate())
-                ->setDateStatus($event->getDateStatus())
-                ->setActiveDay($event->getActiveDay())
-                ->setSide($event->getSide());
+        $tag = new Tag();
+        $tag
+            ->setSection($event->getSection()->getName())
+            ->setDay($event->getDueDate())
+            ->setDateStatus($event->getDateStatus())
+            ->setActiveDay($event->getActiveDay())
+            ->setSide($event->getSide());
 
-            $this->em->persist($tag);
-            $this->em->flush();
-            return $this->responseService::success('Tag created successfully.');
-        } catch (Exception $e) {
-            return $this->responseService::error($e->getMessage());
-        }
+        $this->em->persist($tag);
+        $this->em->flush();
     }
 
     /**
@@ -88,22 +80,13 @@ class TagService
      * 
      * @param Event $event The event whose tag relationships need to be updated.
      * 
-     * @return ResponseService Returns a success response if the operation is successful or an error response in case of failure.
-     * 
-     * @throws Exception If any error occurs during the process, it is caught and returned in the error response.
      */
-    public function setTagRelation(Event $event): ResponseService
+    public function setTagRelation(Event $event)
     {
-        try {
             $type = $event->getType();
             $type === "task" ?
                 $this->incrementSharedUsersTagTaskCount($event) :
                 $this->incrementSharedUsersTagInfoCount($event);
-
-            return $this->responseService::success('Tag count updated successfully.');
-        } catch (Exception $e) {
-            return $this->responseService::error('An error occurred while updating the tag count: ' . $e->getMessage(), null, 'TAG_COUNT_UPDATE_FAILED');
-        }
     }
 
     /**
@@ -114,11 +97,11 @@ class TagService
      * 
      * @param Event $event The event for which the tag is being searched.
      * 
-     * @return ResponseService|Tag Returns the `Tag` entity if found. Otherwise, returns a `ResponseService` error response.
+     * @return ApiResponse|Tag Returns the `Tag` entity if found. Otherwise, returns a `ApiResponse` error response.
      * 
      * @throws \Exception If an error occurs during the search, it is handled and a meaningful error message is returned.
      */
-    public function findTag($event): ResponseService|Tag
+    public function findTag($event): ApiResponse|Tag
     {
         $day = $event->getDueDate();
         $side = $event->getSide();
@@ -126,7 +109,7 @@ class TagService
         // Trouver le tag pour l'événement en fonction de la date, du côté et de la section.
         $tag = $this->em->getRepository(Tag::class)->findOneByDaySideSection($day, $side, $section);
         if (!$tag) {
-            return $this->responseService::error('Tag not found for the specified event.', null, 'TAG_NOT_FOUND');
+            return ApiResponse::error('Tag not found for the specified event.', null, 'TAG_NOT_FOUND');
         }
         return $tag;
     }
@@ -141,11 +124,11 @@ class TagService
      * @param Event $event The event associated with the user's action.
      * @param User|null $user (Optional) The user performing the action, required for info events.
      * 
-     * @return ResponseService Returns a success response if the tag count is updated successfully.
+     * @return ApiResponse Returns a success response if the tag count is updated successfully.
      * 
      * @throws \InvalidArgumentException If the event type is invalid or the status is unsupported.
      */
-    public function updateTagCountOnUserAction(Event $event, user $user = null): ResponseService
+    public function updateTagCountOnUserAction(Event $event, user $user = null)
     {
         try {
             if ($event->getType() === "task") {
@@ -164,13 +147,13 @@ class TagService
                 // if the user opened the event info page
                 $this->decrementOneUserTagCountByOne($event, $user);
             }
-            return $this->responseService::success('Tag count updated successfully.');
+            return ApiResponse::success('Tag count updated successfully.');
         } catch (Exception $e) {
-            return $this->responseService::error('An error occurred while updating the tag count: ' . $e->getMessage(), null, 'TAG_COUNT_UPDATE_FAILED');
+            return ApiResponse::error('An error occurred while updating the tag count: ' . $e->getMessage(), null, 'TAG_COUNT_UPDATE_FAILED');
         }
     }
 
-     /**
+    /**
      * Deletes tags that are older than yesterday.
      * we delete past tags because they are no longer relevant , tags are made to inform about the current day events or future events only.
      * This method identifies tags that have a `day` field corresponding to either
@@ -178,16 +161,17 @@ class TagService
      * The operation directly interacts with the database using Doctrine's QueryBuilder
      * for optimal performance.
      *
-     * @return ResponseService Returns a success message if the tags are deleted successfully,
+     * @return ApiResponse Returns a success message if the tags are deleted successfully,
      *                         or an error message if an exception occurs.
      *
      * @throws Exception If an unexpected error occurs during the tag deletion process.
      */
-    public function deletePastTag(): ResponseService
+    public function deletePastTag(): ApiResponse
     {
         try {
-            $yesterday = new DateTimeImmutable("yesterday");
-            $dayBeforeYesterday = new DateTimeImmutable("yesterday -1 day");
+            $yesterday = (new DateTimeImmutable("yesterday"))->format('Y-m-d');
+            $dayBeforeYesterday = (new DateTimeImmutable("yesterday -1 day"))->format('Y-m-d');
+            ;
 
             $tags = $this->em->createQueryBuilder()
                 ->select('t')
@@ -200,12 +184,11 @@ class TagService
             foreach ($tags as $tag) {
                 $this->em->remove($tag);
             }
-
             $this->em->flush();
 
-            return $this->responseService::success('Past tags deleted successfully.');
+            return ApiResponse::success('Past tags deleted successfully.');
         } catch (Exception $e) {
-            return $this->responseService::error(
+            return ApiResponse::error(
                 'An error occurred while deleting past tags: ' . $e->getMessage(),
                 null,
                 'TAG_DELETION_FAILED'
@@ -223,14 +206,9 @@ class TagService
      * @param Tag $tag The tag to which the `TagInfo` will be linked.
      * @param User $user The user associated with the `TagInfo`.
      * 
-     * @return ResponseService Returns a success response if the `TagInfo` is created successfully.
-     *                        Returns an error response if an exception occurs during the process.
-     * 
-     * @throws \Exception If an error occurs while persisting the `TagInfo`, it is caught and an error response is returned.
      */
-    public function createTagInfo(Tag $tag, user $user): ResponseService
+    public function createTagInfo(Tag $tag, user $user)
     {
-        try {
             $tagInfo = new TagInfo();
             $tagInfo
                 ->setUser($user)
@@ -241,10 +219,6 @@ class TagService
             $this->em->persist($tagInfo);
             $tag->addTagInfo($tagInfo);
             $this->em->flush();
-            return $this->responseService::success('Tag info created successfully.');
-        } catch (Exception $e) {
-            return $this->responseService::error('An error occurred while creating tag info: ' . $e->getMessage(), null, 'TAG_INFO_CREATION_FAILED');
-        }
     }
 
     /**
@@ -256,11 +230,11 @@ class TagService
      * @param Event $event The event containing the shared information.
      * @param User $user The user for whom the tag info count is updated.
      * 
-     * @return ResponseService Returns a success response if the operation is successful, or an error response if an exception occurs.
+     * @return ApiResponse Returns a success response if the operation is successful, or an error response if an exception occurs.
      * 
      * @throws \Exception If any error occurs during the process, it is caught and returned in the error response.
      */
-    public function incrementOneUserTagInfoCount(Event $event, user $user): ResponseService
+    public function incrementOneUserTagInfoCount(Event $event, user $user): ApiResponse
     {
         try {
             $tag = $this->findTag($event);
@@ -274,9 +248,9 @@ class TagService
                 $this->createTagInfo($tag, $user);
             }
 
-            return $this->responseService::success('Tag info count updated successfully.');
+            return ApiResponse::success('Tag info count updated successfully.');
         } catch (Exception $e) {
-            return $this->responseService::error('An error occurred while setting info tag count: ' . $e->getMessage(), null, 'INFO_TAG_COUNT_UPDATE_FAILED');
+            return ApiResponse::error('An error occurred while setting info tag count: ' . $e->getMessage(), null, 'INFO_TAG_COUNT_UPDATE_FAILED');
         }
     }
 
@@ -288,11 +262,11 @@ class TagService
      * 
      * @param Event $event The event containing the shared information.
      * 
-     * @return ResponseService Returns a success response if the operation is successful, or an error response if an exception occurs.
+     * @return ApiResponse Returns a success response if the operation is successful, or an error response if an exception occurs.
      * 
      * @throws \Exception If any error occurs during the process, it is caught and returned in the error response.
      */
-    public function incrementSharedUsersTagInfoCount(Event $event): ResponseService
+    public function incrementSharedUsersTagInfoCount(Event $event): ApiResponse
     {
         try {
             // Récupère les utilisateurs avec lesquels l'info a été partagée.
@@ -307,9 +281,9 @@ class TagService
                 $this->incrementOneUserTagInfoCount($event, $user);
             }
 
-            return $this->responseService::success('Tag info count updated successfully.');
+            return ApiResponse::success('Tag info count updated successfully.');
         } catch (Exception $e) {
-            return $this->responseService::error('An error occurred while setting info tag count: ' . $e->getMessage(), null, 'INFO_TAG_COUNT_UPDATE_FAILED');
+            return ApiResponse::error('An error occurred while setting info tag count: ' . $e->getMessage(), null, 'INFO_TAG_COUNT_UPDATE_FAILED');
         }
     }
 
@@ -323,14 +297,9 @@ class TagService
      * @param Tag $tag The tag to which the `TagTask` will be linked.
      * @param User $user The user associated with the `TagTask`.
      * 
-     * @return ResponseService Returns a success response if the `TagTask` is created successfully.
-     *                        Returns an error response if an exception occurs during the process.
-     * 
-     * @throws \Exception If an error occurs while persisting the `TagTask`, it is caught and an error response is returned.
      */
-    public function createTagTask(Tag $tag, user $user): ResponseService
+    public function createTagTask(Tag $tag, user $user)
     {
-        try {
             $tagTask = new TagTask();
             $tagTask
                 ->setUser($user)
@@ -340,11 +309,6 @@ class TagService
                 ->setUpdatedAt($this->now);
             $this->em->persist($tagTask);
             $tag->addTagTask($tagTask);
-            $this->em->flush();
-            return $this->responseService::success('Tag task created successfully.');
-        } catch (Exception $e) {
-            return $this->responseService::error('An error occurred while creating tag task: ' . $e->getMessage(), null, 'TAG_TASK_CREATION_FAILED');
-        }
     }
 
     /**
@@ -356,11 +320,11 @@ class TagService
      * @param Event $event The event containing the task information.
      * @param User $user The user for whom the tag task count is updated.
      * 
-     * @return ResponseService Returns a success response if the operation is successful, or an error response if an exception occurs.
+     * @return ApiResponse Returns a success response if the operation is successful, or an error response if an exception occurs.
      * 
      * @throws \Exception If any error occurs during the process, it is caught and returned in the error response.
      */
-    public function incrementOneUserTagTaskCount(Event $event, User $user): ResponseService
+    public function incrementOneUserTagTaskCount(Event $event, User $user): ApiResponse
     {
         try {
             $tag = $this->findTag($event);
@@ -377,9 +341,9 @@ class TagService
                 $this->createTagTask($tag, $user);
             }
 
-            return $this->responseService::success('Tag task count updated successfully.');
+            return ApiResponse::success('Tag task count updated successfully.');
         } catch (Exception $e) {
-            return $this->responseService::error('An error occurred while setting task tag count: ' . $e->getMessage(), null, 'TASK_TAG_COUNT_UPDATE_FAILED');
+            return ApiResponse::error('An error occurred while setting task tag count: ' . $e->getMessage(), null, 'TASK_TAG_COUNT_UPDATE_FAILED');
         }
     }
 
@@ -391,11 +355,11 @@ class TagService
      * 
      * @param Event $event The event containing the shared task information.
      * 
-     * @return ResponseService Returns a success response if the operation is successful, or an error response if an exception occurs.
+     * @return ApiResponse Returns a success response if the operation is successful, or an error response if an exception occurs.
      * 
      * @throws \Exception If any error occurs during the process, it is caught and returned in the error response.
      */
-    public function incrementSharedUsersTagTaskCount(Event $event): ResponseService
+    public function incrementSharedUsersTagTaskCount(Event $event): ApiResponse
     {
         try {
             // Récupère les utilisateurs associés à la tâche.
@@ -405,9 +369,9 @@ class TagService
             foreach ($users as $user) {
                 $this->incrementOneUserTagTaskCount($event, $user);
             }
-            return $this->responseService::success('Tag task count updated successfully.');
+            return ApiResponse::success('Tag task count updated successfully.');
         } catch (Exception $e) {
-            return $this->responseService::error('An error occurred while setting task tag count: ' . $e->getMessage(), null, 'TASK_TAG_COUNT_UPDATE_FAILED');
+            return ApiResponse::error('An error occurred while setting task tag count: ' . $e->getMessage(), null, 'TASK_TAG_COUNT_UPDATE_FAILED');
         }
     }
 
@@ -419,9 +383,9 @@ class TagService
      * @param User $user L'utilisateur associé au compteur de tags.
      * @param bool $flush Indique si l'entité doit être flushée après la mise à jour.
      *
-     * @return ResponseService
+     * @return ApiResponse
      */
-    public function decrementOneUserTagCountByOne(Event $event, User $user, $flush = true): ResponseService
+    public function decrementOneUserTagCountByOne(Event $event, User $user, $flush = true): ApiResponse
     {
         try {
             $tag = $this->findTag($event);
@@ -431,7 +395,7 @@ class TagService
                 // Trouver le TagTask associé à l'utilisateur et au tag.
                 $tagTask = $this->em->getRepository(TagTask::class)->findOneByUserAndTag_task($user, $tag);
                 if (!$tagTask) {
-                    return $this->responseService::error('TagTask not found for the specified user and tag.', null, 'TAGTASK_NOT_FOUND');
+                    return ApiResponse::error('TagTask not found for the specified user and tag.', null, 'TAGTASK_NOT_FOUND');
                 }
 
                 // Décrémenter le compteur de tags (en s'assurant qu'il ne descende pas en dessous de zéro).
@@ -441,7 +405,7 @@ class TagService
                 // Gérer TagInfo si le type n'est pas "task".
                 $tagInfo = $this->em->getRepository(TagInfo::class)->findOneByUserAndTag_info($user, $tag);
                 if (!$tagInfo) {
-                    return $this->responseService::error('TagInfo not found for the specified user and tag.', null, 'TAGINFO_NOT_FOUND');
+                    return ApiResponse::error('TagInfo not found for the specified user and tag.', null, 'TAGINFO_NOT_FOUND');
                 }
 
                 // Décrémenter le compteur d'info non lue (en s'assurant qu'il ne descende pas en dessous de zéro).
@@ -453,9 +417,9 @@ class TagService
                 $this->em->flush(); // Flush si explicitement demandé
             }
 
-            return $this->responseService::success('Tag count decremented successfully.');
+            return ApiResponse::success('Tag count decremented successfully.');
         } catch (Exception $e) {
-            return $this->responseService::error('An error occurred while decrementing the tag counter: ' . $e->getMessage(), null, 'TAG_DECREMENT_FAILED');
+            return ApiResponse::error('An error occurred while decrementing the tag counter: ' . $e->getMessage(), null, 'TAG_DECREMENT_FAILED');
         }
     }
 
@@ -468,9 +432,9 @@ class TagService
      * @param User[] $users An array or iterable of User entities for whom the tag counter will be decremented.
      * @param Event $event The event associated with the tag counter update.
      *
-     * @return ResponseService
+     * @return ApiResponse
      */
-    public function decrementSharedUsersTagCountByOne(Event $event): ResponseService
+    public function decrementSharedUsersTagCountByOne(Event $event): ApiResponse
     {
         $users = $this->eventService->getUsers($event);
         try {
@@ -478,14 +442,14 @@ class TagService
                 $this->decrementOneUserTagCountByOne($event, $user, false);
             }
             $this->em->flush(); // Flush une seule fois après avoir décrémenté pour tous les utilisateurs.
-            return $this->responseService::success('Tag count decremented successfully for multiple users.');
+            return ApiResponse::success('Tag count decremented successfully for multiple users.');
         } catch (Exception $e) {
-            return $this->responseService::error('An error occurred while decrementing the tag counter for multiple users: ' . $e->getMessage(), null, 'TAG_DECREMENT_FAILED');
+            return ApiResponse::error('An error occurred while decrementing the tag counter for multiple users: ' . $e->getMessage(), null, 'TAG_DECREMENT_FAILED');
         }
 
     }
 
     //! --------------------------------------------------------------------------------------------
 
-    
+
 }

@@ -54,11 +54,16 @@ security:
         ROLE_SUPER_ADMIN: [ROLE_ADMIN, ROLE_ALLOWED_TO_SWITCH]
     # Access control pour les chemins spécifiques
     access_control:
+
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/token/refresh, roles: PUBLIC_ACCESS  }
+
          # Autoriser l'accès aux routes de réinitialisation de mot de passe sans authentification
         - { path: ^/api/security/sendPasswordLink, roles: PUBLIC_ACCESS }
         - { path: ^/api/security/reset-password, roles: PUBLIC_ACCESS }
+
+         # autoriser le Cron Job à s'exécuter sans authentification
+        - { path: ^/api/cron, roles: PUBLIC_ACCESS }
         
         - { path: ^/api/admin, roles: ROLE_ADMIN }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }

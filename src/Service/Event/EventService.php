@@ -10,9 +10,10 @@ use App\Entity\User\User;
 use App\Repository\Event\EventRepository;
 use App\Repository\Event\EventTaskRepository;
 use App\Repository\Event\UserInfoRepository;
-use App\Service\ResponseService;
-use App\Service\TagService;
+use App\Service\Event\TagService;
+use App\Utils\ApiResponse;
 use DateTimeImmutable;
+use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
@@ -34,32 +35,32 @@ class EventService
         protected EventTaskRepository $eventTaskRepository
 
     ) {
-        $this->now = DateTimeImmutable::createFromFormat('Y-m-d ', (new DateTimeImmutable())->format('Y-m-d'));
-        $this->activeDayStart = $this->parameterBag->get('active_day_start');
-        $this->activeDayEnd = $this->parameterBag->get('active_day_end');
+        $this->now = (new DateTimeImmutable('today'));
+        $this->activeDayStart = $this->parameterBag->get('activeDayStart');
+        $this->activeDayEnd = $this->parameterBag->get('activeDayEnd');
     }
 
     /**
      * Crée un événement en utilisant les données spécifiées.
      *
      * @param array $data Les données de l'événement.
-     * @return ResponseService L'objet de réponse de succès ou d'erreur.
+     * @return ApiResponse L'objet de réponse de succès ou d'erreur.
      */
-    public function createOneEvent(array $data): ResponseService
+    public function createOneEvent(array $data): ApiResponse
     {
         try {
             $event = $this->setEventBase($data);
             if ($event === null) {
-                return ResponseService::error('Error creating event: Invalid event data');
+                return ApiResponse::error('Error creating event: Invalid event data');
             }
 
             $this->setTimestamps($event);
             $this->setRelations($event, $data[ "users" ]);
             $this->em->flush();
-            return ResponseService::success('Event created successfully', ['event' => $event]);
+            return ApiResponse::success('Event created successfully', ['event' => $event]);
 
         } catch (Exception $e) {
-            return ResponseService::error('Error creating event: ' . $e->getMessage());
+            return ApiResponse::error('Error creating event: ' . $e->getMessage());
         }
     }
 
@@ -69,7 +70,7 @@ class EventService
      * @param array $data Les données pour initialiser l'événement.
      * @return Event|null L'événement nouvellement créé ou null si une erreur se produit.
      */
-    public function setEventBase(array $data): Event|ResponseService
+    public function setEventBase(array $data): Event|ApiResponse
     {
         try {
             $event = new Event();
@@ -88,7 +89,7 @@ class EventService
             return $event;
         } catch (Exception $e) {
             // Retourne une erreur avec un message précis
-            return ResponseService::error('Error setting event base properties: ' . $e->getMessage());
+            return ApiResponse::error('Error setting event base properties: ' . $e->getMessage());
         }
     }
 
@@ -108,9 +109,9 @@ class EventService
     {
         if ($event->getType() === "info") {
             $usersinfo = $event->getInfo()->getSharedWith();
-            $users = [];
+            $users = new ArrayCollection();
             foreach ($usersinfo as $userInfo) {
-                $users[] = $userInfo->getUser();
+                $users->add($userInfo->getUser());
             }
         } else {
             $users = $event->getTask()->getSharedWith();
@@ -171,11 +172,11 @@ class EventService
             ->setTaskStatus($taskStatus)
             ->setSharedWithCount($users->count())
             ->setPending($taskStatus === "pending");
-
-        $this->em->persist($task);
         foreach ($users as $user) {
             $task->addSharedWith($user);
         }
+        $task->setEvent($event);
+        $this->em->persist($task);
         $event->setTask($task);
     }
 
@@ -248,22 +249,22 @@ class EventService
      * This method deletes the provided event entity from the database and adjusts
      * the associated tag counters for a given list of users. 
      * @param Event $event The event to be deleted.
-     * @return ResponseService A ResponseService object indicating success or failure of the operation.
+     * @return ApiResponse A ApiResponse object indicating success or failure of the operation.
      *
      * @throws ORMException If a database error occurs during the event removal.
      * @throws Exception For any unexpected errors during processing.
      */
-    public function removeEventAndUpdateTagCounters(Event $event): ResponseService
+    public function removeEventAndUpdateTagCounters(Event $event): ApiResponse
     {
         try {
             $this->em->remove($event);
             $response = $this->tagService->decrementSharedUsersTagCountByOne($event);
             $this->em->flush();
-            return ResponseService::success('Event deleted successfully and ' . $response->getMessage());
+            return ApiResponse::success('Event deleted successfully and ' . $response->getMessage());
         } catch (ORMException $e) {
-            return ResponseService::error('An error occurred while deleting the event: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while deleting the event: ' . $e->getMessage());
         } catch (Exception $e) {
-            return ResponseService::error('An unexpected error occurred: ' . $e->getMessage());
+            return ApiResponse::error('An unexpected error occurred: ' . $e->getMessage());
         }
     }
 
@@ -277,7 +278,7 @@ class EventService
      * @param User $user The user to be removed from all EventInfos.
      * @return void
      */
-    public function removeUserFromAllEventInfos(User $user): ResponseService
+    public function removeUserFromAllEventInfos(User $user): ApiResponse
     {
         try {
             // Récupérer tous les UserInfo liés à l'utilisateur
@@ -301,11 +302,11 @@ class EventService
                 }
             }
             $this->em->flush();
-            return ResponseService::success('User removed from all EventInfos successfully');
+            return ApiResponse::success('User removed from all EventInfos successfully');
         } catch (ORMException $e) {
-            return ResponseService::error('An error occurred while removing the user from EventInfos: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while removing the user from EventInfos: ' . $e->getMessage());
         } catch (Exception $e) {
-            return ResponseService::error('An unexpected error occurred while removing the user: ' . $e->getMessage());
+            return ApiResponse::error('An unexpected error occurred while removing the user: ' . $e->getMessage());
         }
     }
 
@@ -321,7 +322,7 @@ class EventService
      * 
      * @return void
      */
-    public function removeUserFromAllEventTasks(User $user): ResponseService
+    public function removeUserFromAllEventTasks(User $user): ApiResponse
     {
         try {
             // Récupérer toutes les tâches associées à cet utilisateur
@@ -341,11 +342,11 @@ class EventService
                 }
             }
             $this->em->flush();
-            return ResponseService::success('User removed from all EventTasks successfully');
+            return ApiResponse::success('User removed from all EventTasks successfully');
         } catch (ORMException $e) {
-            return ResponseService::error('An error occurred while removing the user from EventTasks: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while removing the user from EventTasks: ' . $e->getMessage());
         } catch (Exception $e) {
-            return ResponseService::error('An unexpected error occurred while removing the user: ' . $e->getMessage());
+            return ApiResponse::error('An unexpected error occurred while removing the user: ' . $e->getMessage());
         }
     }
 
@@ -360,14 +361,14 @@ class EventService
      * 
      * @return void
      */
-    public function removeUserFromAllEvents(User $user): ResponseService
+    public function removeUserFromAllEvents(User $user): ApiResponse
     {
         try {
             $this->removeUserFromAllEventInfos($user);
             $this->removeUserFromAllEventTasks($user);
-            return ResponseService::success('User removed from all events successfully');
+            return ApiResponse::success('User removed from all events successfully');
         } catch (Exception $e) {
-            return ResponseService::error('An unexpected error occurred while removing the user from all events: ' . $e->getMessage());
+            return ApiResponse::error('An unexpected error occurred while removing the user from all events: ' . $e->getMessage());
         }
     }
 
@@ -387,14 +388,14 @@ class EventService
      * @param string|null $section The section to filter by, or null to ignore.
      * @param string|null $status The task status to filter by, or null to ignore.
      * 
-     * @return ResponseService A ResponseService object containing the filtered events or an error message.
+     * @return ApiResponse A ApiResponse object containing the filtered events or an error message.
      */
     public function filterEvents(
         ?DateTimeImmutable $dueDate,
         ?string $side,
         ?string $section,
         ?string $status
-    ): ResponseService {
+    ): ApiResponse {
         try {
             // Create query builder to build the query dynamically
             $qb = $this->eventRepository->createQueryBuilder('e');
@@ -417,9 +418,9 @@ class EventService
             // Execute the query to fetch results
             $filteredEvents = $qb->getQuery()->getResult();
 
-            return ResponseService::success('Events filtered successfully.', $filteredEvents);
+            return ApiResponse::success('Events filtered successfully.', $filteredEvents);
         } catch (Exception $e) {
-            return ResponseService::error('An error occurred while filtering events: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while filtering events: ' . $e->getMessage());
         }
     }
 

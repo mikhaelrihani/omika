@@ -46,7 +46,7 @@ class EventTask extends BaseEntity
     #[ORM\Column]
     private ?bool $isPending = null;
 
-   
+
 
     public function __construct()
     {
@@ -124,6 +124,14 @@ class EventTask extends BaseEntity
         return $this->event;
     }
 
+    public function setEvent(?Event $event): self
+    {
+        $this->event = $event;
+        return $this;
+    }
+
+
+
     /**
      * Lifecycle callback triggered before the entity is removed.
      * Clears the sharedWith collection to clean up relations in the database.
@@ -156,5 +164,5 @@ class EventTask extends BaseEntity
         return $this;
     }
 
-  
+
 }
