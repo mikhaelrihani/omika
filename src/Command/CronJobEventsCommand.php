@@ -27,6 +27,7 @@ class CronJobEventsCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+       
         $response = $this->cronService->load();
 
         if ($response->isSuccess()) {

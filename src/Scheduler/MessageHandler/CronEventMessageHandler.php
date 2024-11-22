@@ -18,7 +18,7 @@ final class CronEventMessageHandler
     public function __invoke(CronEventMessage $cronEventMessage): void
     {
         $process = new Process([$this->phpBinaryPath, $this->consolePath, 'app:cronJob-events']);
-        $process->setTimeout(60);
+        $process->setTimeout(300);
         $process->run();
 
         if (!$process->isSuccessful()) {
