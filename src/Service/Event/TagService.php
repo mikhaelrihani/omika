@@ -83,10 +83,10 @@ class TagService
      */
     public function setTagRelation(Event $event)
     {
-            $type = $event->getType();
-            $type === "task" ?
-                $this->incrementSharedUsersTagTaskCount($event) :
-                $this->incrementSharedUsersTagInfoCount($event);
+        $type = $event->getType();
+        $type === "task" ?
+            $this->incrementSharedUsersTagTaskCount($event) :
+            $this->incrementSharedUsersTagInfoCount($event);
     }
 
     /**
@@ -169,18 +169,15 @@ class TagService
     public function deletePastTag(): ApiResponse
     {
         try {
-            $yesterday = (new DateTimeImmutable("yesterday"))->format('Y-m-d');
-            $dayBeforeYesterday = (new DateTimeImmutable("yesterday -1 day"))->format('Y-m-d');
-            ;
+            $today = (new DateTimeImmutable("today"))->format('Y-m-d');
 
             $tags = $this->em->createQueryBuilder()
                 ->select('t')
                 ->from(Tag::class, 't')
-                ->where('t.day IN (:days)')
-                ->setParameter('days', [$dayBeforeYesterday, $yesterday])
+                ->where('t.day < :today')
+                ->setParameter('today', $today)
                 ->getQuery()
                 ->getResult();
-
             foreach ($tags as $tag) {
                 $this->em->remove($tag);
             }
@@ -209,16 +206,16 @@ class TagService
      */
     public function createTagInfo(Tag $tag, user $user)
     {
-            $tagInfo = new TagInfo();
-            $tagInfo
-                ->setUser($user)
-                ->setTag($tag)
-                ->setUnreadInfoCount(1)
-                ->setCreatedAt($this->now)
-                ->setUpdatedAt($this->now);
-            $this->em->persist($tagInfo);
-            $tag->addTagInfo($tagInfo);
-            $this->em->flush();
+        $tagInfo = new TagInfo();
+        $tagInfo
+            ->setUser($user)
+            ->setTag($tag)
+            ->setUnreadInfoCount(1)
+            ->setCreatedAt($this->now)
+            ->setUpdatedAt($this->now);
+        $this->em->persist($tagInfo);
+        $tag->addTagInfo($tagInfo);
+        $this->em->flush();
     }
 
     /**
@@ -300,15 +297,15 @@ class TagService
      */
     public function createTagTask(Tag $tag, user $user)
     {
-            $tagTask = new TagTask();
-            $tagTask
-                ->setUser($user)
-                ->setTag($tag)
-                ->setTagCount(1)
-                ->setCreatedAt($this->now)
-                ->setUpdatedAt($this->now);
-            $this->em->persist($tagTask);
-            $tag->addTagTask($tagTask);
+        $tagTask = new TagTask();
+        $tagTask
+            ->setUser($user)
+            ->setTag($tag)
+            ->setTagCount(1)
+            ->setCreatedAt($this->now)
+            ->setUpdatedAt($this->now);
+        $this->em->persist($tagTask);
+        $tag->addTagTask($tagTask);
     }
 
     /**
