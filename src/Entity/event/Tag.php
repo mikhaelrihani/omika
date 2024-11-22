@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: TagRepository::class)]
 #[ORM\Index(name: "Tag_dateStatus_activeDay_idx", columns: ["date_status", "active_day"])]
@@ -17,37 +18,49 @@ class Tag extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['tag'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['tag'])]
     private string $section; // Section de l'événement
 
     #[ORM\Column(type: Types::DATE_IMMUTABLE)]
+    #[Groups(['tag'])]
     private \DateTimeImmutable $day; // Jour concerné
 
     #[ORM\Column(length: 255)]
+    #[Groups(['tag'])]
     private string $date_status; // Statut de la date (ex. "past", "active_day_range", "future")
-
-    #[ORM\Column(type: Types::INTEGER, nullable: true)]
-    private ?int $task_count = null; // Compte des tâches actives, peut être null
-
-
+   
     #[ORM\Column(nullable: true)]
+    #[Groups(['tag'])]
     private ?int $active_day = null;
 
     /**
      * @var Collection<int, TagInfo>
      */
-    #[ORM\OneToMany(targetEntity: TagInfo::class, mappedBy: 'tag', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: TagInfo::class, mappedBy: 'tag', cascade:["persist", "remove"], orphanRemoval: true)]
+    #[Groups(['tag'])]
     private Collection $tagInfos;
 
     #[ORM\Column(length: 255)]
     private ?string $side = null;
 
+    /**
+     * @var Collection<int, TagTask>
+     */
+    #[ORM\OneToMany(targetEntity: TagTask::class, mappedBy: 'tag', cascade:["persist", "remove"], orphanRemoval: true)]
+    #[Groups(['tag'])]
+    private Collection $tagTasks;
+
+
+   
     public function __construct()
     {
         parent::__construct();
         $this->tagInfos = new ArrayCollection();
+        $this->tagTasks = new ArrayCollection();
     }
 
 
@@ -88,18 +101,6 @@ class Tag extends BaseEntity
         $this->date_status = $date_status;
         return $this;
     }
-
-    public function getTaskCount(): int|null
-    {
-        return $this->task_count;
-    }
-
-    public function setTaskCount(?int $task_count): static
-    {
-        $this->task_count = $task_count;
-        return $this;
-    }
-
 
     public function getActiveDay(): ?int
     {
@@ -155,6 +156,41 @@ class Tag extends BaseEntity
         return $this;
     }
 
+    /**
+     * @return Collection<int, User>
+     */
+
+    /**
+     * @return Collection<int, TagTask>
+     */
+    public function getTagTasks(): Collection
+    {
+        return $this->tagTasks;
+    }
+
+    public function addTagTask(TagTask $tagTask): static
+    {
+        if (!$this->tagTasks->contains($tagTask)) {
+            $this->tagTasks->add($tagTask);
+            $tagTask->setTag($this);
+        }
+
+        return $this;
+    }
+
+    public function removeTagTask(TagTask $tagTask): static
+    {
+        if ($this->tagTasks->removeElement($tagTask)) {
+            // set the owning side to null (unless already changed)
+            if ($tagTask->getTag() === $this) {
+                $tagTask->setTag(null);
+            }
+        }
+
+        return $this;
+    }
+   
+  
 
 
 }

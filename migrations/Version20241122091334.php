@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20241109170359 extends AbstractMigration
+final class Version20241122091334 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -27,16 +27,16 @@ final class Version20241109170359 extends AbstractMigration
         $this->addSql('CREATE TABLE dish (id INT AUTO_INCREMENT NOT NULL, picture_id INT NOT NULL, dish_category_id INT NOT NULL, recipe_id INT DEFAULT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', name VARCHAR(100) NOT NULL, name_gender VARCHAR(5) NOT NULL, slug VARCHAR(50) NOT NULL, price NUMERIC(10, 2) NOT NULL, UNIQUE INDEX UNIQ_957D8CB8EE45BDBF (picture_id), INDEX IDX_957D8CB8C057AE07 (dish_category_id), UNIQUE INDEX UNIQ_957D8CB859D8A214 (recipe_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE dish_category (id INT AUTO_INCREMENT NOT NULL, picture_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', name VARCHAR(255) NOT NULL, UNIQUE INDEX UNIQ_1FB098AAEE45BDBF (picture_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE dod (id INT AUTO_INCREMENT NOT NULL, menu_id INT DEFAULT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', name VARCHAR(255) NOT NULL, description VARCHAR(255) NOT NULL, infos VARCHAR(255) DEFAULT NULL, order_day INT NOT NULL, INDEX IDX_182568C7CCD7E912 (menu_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE event (id INT AUTO_INCREMENT NOT NULL, event_recurring_id INT DEFAULT NULL, task_id INT DEFAULT NULL, info_id INT DEFAULT NULL, section_id INT DEFAULT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', is_recurring TINYINT(1) NOT NULL, due_date DATE NOT NULL COMMENT \'(DC2Type:date_immutable)\', date_status VARCHAR(50) NOT NULL, active_day INT DEFAULT NULL, side VARCHAR(255) NOT NULL, type VARCHAR(255) NOT NULL, title LONGTEXT NOT NULL, description LONGTEXT NOT NULL, created_by VARCHAR(255) NOT NULL, updated_by VARCHAR(255) DEFAULT NULL, is_important TINYINT(1) NOT NULL, INDEX IDX_3BAE0AA75C5AC3AD (event_recurring_id), UNIQUE INDEX UNIQ_3BAE0AA78DB60186 (task_id), UNIQUE INDEX UNIQ_3BAE0AA75D8BC1F8 (info_id), INDEX IDX_3BAE0AA7D823E37A (section_id), INDEX Event_dateStatus_activeDay_idx (date_status, active_day), INDEX Event_dateStatus_dueDate_idx (date_status, due_date), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE event (id INT AUTO_INCREMENT NOT NULL, event_recurring_id INT DEFAULT NULL, task_id INT DEFAULT NULL, info_id INT DEFAULT NULL, section_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', is_recurring TINYINT(1) NOT NULL, due_date DATE NOT NULL COMMENT \'(DC2Type:date_immutable)\', date_status VARCHAR(50) NOT NULL, active_day INT DEFAULT NULL, side VARCHAR(255) NOT NULL, type VARCHAR(255) NOT NULL, title LONGTEXT NOT NULL, description LONGTEXT NOT NULL, created_by VARCHAR(255) NOT NULL, updated_by VARCHAR(255) DEFAULT NULL, is_important TINYINT(1) NOT NULL, first_due_date DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', INDEX IDX_3BAE0AA75C5AC3AD (event_recurring_id), UNIQUE INDEX UNIQ_3BAE0AA78DB60186 (task_id), UNIQUE INDEX UNIQ_3BAE0AA75D8BC1F8 (info_id), INDEX IDX_3BAE0AA7D823E37A (section_id), INDEX Event_dateStatus_activeDay_idx (date_status, active_day), INDEX Event_dateStatus_dueDate_idx (date_status, due_date), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE user_favoriteEvents (event_id INT NOT NULL, user_id INT NOT NULL, INDEX IDX_31E4A9D71F7E88B (event_id), INDEX IDX_31E4A9DA76ED395 (user_id), PRIMARY KEY(event_id, user_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE event_info (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', user_read_info_count INT NOT NULL, shared_with_count INT NOT NULL, is_fully_read TINYINT(1) NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE event_info_user (event_info_id INT NOT NULL, user_id INT NOT NULL, INDEX IDX_526D3AFAD8DC6857 (event_info_id), INDEX IDX_526D3AFAA76ED395 (user_id), PRIMARY KEY(event_info_id, user_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE event_recurring (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', periodeStart DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', periodeEnd DATETIME DEFAULT NULL COMMENT \'(DC2Type:datetime_immutable)\', is_everyday TINYINT(1) NOT NULL, INDEX EventRecurring_period_idx (periodeStart, periodeEnd), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE event_info (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', user_read_info_count INT NOT NULL, shared_with_count INT NOT NULL, is_fully_read TINYINT(1) NOT NULL, is_old TINYINT(1) DEFAULT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE event_recurring (id INT AUTO_INCREMENT NOT NULL, created_by_id INT NOT NULL, updated_by_id INT NOT NULL, section_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', periodeStart DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', periodeEnd DATETIME DEFAULT NULL COMMENT \'(DC2Type:datetime_immutable)\', is_everyday TINYINT(1) NOT NULL, recurrence_type VARCHAR(255) NOT NULL, side VARCHAR(255) NOT NULL, type VARCHAR(255) NOT NULL, title VARCHAR(255) NOT NULL, description VARCHAR(255) NOT NULL, INDEX IDX_EAF93CD0B03A8386 (created_by_id), INDEX IDX_EAF93CD0896DBBDE (updated_by_id), INDEX IDX_EAF93CD0D823E37A (section_id), INDEX EventRecurring_period_idx (periodeStart, periodeEnd), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE event_recurring_period_date (event_recurring_id INT NOT NULL, period_date_id INT NOT NULL, INDEX IDX_FA84F3B5C5AC3AD (event_recurring_id), INDEX IDX_FA84F3B437E9333 (period_date_id), PRIMARY KEY(event_recurring_id, period_date_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE event_recurring_week_day (event_recurring_id INT NOT NULL, week_day_id INT NOT NULL, INDEX IDX_8BF116E45C5AC3AD (event_recurring_id), INDEX IDX_8BF116E47DB83875 (week_day_id), PRIMARY KEY(event_recurring_id, week_day_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE event_recurring_month_day (event_recurring_id INT NOT NULL, month_day_id INT NOT NULL, INDEX IDX_B46580755C5AC3AD (event_recurring_id), INDEX IDX_B46580752F6ADB8 (month_day_id), PRIMARY KEY(event_recurring_id, month_day_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE event_shared_info (id INT AUTO_INCREMENT NOT NULL, event_info_id INT NOT NULL, user_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', is_read TINYINT(1) NOT NULL, INDEX IDX_DAF6894FD8DC6857 (event_info_id), INDEX IDX_DAF6894FA76ED395 (user_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE event_task (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', task_status VARCHAR(50) NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE event_recurring_user (event_recurring_id INT NOT NULL, user_id INT NOT NULL, INDEX IDX_FD3ACD2B5C5AC3AD (event_recurring_id), INDEX IDX_FD3ACD2BA76ED395 (user_id), PRIMARY KEY(event_recurring_id, user_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE event_task (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', task_status VARCHAR(50) NOT NULL, shared_with_count INT NOT NULL, is_pending TINYINT(1) NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE user_task (event_task_id INT NOT NULL, user_id INT NOT NULL, INDEX IDX_28FF97EC8E1A829 (event_task_id), INDEX IDX_28FF97ECA76ED395 (user_id), PRIMARY KEY(event_task_id, user_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE ingredient (id INT AUTO_INCREMENT NOT NULL, product_id INT NOT NULL, unit_id INT NOT NULL, recipe_id INT DEFAULT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', quantity NUMERIC(10, 2) NOT NULL, INDEX IDX_6BAF78704584665A (product_id), INDEX IDX_6BAF7870F8BD700D (unit_id), INDEX IDX_6BAF787059D8A214 (recipe_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE inventory (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', status VARCHAR(255) NOT NULL, type VARCHAR(255) NOT NULL, month VARCHAR(25) NOT NULL, author VARCHAR(255) NOT NULL, year INT NOT NULL, pdf_path VARCHAR(255) NOT NULL, excel_path VARCHAR(255) NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE inventory_room (inventory_id INT NOT NULL, room_id INT NOT NULL, INDEX IDX_38399EB59EEA759 (inventory_id), INDEX IDX_38399EB554177093 (room_id), PRIMARY KEY(inventory_id, room_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
@@ -69,11 +69,13 @@ final class Version20241109170359 extends AbstractMigration
         $this->addSql('CREATE TABLE supplier_recurring_event_children (supplier_id INT NOT NULL, event_id INT NOT NULL, INDEX IDX_268BE4FA2ADD6D8C (supplier_id), INDEX IDX_268BE4FA71F7E88B (event_id), PRIMARY KEY(supplier_id, event_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE supplier_order_day (supplier_id INT NOT NULL, order_day_id INT NOT NULL, INDEX IDX_3CC95C2E2ADD6D8C (supplier_id), INDEX IDX_3CC95C2ECA4D51F3 (order_day_id), PRIMARY KEY(supplier_id, order_day_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE supplier_delivery_day (supplier_id INT NOT NULL, delivery_day_id INT NOT NULL, INDEX IDX_A866D56D2ADD6D8C (supplier_id), INDEX IDX_A866D56D17D3B8A8 (delivery_day_id), PRIMARY KEY(supplier_id, delivery_day_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE tag (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', section VARCHAR(255) NOT NULL, day DATE NOT NULL COMMENT \'(DC2Type:date_immutable)\', date_status VARCHAR(255) NOT NULL, task_count INT DEFAULT NULL, active_day INT DEFAULT NULL, side VARCHAR(255) NOT NULL, INDEX Tag_dateStatus_activeDay_idx (date_status, active_day), INDEX Tag_dateStatus_day_idx (date_status, day), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE tag (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', section VARCHAR(255) NOT NULL, day DATE NOT NULL COMMENT \'(DC2Type:date_immutable)\', date_status VARCHAR(255) NOT NULL, active_day INT DEFAULT NULL, side VARCHAR(255) NOT NULL, INDEX Tag_dateStatus_activeDay_idx (date_status, active_day), INDEX Tag_dateStatus_day_idx (date_status, day), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE tag_info (id INT AUTO_INCREMENT NOT NULL, tag_id INT NOT NULL, user_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', unread_info_count INT DEFAULT NULL, INDEX IDX_25868EE1BAD26311 (tag_id), INDEX IDX_25868EE1A76ED395 (user_id), INDEX Taginfo_user_tag_idx (user_id, tag_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE tag_task (id INT AUTO_INCREMENT NOT NULL, tag_id INT NOT NULL, user_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', tag_count INT DEFAULT NULL, INDEX IDX_BC716493BAD26311 (tag_id), INDEX IDX_BC716493A76ED395 (user_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE template (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', name VARCHAR(255) NOT NULL, text VARCHAR(1000) NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE unit (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', name VARCHAR(50) NOT NULL, symbol VARCHAR(5) NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE user (id INT AUTO_INCREMENT NOT NULL, business_id INT NOT NULL, user_login_id INT NOT NULL, avatar_id INT DEFAULT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', uuid CHAR(36) NOT NULL COMMENT \'(DC2Type:guid)\', firstname VARCHAR(255) NOT NULL, surname VARCHAR(255) NOT NULL, phone VARCHAR(20) NOT NULL, whatsapp VARCHAR(20) DEFAULT NULL, job VARCHAR(255) DEFAULT NULL, late_count INT NOT NULL, pseudo VARCHAR(50) NOT NULL, private_note VARCHAR(1000) NOT NULL, INDEX IDX_8D93D649A89DB457 (business_id), UNIQUE INDEX UNIQ_8D93D649BC3F045D (user_login_id), UNIQUE INDEX UNIQ_8D93D64986383B10 (avatar_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE user_info (id INT AUTO_INCREMENT NOT NULL, user_id INT DEFAULT NULL, event_info_id INT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', is_read TINYINT(1) NOT NULL, INDEX IDX_B1087D9EA76ED395 (user_id), INDEX IDX_B1087D9ED8DC6857 (event_info_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE user_login (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', email VARCHAR(180) NOT NULL, roles JSON NOT NULL, password VARCHAR(255) NOT NULL, is_enabled TINYINT(1) NOT NULL, UNIQUE INDEX UNIQ_IDENTIFIER_EMAIL (email), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE week_day (id INT AUTO_INCREMENT NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', updated_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', day INT NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE messenger_messages (id BIGINT AUTO_INCREMENT NOT NULL, body LONGTEXT NOT NULL, headers LONGTEXT NOT NULL, queue_name VARCHAR(190) NOT NULL, created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', available_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\', delivered_at DATETIME DEFAULT NULL COMMENT \'(DC2Type:datetime_immutable)\', INDEX IDX_75EA56E0FB7336F0 (queue_name), INDEX IDX_75EA56E0E3BD61CE (available_at), INDEX IDX_75EA56E016BA31DB (delivered_at), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
@@ -91,16 +93,19 @@ final class Version20241109170359 extends AbstractMigration
         $this->addSql('ALTER TABLE event ADD CONSTRAINT FK_3BAE0AA7D823E37A FOREIGN KEY (section_id) REFERENCES section (id)');
         $this->addSql('ALTER TABLE user_favoriteEvents ADD CONSTRAINT FK_31E4A9D71F7E88B FOREIGN KEY (event_id) REFERENCES event (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE user_favoriteEvents ADD CONSTRAINT FK_31E4A9DA76ED395 FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE');
-        $this->addSql('ALTER TABLE event_info_user ADD CONSTRAINT FK_526D3AFAD8DC6857 FOREIGN KEY (event_info_id) REFERENCES event_info (id) ON DELETE CASCADE');
-        $this->addSql('ALTER TABLE event_info_user ADD CONSTRAINT FK_526D3AFAA76ED395 FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE');
+        $this->addSql('ALTER TABLE event_recurring ADD CONSTRAINT FK_EAF93CD0B03A8386 FOREIGN KEY (created_by_id) REFERENCES user (id)');
+        $this->addSql('ALTER TABLE event_recurring ADD CONSTRAINT FK_EAF93CD0896DBBDE FOREIGN KEY (updated_by_id) REFERENCES user (id)');
+        $this->addSql('ALTER TABLE event_recurring ADD CONSTRAINT FK_EAF93CD0D823E37A FOREIGN KEY (section_id) REFERENCES section (id)');
         $this->addSql('ALTER TABLE event_recurring_period_date ADD CONSTRAINT FK_FA84F3B5C5AC3AD FOREIGN KEY (event_recurring_id) REFERENCES event_recurring (id)');
         $this->addSql('ALTER TABLE event_recurring_period_date ADD CONSTRAINT FK_FA84F3B437E9333 FOREIGN KEY (period_date_id) REFERENCES period_date (id)');
         $this->addSql('ALTER TABLE event_recurring_week_day ADD CONSTRAINT FK_8BF116E45C5AC3AD FOREIGN KEY (event_recurring_id) REFERENCES event_recurring (id)');
         $this->addSql('ALTER TABLE event_recurring_week_day ADD CONSTRAINT FK_8BF116E47DB83875 FOREIGN KEY (week_day_id) REFERENCES week_day (id)');
         $this->addSql('ALTER TABLE event_recurring_month_day ADD CONSTRAINT FK_B46580755C5AC3AD FOREIGN KEY (event_recurring_id) REFERENCES event_recurring (id)');
         $this->addSql('ALTER TABLE event_recurring_month_day ADD CONSTRAINT FK_B46580752F6ADB8 FOREIGN KEY (month_day_id) REFERENCES month_day (id)');
-        $this->addSql('ALTER TABLE event_shared_info ADD CONSTRAINT FK_DAF6894FD8DC6857 FOREIGN KEY (event_info_id) REFERENCES event_info (id)');
-        $this->addSql('ALTER TABLE event_shared_info ADD CONSTRAINT FK_DAF6894FA76ED395 FOREIGN KEY (user_id) REFERENCES user (id)');
+        $this->addSql('ALTER TABLE event_recurring_user ADD CONSTRAINT FK_FD3ACD2B5C5AC3AD FOREIGN KEY (event_recurring_id) REFERENCES event_recurring (id) ON DELETE CASCADE');
+        $this->addSql('ALTER TABLE event_recurring_user ADD CONSTRAINT FK_FD3ACD2BA76ED395 FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE');
+        $this->addSql('ALTER TABLE user_task ADD CONSTRAINT FK_28FF97EC8E1A829 FOREIGN KEY (event_task_id) REFERENCES event_task (id) ON DELETE CASCADE');
+        $this->addSql('ALTER TABLE user_task ADD CONSTRAINT FK_28FF97ECA76ED395 FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE ingredient ADD CONSTRAINT FK_6BAF78704584665A FOREIGN KEY (product_id) REFERENCES product (id)');
         $this->addSql('ALTER TABLE ingredient ADD CONSTRAINT FK_6BAF7870F8BD700D FOREIGN KEY (unit_id) REFERENCES unit (id)');
         $this->addSql('ALTER TABLE ingredient ADD CONSTRAINT FK_6BAF787059D8A214 FOREIGN KEY (recipe_id) REFERENCES recipe (id)');
@@ -133,11 +138,15 @@ final class Version20241109170359 extends AbstractMigration
         $this->addSql('ALTER TABLE supplier_order_day ADD CONSTRAINT FK_3CC95C2ECA4D51F3 FOREIGN KEY (order_day_id) REFERENCES order_day (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE supplier_delivery_day ADD CONSTRAINT FK_A866D56D2ADD6D8C FOREIGN KEY (supplier_id) REFERENCES supplier (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE supplier_delivery_day ADD CONSTRAINT FK_A866D56D17D3B8A8 FOREIGN KEY (delivery_day_id) REFERENCES delivery_day (id) ON DELETE CASCADE');
-        $this->addSql('ALTER TABLE tag_info ADD CONSTRAINT FK_25868EE1BAD26311 FOREIGN KEY (tag_id) REFERENCES tag (id)');
-        $this->addSql('ALTER TABLE tag_info ADD CONSTRAINT FK_25868EE1A76ED395 FOREIGN KEY (user_id) REFERENCES user (id)');
+        $this->addSql('ALTER TABLE tag_info ADD CONSTRAINT FK_25868EE1BAD26311 FOREIGN KEY (tag_id) REFERENCES tag (id) ON DELETE CASCADE');
+        $this->addSql('ALTER TABLE tag_info ADD CONSTRAINT FK_25868EE1A76ED395 FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE');
+        $this->addSql('ALTER TABLE tag_task ADD CONSTRAINT FK_BC716493BAD26311 FOREIGN KEY (tag_id) REFERENCES tag (id) ON DELETE CASCADE');
+        $this->addSql('ALTER TABLE tag_task ADD CONSTRAINT FK_BC716493A76ED395 FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE user ADD CONSTRAINT FK_8D93D649A89DB457 FOREIGN KEY (business_id) REFERENCES business (id)');
         $this->addSql('ALTER TABLE user ADD CONSTRAINT FK_8D93D649BC3F045D FOREIGN KEY (user_login_id) REFERENCES user_login (id)');
         $this->addSql('ALTER TABLE user ADD CONSTRAINT FK_8D93D64986383B10 FOREIGN KEY (avatar_id) REFERENCES picture (id)');
+        $this->addSql('ALTER TABLE user_info ADD CONSTRAINT FK_B1087D9EA76ED395 FOREIGN KEY (user_id) REFERENCES user (id)');
+        $this->addSql('ALTER TABLE user_info ADD CONSTRAINT FK_B1087D9ED8DC6857 FOREIGN KEY (event_info_id) REFERENCES event_info (id)');
     }
 
     public function down(Schema $schema): void
@@ -157,16 +166,19 @@ final class Version20241109170359 extends AbstractMigration
         $this->addSql('ALTER TABLE event DROP FOREIGN KEY FK_3BAE0AA7D823E37A');
         $this->addSql('ALTER TABLE user_favoriteEvents DROP FOREIGN KEY FK_31E4A9D71F7E88B');
         $this->addSql('ALTER TABLE user_favoriteEvents DROP FOREIGN KEY FK_31E4A9DA76ED395');
-        $this->addSql('ALTER TABLE event_info_user DROP FOREIGN KEY FK_526D3AFAD8DC6857');
-        $this->addSql('ALTER TABLE event_info_user DROP FOREIGN KEY FK_526D3AFAA76ED395');
+        $this->addSql('ALTER TABLE event_recurring DROP FOREIGN KEY FK_EAF93CD0B03A8386');
+        $this->addSql('ALTER TABLE event_recurring DROP FOREIGN KEY FK_EAF93CD0896DBBDE');
+        $this->addSql('ALTER TABLE event_recurring DROP FOREIGN KEY FK_EAF93CD0D823E37A');
         $this->addSql('ALTER TABLE event_recurring_period_date DROP FOREIGN KEY FK_FA84F3B5C5AC3AD');
         $this->addSql('ALTER TABLE event_recurring_period_date DROP FOREIGN KEY FK_FA84F3B437E9333');
         $this->addSql('ALTER TABLE event_recurring_week_day DROP FOREIGN KEY FK_8BF116E45C5AC3AD');
         $this->addSql('ALTER TABLE event_recurring_week_day DROP FOREIGN KEY FK_8BF116E47DB83875');
         $this->addSql('ALTER TABLE event_recurring_month_day DROP FOREIGN KEY FK_B46580755C5AC3AD');
         $this->addSql('ALTER TABLE event_recurring_month_day DROP FOREIGN KEY FK_B46580752F6ADB8');
-        $this->addSql('ALTER TABLE event_shared_info DROP FOREIGN KEY FK_DAF6894FD8DC6857');
-        $this->addSql('ALTER TABLE event_shared_info DROP FOREIGN KEY FK_DAF6894FA76ED395');
+        $this->addSql('ALTER TABLE event_recurring_user DROP FOREIGN KEY FK_FD3ACD2B5C5AC3AD');
+        $this->addSql('ALTER TABLE event_recurring_user DROP FOREIGN KEY FK_FD3ACD2BA76ED395');
+        $this->addSql('ALTER TABLE user_task DROP FOREIGN KEY FK_28FF97EC8E1A829');
+        $this->addSql('ALTER TABLE user_task DROP FOREIGN KEY FK_28FF97ECA76ED395');
         $this->addSql('ALTER TABLE ingredient DROP FOREIGN KEY FK_6BAF78704584665A');
         $this->addSql('ALTER TABLE ingredient DROP FOREIGN KEY FK_6BAF7870F8BD700D');
         $this->addSql('ALTER TABLE ingredient DROP FOREIGN KEY FK_6BAF787059D8A214');
@@ -201,9 +213,13 @@ final class Version20241109170359 extends AbstractMigration
         $this->addSql('ALTER TABLE supplier_delivery_day DROP FOREIGN KEY FK_A866D56D17D3B8A8');
         $this->addSql('ALTER TABLE tag_info DROP FOREIGN KEY FK_25868EE1BAD26311');
         $this->addSql('ALTER TABLE tag_info DROP FOREIGN KEY FK_25868EE1A76ED395');
+        $this->addSql('ALTER TABLE tag_task DROP FOREIGN KEY FK_BC716493BAD26311');
+        $this->addSql('ALTER TABLE tag_task DROP FOREIGN KEY FK_BC716493A76ED395');
         $this->addSql('ALTER TABLE user DROP FOREIGN KEY FK_8D93D649A89DB457');
         $this->addSql('ALTER TABLE user DROP FOREIGN KEY FK_8D93D649BC3F045D');
         $this->addSql('ALTER TABLE user DROP FOREIGN KEY FK_8D93D64986383B10');
+        $this->addSql('ALTER TABLE user_info DROP FOREIGN KEY FK_B1087D9EA76ED395');
+        $this->addSql('ALTER TABLE user_info DROP FOREIGN KEY FK_B1087D9ED8DC6857');
         $this->addSql('DROP TABLE absence');
         $this->addSql('DROP TABLE business');
         $this->addSql('DROP TABLE contact');
@@ -214,13 +230,13 @@ final class Version20241109170359 extends AbstractMigration
         $this->addSql('DROP TABLE event');
         $this->addSql('DROP TABLE user_favoriteEvents');
         $this->addSql('DROP TABLE event_info');
-        $this->addSql('DROP TABLE event_info_user');
         $this->addSql('DROP TABLE event_recurring');
         $this->addSql('DROP TABLE event_recurring_period_date');
         $this->addSql('DROP TABLE event_recurring_week_day');
         $this->addSql('DROP TABLE event_recurring_month_day');
-        $this->addSql('DROP TABLE event_shared_info');
+        $this->addSql('DROP TABLE event_recurring_user');
         $this->addSql('DROP TABLE event_task');
+        $this->addSql('DROP TABLE user_task');
         $this->addSql('DROP TABLE ingredient');
         $this->addSql('DROP TABLE inventory');
         $this->addSql('DROP TABLE inventory_room');
@@ -255,9 +271,11 @@ final class Version20241109170359 extends AbstractMigration
         $this->addSql('DROP TABLE supplier_delivery_day');
         $this->addSql('DROP TABLE tag');
         $this->addSql('DROP TABLE tag_info');
+        $this->addSql('DROP TABLE tag_task');
         $this->addSql('DROP TABLE template');
         $this->addSql('DROP TABLE unit');
         $this->addSql('DROP TABLE user');
+        $this->addSql('DROP TABLE user_info');
         $this->addSql('DROP TABLE user_login');
         $this->addSql('DROP TABLE week_day');
         $this->addSql('DROP TABLE messenger_messages');

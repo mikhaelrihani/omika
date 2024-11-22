@@ -2,20 +2,32 @@
 
 namespace App\Controller\Event;
 
+use App\Repository\Event\EventRepository;
+use App\Service\Event\EventService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('/api/event/event', name: "app_event_")]
+
+#[Route('/api/event', name: "app_event_")]
 class EventController extends AbstractController
 {
-    #[Route('/', name: 'index')]
+    public function __construct(private EventService $eventService, private EventRepository $eventRepository)
+    {
+    }
+
+    #[Route('/', name: 'index', methods: ['GET'])]
     public function index(): JsonResponse
     {
-        return $this->json([
-            'message' => 'Welcome to your new controller!',
-            'path'    => 'src/Controller/Event/EventController.php',
-        ]);
+        $events = $this->eventRepository->findAll();
+        return $this->json($events, 200, [], ['groups' => 'event']);
+    }
+
+    #[Route('/{id}', name: 'getEvent', methods: ['GET'])]
+    public function getEvent(int $id): JsonResponse
+    {
+        $event = $this->eventRepository->find($id);
+        return $this->json($event, 200, [], ['groups' => 'event']);
     }
 
     //! event map  
@@ -67,7 +79,7 @@ class EventController extends AbstractController
     // avec le status todo, car cette tache une fois que l user l a fini doit etre identifiable pour etre basculée vers done
     // on imagine que l user passe une cde alors on va rechercher un match de valeur sur le champs task_détails et le champ active_day_range, ou off range si non trouvé , si match alors on bascule le status en done(ie: la valeur serait commande_suppliername) 
     // lorsque l user realise un tache qui ne renvoie pas d'event alors l user bascule manuelement la valeur du status manuelement en glissant le status de la tache de done a todo, les infos seraient affichéés en dessous 
-   
+
 
 
 
@@ -85,5 +97,5 @@ class EventController extends AbstractController
     // verifier/informer si le cron job a bien été réalise sans bug chaque jour avec des tests
     // construire des index en bdd par ex Une recherche rapide pourra être faite sur un index du champ task_details et active_day_range
     // méthode pour modifier des events automatique (ie: le supplier a des jours précis de cde affichés sur le descriptif de celui-ci et modifiable par l'user)
-  
+
 }

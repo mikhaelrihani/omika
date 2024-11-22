@@ -22,7 +22,7 @@ use Symfony\Component\Uid\Uuid;
 class UserFixtures extends BaseFixtures
 {
 
-    private array $businessEntities;
+    private ?array $businessEntities = null;
     /**
      * @var array $pictures Array of pictures retrieved for setting user avatars.
      */
@@ -39,7 +39,7 @@ class UserFixtures extends BaseFixtures
     private bool $userAdminExists;
 
 
-   
+
     public function load(ObjectManager $manager): void
     {
         //! on fait cette verification pour eviter l'erreur "Notice: Undefined offset: 0" lorsqu'on a pas de business dans la bdd pour "php bin/console doctrine:fixtures:load --append"
@@ -156,6 +156,7 @@ class UserFixtures extends BaseFixtures
             $randomIndex = rand(0, count($this->businessEntities) - 1);
             $user->setBusiness($this->businessEntities[$randomIndex]);
 
+            // Set the absence information for the user
             $this->setAbsenceEntity($user, $this->surnames);
 
             $this->em->persist($user);
@@ -168,7 +169,7 @@ class UserFixtures extends BaseFixtures
         }
     }
 
-   
+
     public function createContacts(int $numContacts): void
     {
 
@@ -237,9 +238,9 @@ class UserFixtures extends BaseFixtures
             $absence = new Absence();
             // Associate the absence with the correct entity
             if ($entity instanceof User) {
-                $absence->setUser($entity);
+                $entity->addAbsence($absence);
             } elseif ($entity instanceof Contact) {
-                $absence->setContact($entity);
+                $entity->addAbsence($absence);
             }
             $absence
                 ->setstartDate($startDate)
@@ -276,7 +277,7 @@ class UserFixtures extends BaseFixtures
             $this->em->persist($note);
         }
     }
-    
+
     private function createMessages(array $users, array $contacts): void
     {
         for ($m = 0; $m < 30; $m++) {
@@ -307,7 +308,7 @@ class UserFixtures extends BaseFixtures
             }
         }
     }
-  
+
     public function getDependencies()
     {
         return [

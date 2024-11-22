@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: WeekDayRepository::class)]
 class WeekDay extends BaseEntity
@@ -15,11 +16,13 @@ class WeekDay extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['eventRecurring'])]
     private ?int $id = null;
 
     #[ORM\Column(type: 'integer')]
     #[Assert\NotBlank(message: "Le jour de la semaine est requis.")]
     #[Assert\Range(min: 1, max: 7, notInRangeMessage: "Le jour de la semaine doit être entre 1 (lundi) et 7 (dimanche).")]
+    #[Groups(['eventRecurring'])]
     private int $day;  // Champ pour le jour de la semaine
 
     /**

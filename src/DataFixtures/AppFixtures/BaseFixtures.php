@@ -47,7 +47,7 @@ class BaseFixtures extends Fixture implements FixtureInterface
  * @param object $fixture The fixture object containing the reference repository.
  * @return array The array of retrieved entities matching the prefix.
  */
-public function retrieveEntities(string $entityName, object $fixture): array
+public function retrieveEntities(string $entityName, object $fixture): ?array
 {
     $entities = [];
 
@@ -57,7 +57,7 @@ public function retrieveEntities(string $entityName, object $fixture): array
         }
     }
 
-    return $entities;
+    return empty($entities) ? null : $entities;
 }
 
 

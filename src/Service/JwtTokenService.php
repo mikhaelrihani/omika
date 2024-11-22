@@ -2,7 +2,7 @@
 
 namespace App\Service;
 
-use App\Entity\user\UserLogin;
+use App\Entity\User\UserLogin;
 use App\Repository\RefreshTokenRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Encoder\JWTEncoderInterface;

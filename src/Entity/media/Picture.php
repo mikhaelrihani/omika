@@ -6,6 +6,7 @@ use App\Entity\BaseEntity;
 use App\Repository\Media\PictureRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: PictureRepository::class)]
 class Picture extends BaseEntity
@@ -13,6 +14,7 @@ class Picture extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['user', 'contact'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne]

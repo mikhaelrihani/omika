@@ -3,15 +3,13 @@
 namespace App\Entity\Event;
 
 use App\Entity\BaseEntity;
-use App\Entity\User\user;
-use App\Repository\Event\TagInfoRepository;
+use App\Entity\User\User;
+use App\Repository\Event\TagTaskRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
-#[ORM\Entity(repositoryClass: TagInfoRepository::class)]
-#[ORM\Index(name: "Taginfo_user_tag_idx", columns: ["user_id", "tag_id"])]
-
-class TagInfo extends BaseEntity
+#[ORM\Entity(repositoryClass: TagTaskRepository::class)]
+class TagTask extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -19,60 +17,56 @@ class TagInfo extends BaseEntity
     #[Groups(['tag'])]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'tagInfos')]
+    #[ORM\ManyToOne(targetEntity: Tag::class, inversedBy: 'tagTasks')]
     #[ORM\JoinColumn(nullable: false, onDelete: "CASCADE")]
-    private ?tag $tag = null;
+    private ?Tag $tag = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false, onDelete: "CASCADE")]
     #[Groups(['tag'])]
     private ?User $user = null;
-    
 
     #[ORM\Column(nullable: true)]
-    private ?int $unreadInfoCount = null;
+    private ?int $tag_count = null;
 
- 
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getTag(): ?tag
+    public function getTag(): ?Tag
     {
         return $this->tag;
     }
 
-    public function setTag(?tag $tag): static
+    public function setTag(?Tag $tag): static
     {
         $this->tag = $tag;
 
         return $this;
     }
 
-    public function getUser(): ?user
+    public function getUser(): ?User
     {
         return $this->user;
     }
 
-    public function setUser(?user $user): static
+    public function setUser(?User $user): static
     {
         $this->user = $user;
 
         return $this;
     }
 
-    public function getUnreadInfoCount(): ?int
+    public function getTagCount(): ?int
     {
-        return $this->unreadInfoCount;
+        return $this->tag_count;
     }
 
-    public function setUnreadInfoCount(?int $unreadInfoCount): static
+    public function setTagCount(?int $tag_count): static
     {
-        $this->unreadInfoCount = $unreadInfoCount;
+        $this->tag_count = $tag_count;
 
         return $this;
     }
-
-   
 }

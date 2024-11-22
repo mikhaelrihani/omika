@@ -10,6 +10,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: EventRepository::class)]
 #[ORM\Index(name: "Event_dateStatus_activeDay_idx", columns: ["date_status", "active_day"])]
@@ -19,6 +20,7 @@ class Event extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
+    #[Groups(['event','eventRecurring'])]
     private ?int $id = null;
 
 
@@ -29,12 +31,15 @@ class Event extends BaseEntity
     private ?EventRecurring $eventRecurring = null;
 
     #[ORM\OneToOne(targetEntity: EventTask::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[Groups(['event'])]
     private ?EventTask $task = null;
 
     #[ORM\OneToOne(targetEntity: EventInfo::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[Groups(['event'])]
     private ?EventInfo $info = null;
 
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: false)]
+    #[Groups(['event'])]
     private ?\DateTimeImmutable $dueDate = null;
 
     #[ORM\Column(length: 50, nullable: false)]
@@ -42,41 +47,50 @@ class Event extends BaseEntity
     private ?string $date_status = null;
 
     #[ORM\Column(nullable: true)]
+
     private ?int $active_day = null;
 
 
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Side should not be blank.")]
+    #[Groups(['event'])]
     private ?string $side = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Type should not be blank.")]
+    #[Groups(['event'])]
     private ?string $type = null;
 
-    #[ORM\ManyToOne(targetEntity: Section::class, cascade: ["persist"])]
-    #[ORM\JoinColumn(nullable: true)]
+    #[ORM\ManyToOne(targetEntity: Section::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['event'])]
     private ?Section $section = null;
 
 
 
     #[ORM\Column(type: 'text', nullable: false)]
     #[Assert\NotBlank(message: "Title should not be blank.")]
+    #[Groups(['event'])]
     private ?string $title = null;
 
     #[ORM\Column(type: 'text', nullable: false)]
     #[Assert\NotBlank(message: "Description should not be blank.")]
+    #[Groups(['event'])]
     private ?string $description = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "CreatedBy should not be blank.")]
+    #[Groups(['event'])]
     private ?string $createdBy = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['event'])]
     private ?string $updatedBy = null;
 
     #[ORM\Column(type: 'boolean', nullable: false)]
     #[Assert\NotNull]
+    #[Groups(['event'])]
     private ?bool $isImportant = null;
 
     /**
@@ -84,7 +98,12 @@ class Event extends BaseEntity
      */
     #[ORM\ManyToMany(targetEntity: User::class, inversedBy: 'favoriteEvents')]
     #[ORM\JoinTable(name: 'user_favoriteEvents')]
+    #[Groups(['event'])]
     private Collection $favoritedBy;
+
+    #[ORM\Column]
+    #[Groups(['event'])]
+    private ?\DateTimeImmutable $firstDueDate = null;
 
 
     public function __construct()
@@ -284,6 +303,18 @@ class Event extends BaseEntity
     public function removeFavoritedBy(User $favoritedBy): static
     {
         $this->favoritedBy->removeElement($favoritedBy);
+        return $this;
+    }
+
+    public function getFirstDueDate(): ?\DateTimeImmutable
+    {
+        return $this->firstDueDate;
+    }
+
+    public function setFirstDueDate(\DateTimeImmutable $firstDueDate): static
+    {
+        $this->firstDueDate = $firstDueDate;
+
         return $this;
     }
 

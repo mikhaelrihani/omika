@@ -9,6 +9,8 @@ parameters:
     server_private_files_path: '%env(SERVER_PRIVATE_FILES_PATH)%'
     upload_directory: '%kernel.project_dir%/public/upload'
     twillio_file_upload_public: '%env(resolve:TWILIO_FILE_UPLOAD_PUBLIC)%'
+    activeDayStart: -3
+    activeDayEnd: 7
 
 services:
     # default configuration for services in *this* file
@@ -53,6 +55,12 @@ services:
         arguments:
             $phpBinaryPath: '%env(string:phpBinaryPath)%'
             $consolePath: '%env(string:consolePath)%'  
+
+     # Configuration du service pour CronEventMessageHandler
+    App\Scheduler\MessageHandler\CronEventMessageHandler:
+        arguments:
+            $phpBinaryPath: '%env(string:phpBinaryPath)%'
+            $consolePath: '%env(string:consolePath)%'  
                  
     App\EventSubscriber\ApiExceptionSubscriber:
         tags:
@@ -83,6 +91,12 @@ services:
         autowire: true
         autoconfigure: true
         public: true # Or omit this line for default behavior
+
+    App\Service\Event\EventService:
+        lazy: true
+        # Make the services lazy-loaded so they are only initialized when explicitly needed to bypass the circular reference issue.
+    App\Service\Event\TagService:
+        lazy: true
 
 
       

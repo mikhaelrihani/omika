@@ -25,16 +25,17 @@ class TagInfoRepository extends ServiceEntityRepository
      * @param Tag $tag
      * @return TagInfo|null
      */
-    public function findOneByUserAndTag(User $user, Tag $tag): ?TagInfo
+    public function findOneByUserAndTag_info(User $user, Tag $tag): ?TagInfo
     {
-        return $this->createQueryBuilder('t')
-            ->andWhere('t.user = :user')
-            ->andWhere('t.tag = :tag')
+        return $this->createQueryBuilder('ti')
+            ->andWhere('ti.user = :user')
+            ->andWhere('ti.tag = :tag')
             ->setParameter('user', $user)
             ->setParameter('tag', $tag)
             ->getQuery()
             ->getOneOrNullResult();
     }
+
 
     //    /**
 //     * @return TagInfo[] Returns an array of TagInfo objects

@@ -9,6 +9,7 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: UserLoginRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
@@ -23,17 +24,20 @@ class UserLogin extends BaseEntity implements UserInterface, PasswordAuthenticat
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(["user",'userLogin'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 180)]
     #[Assert\NotBlank(message: "Email should not be blank.")]
     #[Assert\Email(message: "The email '{{ value }}' is not a valid email.")]
+    #[Groups(['userLogin'])]
     private ?string $email = null;
 
     /**
      * @var list<string> The user roles
      */
     #[ORM\Column]
+    #[Groups(['userLogin'])]
     private array $roles = [];
 
     /**
@@ -48,6 +52,7 @@ class UserLogin extends BaseEntity implements UserInterface, PasswordAuthenticat
     private ?string $password = null;
 
     #[ORM\Column(type: 'boolean')]
+    #[Groups(['userLogin'])]
     private bool $isEnabled;
     
 

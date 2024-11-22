@@ -271,7 +271,7 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
                 ->setOrigin($this->faker->text(50))
                 ->setUniqueSolution($this->faker->text(50))
                 ->setSolution($this->faker->text(50))
-                ->setStatus($this->faker->randomElement(['pending', 'solved']))
+                ->setStatus($this->faker->randomElement(['active', 'inactive']))
                 ->setCreatedAt($timestamps[ 'createdAt' ])
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);
 
@@ -309,7 +309,7 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
             $order
                 ->setSupplier($this->faker->randomElement($suppliers))
                 ->setAuthor($author->getFullName())
-                ->setStatus($this->faker->randomElement(['draft', 'sent']))
+                ->setStatus($this->faker->randomElement(['pending', 'sent']))
                 ->setSendingMethod($this->faker->randomElement(['phone', 'email']))
                 ->setNote($this->faker->text(50))
                 ->setPdfPath($this->faker->unique->url . '.pdf')
