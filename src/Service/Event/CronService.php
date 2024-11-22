@@ -12,6 +12,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
+use phpDocumentor\Reflection\Types\Void_;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 class CronService
@@ -123,6 +124,7 @@ class CronService
     {
         try {
             $yesterdayEvents = $this->findYesterdayEvents();
+
             $todayEvents = new ArrayCollection();
 
             foreach ($yesterdayEvents as $yesterdayEvent) {
@@ -247,7 +249,7 @@ class CronService
      */
     public function createTodayEvent(Event $yesterdayEvent, Collection $users, ?string $taskStatus = null): ?Event
     {
-        if ($yesterdayEvent->isRecurring() && $this->hasBrotherToday($yesterdayEvent)) {
+        if ($yesterdayEvent && $yesterdayEvent->isRecurring() && $this->hasBrotherToday($yesterdayEvent)) {
             return null;
         }
 
@@ -272,6 +274,7 @@ class CronService
         $this->eventService->setRelations($todayEvent, $users, "late");
 
         $this->updateTaskOrInfoStatus($yesterdayEvent, $todayEvent, $taskStatus);
+        $this->handleRecurringStatus($yesterdayEvent, $todayEvent);
         $this->updateEventDates($yesterdayEvent, $todayEvent);
 
         return $todayEvent;
@@ -307,8 +310,33 @@ class CronService
     {
         $todayEvent->setDueDate($this->now);
         $todayEvent->setFirstDueDate($yesterdayEvent->getFirstDueDate());
-        $todayEvent->setIsRecurring($yesterdayEvent->isRecurring());
         $this->eventService->setTimestamps($todayEvent);
+    }
+
+    /**
+     * Handles the recurring status of today's event based on yesterday's event.
+     * 
+     * - If the yesterday's event is marked as recurring, links today's event to the recurring parent.
+     * - If the recurring parent is missing, the process stops for the current event, but the loop can continue.
+     * - Ensures that today's event is marked as recurring if linked to a recurring parent.
+     * 
+     * @param Event $yesterdayEvent The event from yesterday being processed. Can be null or non-recurring.
+     * @param Event $todayEvent The newly created event for today that needs its status updated.
+     * 
+     * @return void
+     */
+    public function handleRecurringStatus(Event $yesterdayEvent, Event $todayEvent): void
+    {
+        if (!$yesterdayEvent || !$yesterdayEvent->isRecurring()) {
+            return; // Rien à faire si l'événement d'hier n'existe pas ou n'est pas récurrent
+        }
+        $recurringParent = $yesterdayEvent->getEventRecurring();
+        if (!$recurringParent) {
+            return;// Continuer avec les autres événements
+        } else {
+            $todayEvent->setIsRecurring(true);
+            $recurringParent->addEvent($todayEvent);
+        }
     }
 
     /**
@@ -317,9 +345,11 @@ class CronService
      * @param Event $yesterdayEvent The event to check.
      * @return bool True if the event has a brother for today, false otherwise.
      */
-    public function hasBrotherToday(Event $yesterdayEvent): bool
+    public function hasBrotherToday(Event $yesterdayEvent): bool|null
     {
+
         $parentId = $yesterdayEvent->getEventRecurring()->getId();
+
         $dueDate = $yesterdayEvent->getDueDate()->modify("+1 day")->format('Y-m-d');
 
         $brother = $this->em->createQueryBuilder()

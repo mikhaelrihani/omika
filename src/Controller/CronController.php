@@ -12,7 +12,7 @@ class CronController extends AbstractController
     public function __construct(protected CronService $cronService){
     }
 
-    #[Route('api/cron/load', name: 'app_cron', methods: ['POST'])]
+    #[Route('api/cron/load', name: 'app_cron', methods: ['get', 'post'])]
     public function load(): JsonResponse
     {
         $response = $this->cronService->load();
