@@ -6,6 +6,7 @@ use App\Entity\BaseEntity;
 use App\Entity\User\User;
 use App\Repository\Event\UserInfoRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: UserInfoRepository::class)]
 class UserInfo extends BaseEntity
@@ -17,6 +18,7 @@ class UserInfo extends BaseEntity
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true)] // Doit être nullable pour permettre de mettre user à null
+    #[Groups(['event'])]
     private ?User $user = null;
     
     #[ORM\ManyToOne(inversedBy: 'sharedWith')]
@@ -24,6 +26,7 @@ class UserInfo extends BaseEntity
     private ?EventInfo $eventInfo = null;
 
     #[ORM\Column]
+    #[Groups(['event'])]
     private ?bool $isRead = null;
 
 

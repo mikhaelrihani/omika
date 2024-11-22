@@ -6,6 +6,7 @@ use App\Entity\BaseEntity;
 use App\Repository\Event\SectionRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 
 #[ORM\Entity(repositoryClass: SectionRepository::class)]
@@ -14,10 +15,12 @@ class Section extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['event', 'eventRecurring'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 25, nullable:false)]
     #[Assert\NotBlank(message: "Event Section Name should not be blank.")]
+    #[Groups(['event', 'eventRecurring'])]
     private ?string $name = null;
     
     public function getId(): ?int

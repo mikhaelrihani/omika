@@ -9,6 +9,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: EventTaskRepository::class)]
 #[ORM\HasLifecycleCallbacks]
@@ -17,6 +18,7 @@ class EventTask extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
+    #[Groups(['event', 'eventRecurring'])]
     private ?int $id = null;
 
     #[ORM\OneToOne(mappedBy: 'task', cascade: ['remove'], orphanRemoval: true)]
@@ -24,6 +26,7 @@ class EventTask extends BaseEntity
 
     #[ORM\Column(length: 50, nullable: false)]
     #[Assert\NotBlank(message: "Task status should not be blank.")]
+    #[Groups(['event'])]
     private ?string $taskStatus = null;
 
     /**
@@ -31,6 +34,7 @@ class EventTask extends BaseEntity
      */
     #[ORM\ManyToMany(targetEntity: User::class)]
     #[ORM\JoinTable(name: 'user_task')]
+    #[Groups(['event'])]
     private Collection $sharedWith;
 
     /**
@@ -41,9 +45,11 @@ class EventTask extends BaseEntity
      * @ORM\Column
      */
     #[ORM\Column]
+    #[Groups(['event'])]
     private ?int $sharedWithCount = null;
 
     #[ORM\Column]
+    #[Groups(['event'])]
     private ?bool $isPending = null;
 
 

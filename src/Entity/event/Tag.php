@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: TagRepository::class)]
 #[ORM\Index(name: "Tag_dateStatus_activeDay_idx", columns: ["date_status", "active_day"])]
@@ -17,24 +18,30 @@ class Tag extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['tag'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['tag'])]
     private string $section; // Section de l'événement
 
     #[ORM\Column(type: Types::DATE_IMMUTABLE)]
+    #[Groups(['tag'])]
     private \DateTimeImmutable $day; // Jour concerné
 
     #[ORM\Column(length: 255)]
+    #[Groups(['tag'])]
     private string $date_status; // Statut de la date (ex. "past", "active_day_range", "future")
    
     #[ORM\Column(nullable: true)]
+    #[Groups(['tag'])]
     private ?int $active_day = null;
 
     /**
      * @var Collection<int, TagInfo>
      */
     #[ORM\OneToMany(targetEntity: TagInfo::class, mappedBy: 'tag', cascade:["persist", "remove"], orphanRemoval: true)]
+    #[Groups(['tag'])]
     private Collection $tagInfos;
 
     #[ORM\Column(length: 255)]
@@ -44,6 +51,7 @@ class Tag extends BaseEntity
      * @var Collection<int, TagTask>
      */
     #[ORM\OneToMany(targetEntity: TagTask::class, mappedBy: 'tag', cascade:["persist", "remove"], orphanRemoval: true)]
+    #[Groups(['tag'])]
     private Collection $tagTasks;
 
 

@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity]
 class MonthDay extends BaseEntity
@@ -14,10 +15,12 @@ class MonthDay extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['eventRecurring'])]
     private ?int $id = null;
 
     #[ORM\Column(type: "integer")]
     #[Assert\Range(min: 1, max: 31, notInRangeMessage: "Le jour du mois doit être entre 1 et 31.")]
+    #[Groups(['eventRecurring'])]
     private int $day;
 
     #[ORM\ManyToMany(targetEntity: EventRecurring::class, mappedBy: 'monthDays')]

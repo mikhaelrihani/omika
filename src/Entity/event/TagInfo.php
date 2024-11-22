@@ -6,6 +6,7 @@ use App\Entity\BaseEntity;
 use App\Entity\User\user;
 use App\Repository\Event\TagInfoRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: TagInfoRepository::class)]
 #[ORM\Index(name: "Taginfo_user_tag_idx", columns: ["user_id", "tag_id"])]
@@ -15,6 +16,7 @@ class TagInfo extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['tag'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'tagInfos')]
@@ -23,6 +25,7 @@ class TagInfo extends BaseEntity
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false, onDelete: "CASCADE")]
+    #[Groups(['tag'])]
     private ?User $user = null;
     
 

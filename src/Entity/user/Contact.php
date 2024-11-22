@@ -10,6 +10,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ContactRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_EMAIL', fields: ['email'])]
@@ -19,6 +20,7 @@ class Contact extends BaseEntity implements RecipientInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['contact'])]
     private ?int $id = null;
 
     #[ORM\Column(type: Types::GUID, nullable: false)]
@@ -27,15 +29,18 @@ class Contact extends BaseEntity implements RecipientInterface
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "First name should not be blank.")]
+    #[Groups(['contact'])]
     private ?string $firstname = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Surname should not be blank.")]
+    #[Groups(['contact'])]
     private ?string $surname = null;
 
     #[ORM\Column(length: 180)]
     #[Assert\NotBlank(message: "Email should not be blank.")]
     #[Assert\Email(message: "The email '{{ value }}' is not a valid email.")]
+    #[Groups(['contact'])]
     private ?string $email = null;
 
     #[ORM\Column(length: 20, nullable: false)]
@@ -50,6 +55,7 @@ class Contact extends BaseEntity implements RecipientInterface
         pattern: "/^\+?[0-9\s]*$/",
         message: "Phone number should contain only digits, spaces, and an optional leading '+' sign."
     )]
+    #[Groups(['contact'])]
     private ?string $phone = null;
 
     #[ORM\Column(length: 20, nullable: true)]
@@ -63,24 +69,29 @@ class Contact extends BaseEntity implements RecipientInterface
         pattern: "/^\+?[0-9\s]*$/",
         message: "WhatsApp number should contain only digits, spaces, and an optional leading '+' sign."
     )]
+    #[Groups(['contact'])]
     private ?string $whatsapp = null;
 
 
     #[ORM\ManyToOne(targetEntity: Business::class, inversedBy: 'contacts')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['contact'])]
     private ?Business $business = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Job should not be blank.")]
+    #[Groups(['contact'])]
     private ?string $job = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['contact'])]
     private ?int $lateCount = null;
 
     /**
      * @var Collection<int, Absence>
      */
     #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'contact')]
+    #[Groups(['contact'])]
     private Collection $absence;
 
     public function __construct()

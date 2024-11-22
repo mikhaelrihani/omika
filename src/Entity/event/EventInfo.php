@@ -7,7 +7,7 @@ use App\Repository\Event\EventInfoRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-
+use Symfony\Component\Serializer\Annotation\Groups;
 /**
  * Represents additional information related to an event, such as shared users and read status.
  *
@@ -24,6 +24,7 @@ class EventInfo extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['event'])]
     private ?int $id = null;
 
     /**
@@ -40,6 +41,7 @@ class EventInfo extends BaseEntity
      * @var int|null
      */
     #[ORM\Column]
+    #[Groups(['event'])]
     private ?int $userReadInfoCount = null;
 
     /**
@@ -48,6 +50,7 @@ class EventInfo extends BaseEntity
      * @var int|null
      */
     #[ORM\Column]
+    #[Groups(['event'])]
     private ?int $sharedWithCount = null;
 
     /**
@@ -56,6 +59,7 @@ class EventInfo extends BaseEntity
      * @var bool|null
      */
     #[ORM\Column]
+    #[Groups(['event'])]
     private ?bool $isFullyRead = null;
 
     /**
@@ -64,9 +68,11 @@ class EventInfo extends BaseEntity
      * @var Collection<int, UserInfo>
      */
     #[ORM\OneToMany(targetEntity: UserInfo::class, mappedBy: 'eventInfo', orphanRemoval: true)]
+    #[Groups(['event'])]
     private Collection $sharedWith;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['event'])]
     private ?bool $isOld = null;
 
 

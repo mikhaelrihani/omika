@@ -6,6 +6,7 @@ use App\Entity\BaseEntity;
 use App\Entity\User\User;
 use App\Repository\Event\TagTaskRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: TagTaskRepository::class)]
 class TagTask extends BaseEntity
@@ -13,6 +14,7 @@ class TagTask extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['tag'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: Tag::class, inversedBy: 'tagTasks')]
@@ -21,6 +23,7 @@ class TagTask extends BaseEntity
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false, onDelete: "CASCADE")]
+    #[Groups(['tag'])]
     private ?User $user = null;
 
     #[ORM\Column(nullable: true)]
