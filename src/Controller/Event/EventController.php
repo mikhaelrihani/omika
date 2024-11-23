@@ -5,10 +5,12 @@ namespace App\Controller\Event;
 use App\Entity\Event\Event;
 use App\Repository\Event\EventRepository;
 use App\Service\Event\EventService;
+use App\Utils\ApiResponse;
 use App\Utils\CurrentUser;
 use App\Utils\EventUsers;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -51,30 +53,50 @@ class EventController extends AbstractController
     /**
      * Récupère un événement par son identifiant.
      *
-     * Cette méthode récupère un événement en fonction de son ID et vérifie si l'utilisateur
-     * a les droits nécessaires pour accéder à cet événement.
-     *
      * @param int $id L'identifiant de l'événement.
      *
-     * @return JsonResponse La réponse JSON contenant l'événement ou une erreur si l'événement n'est pas trouvé
-     *                      ou si l'utilisateur n'a pas les droits d'accès.
+     * @return JsonResponse La réponse contenant l'événement ou un message d'erreur.
+     *
+     * @throws \LogicException Si la méthode est appelée dans un contexte invalide.
+     * @throws \InvalidArgumentException Si les paramètres passés ne permettent pas de trouver un résultat valide.
      */
     #[Route('/{id}', name: 'getEvent', methods: ['GET'])]
     public function getEvent(int $id): JsonResponse
     {
+      
         $event = $this->eventRepository->find($id);
+
         if (!$event) {
-            return $this->json(["error" => "There is no event with this id"], 400);
+            $response = ApiResponse::error(
+                "There is no event with this id",
+                null,
+                Response::HTTP_NOT_FOUND
+            );
+            return $this->json($response);
         }
 
+        // Vérifie si l'utilisateur a les droits d'accès
         $isAllowed = $this->isAllowed($event);
         if (!$isAllowed) {
-            return $this->json(["error" => "You are not allowed to see this event"], 403);
+            $response = ApiResponse::error(
+                "You are not allowed to see this event",
+                null,
+                Response::HTTP_FORBIDDEN
+            );
+            return $this->json($response);
         }
 
-        return $this->json($event, 200, [], ['groups' => 'event']);
+        $response = ApiResponse::success(
+            "Event retrieved successfully",
+            ['event' => $event]
+        );
+        return $this->json($response, 200, [], ['groups' => 'event']);
     }
 
+
+    public function createEvent(): JsonResponse
+    {
+    }
     /**
      * Vérifie si l'événement est partagé avec l'utilisateur connecté.
      *
