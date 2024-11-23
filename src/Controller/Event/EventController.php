@@ -2,14 +2,19 @@
 
 namespace App\Controller\Event;
 
-use App\Entity\Event\Event;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Component\Validator\Constraints as Assert;
 use App\Repository\Event\EventRepository;
+use App\Repository\Event\SectionRepository;
 use App\Service\Event\EventService;
+use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
 use App\Utils\CurrentUser;
-use App\Utils\EventUsers;
+use DateTimeImmutable;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -26,13 +31,14 @@ class EventController extends AbstractController
      * @param EventService $eventService Service pour la gestion des événements.
      * @param EventRepository $eventRepository Repository pour la gestion des entités Event.
      * @param CurrentUser $currentUser Service utilitaire pour obtenir l'utilisateur courant.
-     * @param EventUsers $eventUsers Service utilitaire pour récupérer les utilisateurs associés à un événement.
      */
     public function __construct(
         private EventService $eventService,
+        private ValidatorService $validatorService,
         private EventRepository $eventRepository,
+        private SectionRepository $sectionRepository,
         private CurrentUser $currentUser,
-        private EventUsers $eventUsers
+        private EntityManagerInterface $em
     ) {
     }
 
@@ -51,19 +57,18 @@ class EventController extends AbstractController
     }
 
     /**
-     * Récupère un événement par son identifiant.
+     * Récupère les événements d'une section en fonction du type et de la date d'échéance.
      *
-     * @param int $id L'identifiant de l'événement.
+     * @Route("/getEventsBySection/{sectionId}", name="getEventsBySection", methods={"POST"})
      *
-     * @return JsonResponse La réponse contenant l'événement ou un message d'erreur.
-     *
-     * @throws \LogicException Si la méthode est appelée dans un contexte invalide.
-     * @throws \InvalidArgumentException Si les paramètres passés ne permettent pas de trouver un résultat valide.
+     * @param int $sectionId L'identifiant de la section.
+     * @param Request $request La requête HTTP contenant les paramètres.
+     * @return JsonResponse La réponse JSON avec les événements ou une erreur.
      */
     #[Route('/{id}', name: 'getEvent', methods: ['GET'])]
     public function getEvent(int $id): JsonResponse
     {
-      
+
         $event = $this->eventRepository->find($id);
 
         if (!$event) {
@@ -76,7 +81,7 @@ class EventController extends AbstractController
         }
 
         // Vérifie si l'utilisateur a les droits d'accès
-        $isAllowed = $this->isAllowed($event);
+        $isAllowed = $this->eventService->isAllowed($event);
         if (!$isAllowed) {
             $response = ApiResponse::error(
                 "You are not allowed to see this event",
@@ -92,47 +97,122 @@ class EventController extends AbstractController
         );
         return $this->json($response, 200, [], ['groups' => 'event']);
     }
-
-
-    public function createEvent(): JsonResponse
+    #[Route('/getEventsBySection/{sectionId}', name: 'getEventsBySection', methods: ['POST'])]
+    public function getEventsBySection(int $sectionId, Request $request, ValidatorInterface $validator): JsonResponse
     {
-    }
-    /**
-     * Vérifie si l'événement est partagé avec l'utilisateur connecté.
-     *
-     * Cette méthode vérifie si l'événement est associé à l'utilisateur courant. Elle fait appel au service
-     * `EventUsers` pour récupérer les utilisateurs associés à l'événement et vérifie si l'utilisateur
-     * connecté en fait partie.
-     *
-     * @param Event $event L'événement pour lequel on vérifie les utilisateurs associés.
-     *
-     * @return bool True si l'événement est partagé avec l'utilisateur courant, sinon false.
-     */
-    private function isSharedWithUser(Event $event): bool
-    {
-        $user = $this->currentUser->getCurrentUser();
-        $users = $this->eventUsers->getUsers($event);
+        // Vérification utilisateur
+        if (!$this->getUser()->isEnabled()) {
+            return $this->json(
+                ApiResponse::error("User is not allowed because disabled", null, Response::HTTP_FORBIDDEN)
+            );
+        }
+        // Vérification de l'existence de la section
+        $section = $this->sectionRepository->find($sectionId);
+        if (!$section) {
+            return $this->json(
+                ApiResponse::error("Section not found", null, Response::HTTP_NOT_FOUND)
+            );
+        }
+        try {
 
-        $isSharedWithUser = $users->contains($user);
+            // Définir les contraintes pour les données de la requête
+            $constraints = new Assert\Collection([
+                'type'    => [
+                    new Assert\NotBlank(message: "Type is required."),
+                    new Assert\Choice(choices: ['info', 'task'], message: "Invalid type. Allowed values: 'info', 'task'.")
+                ],
+                'dueDate' => [
+                    new Assert\NotBlank(message: "Due date is required."),
+                    new Assert\DateTime(message: "Invalid date format. Expected format: 'Y-m-d H:i:s'.")
+                ]
+            ]);
 
-        return $isSharedWithUser;
+            // Extraire les données validées
+            $response = $this->validatorService->validateJson($request, $constraints);
+            if (!$response->isSuccess()) {
+                return $this->json($response, $response->getStatusCode());
+            }
+
+            // Les données sont valides
+            $type = $response->getData()[ 'type' ];
+            $dueDate = new DateTimeImmutable($response->getData()[ 'dueDate' ]);
+            $user = $this->currentUser->getCurrentUser();
+
+            // récupérer les événements de la section
+            $events = $this->eventRepository->findEventsBySectionTypeAndDueDateForUser($sectionId, $type, $dueDate, $user);
+
+            $response = ApiResponse::success(
+                "Events retrieved successfully",
+                ['events' => $events]
+            );
+            return $this->json($response, 200, [], ['groups' => 'event']);
+        } catch (\Exception $e) {
+            $response = ApiResponse::error(
+                "An error occurred while retrieving events",
+                null,
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+            return $this->json($response);
+        }
     }
 
-    /**
-     * Vérifie si l'utilisateur a les droits d'accès à un événement.
-     *
-     * Cette méthode vérifie deux conditions : 
-     * - L'utilisateur doit être activé (`isEnabled()`).
-     * - L'événement doit être partagé avec l'utilisateur.
-     *
-     * @param Event $event L'événement pour lequel on vérifie les droits d'accès.
-     *
-     * @return bool True si l'utilisateur a les droits d'accès, sinon false.
-     */
-    private function isAllowed(Event $event): bool
-    {
-        return $this->getUser()->isEnabled() && $this->isSharedWithUser($event);
-    }
+
+    // #[Route('/getEventsByDate', name: 'getEventsByDate', methods: ['post'])]
+    // public function getEventsByDate(DateTimeImmutable $date): JsonResponse
+    // {
+    //     $user = $this->currentUser->getCurrentUser();
+    // }
+
+    // public function createEvent(): JsonResponse
+    // {
+    // }
+
+    // #[Route('/toggleImportant/{id}', name: 'toggleImportant', methods: ['post'])]
+    // public function toggleImportant(Event $event): JsonResponse
+    // {
+
+    // }
+
+    // #[Route('/toggleFavorite/{id}', name: 'toggleFavorite', methods: ['post'])]
+    // public function toggleFavorite(Event $event): JsonResponse
+    // {
+
+    // }
+
+    // #[Route('/toggleStatus/{id}', name: 'toggleStatus', methods: ['post'])]
+    // public function toggleStatus(Event $event): JsonResponse
+    // {
+
+    // }
+
+    // private function validateEvent(Event $event)
+    // {
+    // }
+
+    // public function getPublishedEventsByCurrentUser(Event $event): JsonResponse
+    // {
+
+    // }
+
+    // public function getDraftEventsByCurrentUser(Event $event): JsonResponse
+    // {
+    // }
+    // public function updateEvent(Event $event): JsonResponse
+    // {
+    // }
+
+    // public function deleteEvent(Event $event): JsonResponse
+    // {
+    // }
+
+    // public function deleteDraftEventsByCurrentUser(Event $event): JsonResponse
+    // {
+    // }
+
+    // public function updatePublishedEventsByCurrentUser(Event $event): JsonResponse
+    // {
+
+    // }
 
     //! divers flows
 

@@ -12,12 +12,15 @@ use App\Repository\Event\EventTaskRepository;
 use App\Repository\Event\UserInfoRepository;
 use App\Service\Event\TagService;
 use App\Utils\ApiResponse;
+use App\Utils\CurrentUser;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
+use Doctrine\ORM\PersistentCollection;
 use Exception;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 class EventService
@@ -32,10 +35,11 @@ class EventService
         protected ParameterBagInterface $parameterBag,
         protected TagService $tagService,
         protected UserInfoRepository $userInfoRepository,
-        protected EventTaskRepository $eventTaskRepository
-
+        protected EventTaskRepository $eventTaskRepository,
+        protected CurrentUser $currentUser,
+        protected Security $security
     ) {
-        $this->now = (new DateTimeImmutable('today'));
+        $this->now = new DateTimeImmutable('today');
         $this->activeDayStart = $this->parameterBag->get('activeDayStart');
         $this->activeDayEnd = $this->parameterBag->get('activeDayEnd');
     }
@@ -116,7 +120,13 @@ class EventService
         } else {
             $users = $event->getTask()->getSharedWith();
         }
-        return $users;
+        if ($users instanceof PersistentCollection && !$users->isInitialized()) {
+            $users->initialize();
+        }
+        if (!$users) {
+            throw new \InvalidArgumentException('Users not found');
+        }
+        return $users ?? new ArrayCollection();
     }
 
     /**
@@ -424,10 +434,36 @@ class EventService
         }
     }
 
-    //! --------------------------------------------------------------------------------------------
-    // late , late pending+2days..., pending late
-    // if past unrealised..
-    // see list of status
-    //! dans le set status penser a mettre en memoire une variable pour le status precedent(undo)
+    /**
+     * Vérifie si l'événement est partagé avec l'utilisateur connecté.
+     *
+     * Cette méthode vérifie si l'événement est associé à l'utilisateur courant. 
+     *
+     * @param Event $event L'événement pour lequel on vérifie les utilisateurs associés.
+     *
+     * @return bool True si l'événement est partagé avec l'utilisateur courant, sinon false.
+     */
+    protected function isSharedWithUser(Event $event): bool
+    {
+        $user = $this->currentUser->getCurrentUser();
+        return $this->getUsers($event)->contains($user);
+    }
+
+    /**
+     * Vérifie si l'utilisateur a les droits d'accès à un événement.
+     *
+     * Cette méthode vérifie deux conditions : 
+     * - L'utilisateur doit être activé (`isEnabled()`).
+     * - L'événement doit être partagé avec l'utilisateur.
+     *
+     * @param Event $event L'événement pour lequel on vérifie les droits d'accès.
+     *
+     * @return bool True si l'utilisateur a les droits d'accès, sinon false.
+     */
+    public function isAllowed(Event $event): bool
+    {
+        return $this->security->getUser()->isEnabled() && $this->isSharedWithUser($event);
+    }
+
 
 }

@@ -20,7 +20,7 @@ class Event extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
-    #[Groups(['event','eventRecurring'])]
+    #[Groups(['event', 'eventRecurring'])]
     private ?int $id = null;
 
 
@@ -39,6 +39,8 @@ class Event extends BaseEntity
     private ?EventInfo $info = null;
 
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: false)]
+    #[Assert\NotBlank(message: "Due date is required.")]
+    #[Assert\Date(message: "Invalid date format. Expected format: 'Y-m-d'.")]
     #[Groups(['event'])]
     private ?\DateTimeImmutable $dueDate = null;
 
@@ -58,7 +60,8 @@ class Event extends BaseEntity
     private ?string $side = null;
 
     #[ORM\Column(length: 255, nullable: false)]
-    #[Assert\NotBlank(message: "Type should not be blank.")]
+    #[Assert\NotBlank(message: "Type is required.")]
+    #[Assert\Choice(choices: ['info', 'task'], message: "Invalid type. Allowed values: 'info', 'task'.")]
     #[Groups(['event'])]
     private ?string $type = null;
 

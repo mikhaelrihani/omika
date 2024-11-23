@@ -45,7 +45,7 @@ class TagService
             $this->setTagRelation($event);
             return ApiResponse::success('Tag created successfully.');
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while creating the tag: ' . $e->getMessage(), null, 'TAG_CREATION_FAILED');
+            return ApiResponse::error('An error occurred while creating the tag: ' . $e->getMessage());
         }
     }
 
@@ -109,7 +109,7 @@ class TagService
         // Trouver le tag pour l'événement en fonction de la date, du côté et de la section.
         $tag = $this->em->getRepository(Tag::class)->findOneByDaySideSection($day, $side, $section);
         if (!$tag) {
-            return ApiResponse::error('Tag not found for the specified event.', null, 'TAG_NOT_FOUND');
+            return ApiResponse::error('Tag not found for the specified event.');
         }
         return $tag;
     }
@@ -149,7 +149,7 @@ class TagService
             }
             return ApiResponse::success('Tag count updated successfully.');
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while updating the tag count: ' . $e->getMessage(), null, 'TAG_COUNT_UPDATE_FAILED');
+            return ApiResponse::error('An error occurred while updating the tag count: ' . $e->getMessage());
         }
     }
 
@@ -187,8 +187,6 @@ class TagService
         } catch (Exception $e) {
             return ApiResponse::error(
                 'An error occurred while deleting past tags: ' . $e->getMessage(),
-                null,
-                'TAG_DELETION_FAILED'
             );
         }
     }
@@ -247,7 +245,7 @@ class TagService
 
             return ApiResponse::success('Tag info count updated successfully.');
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while setting info tag count: ' . $e->getMessage(), null, 'INFO_TAG_COUNT_UPDATE_FAILED');
+            return ApiResponse::error('An error occurred while setting info tag count: ' . $e->getMessage());
         }
     }
 
@@ -280,7 +278,7 @@ class TagService
 
             return ApiResponse::success('Tag info count updated successfully.');
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while setting info tag count: ' . $e->getMessage(), null, 'INFO_TAG_COUNT_UPDATE_FAILED');
+            return ApiResponse::error('An error occurred while setting info tag count: ' . $e->getMessage());
         }
     }
 
@@ -340,7 +338,7 @@ class TagService
 
             return ApiResponse::success('Tag task count updated successfully.');
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while setting task tag count: ' . $e->getMessage(), null, 'TASK_TAG_COUNT_UPDATE_FAILED');
+            return ApiResponse::error('An error occurred while setting task tag count: ' . $e->getMessage());
         }
     }
 
@@ -368,7 +366,7 @@ class TagService
             }
             return ApiResponse::success('Tag task count updated successfully.');
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while setting task tag count: ' . $e->getMessage(), null, 'TASK_TAG_COUNT_UPDATE_FAILED');
+            return ApiResponse::error('An error occurred while setting task tag count: ' . $e->getMessage());
         }
     }
 
@@ -392,7 +390,7 @@ class TagService
                 // Trouver le TagTask associé à l'utilisateur et au tag.
                 $tagTask = $this->em->getRepository(TagTask::class)->findOneByUserAndTag_task($user, $tag);
                 if (!$tagTask) {
-                    return ApiResponse::error('TagTask not found for the specified user and tag.', null, 'TAGTASK_NOT_FOUND');
+                    return ApiResponse::error('TagTask not found for the specified user and tag.');
                 }
 
                 // Décrémenter le compteur de tags (en s'assurant qu'il ne descende pas en dessous de zéro).
@@ -402,7 +400,7 @@ class TagService
                 // Gérer TagInfo si le type n'est pas "task".
                 $tagInfo = $this->em->getRepository(TagInfo::class)->findOneByUserAndTag_info($user, $tag);
                 if (!$tagInfo) {
-                    return ApiResponse::error('TagInfo not found for the specified user and tag.', null, 'TAGINFO_NOT_FOUND');
+                    return ApiResponse::error('TagInfo not found for the specified user and tag.');
                 }
 
                 // Décrémenter le compteur d'info non lue (en s'assurant qu'il ne descende pas en dessous de zéro).
@@ -416,7 +414,7 @@ class TagService
 
             return ApiResponse::success('Tag count decremented successfully.');
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while decrementing the tag counter: ' . $e->getMessage(), null, 'TAG_DECREMENT_FAILED');
+            return ApiResponse::error('An error occurred while decrementing the tag counter: ' . $e->getMessage());
         }
     }
 
@@ -441,7 +439,7 @@ class TagService
             $this->em->flush(); // Flush une seule fois après avoir décrémenté pour tous les utilisateurs.
             return ApiResponse::success('Tag count decremented successfully for multiple users.');
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while decrementing the tag counter for multiple users: ' . $e->getMessage(), null, 'TAG_DECREMENT_FAILED');
+            return ApiResponse::error('An error occurred while decrementing the tag counter for multiple users: ' . $e->getMessage());
         }
 
     }
