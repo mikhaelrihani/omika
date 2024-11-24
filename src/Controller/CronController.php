@@ -19,8 +19,8 @@ class CronController extends AbstractController
 
         // Return JSON based on the success or failure of the response
         return $response->isSuccess()
-            ? new JsonResponse(['success' => true, "message" => $response->getMessage()], 200)
-            : new JsonResponse(['success' => false, 'errorCode' => $response->getErrorCode(), 'message' => $response->getMessage()], 400);
+            ? new JsonResponse(['success' => true, "message" => $response->getMessage()], $response->getStatusCode())
+            : new JsonResponse(['success' => false, 'errorCode' => $response->getStatusCode(), 'message' => $response->getMessage()], $response->getStatusCode() );
     }
 
 }

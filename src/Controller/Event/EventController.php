@@ -97,6 +97,7 @@ class EventController extends AbstractController
         );
         return $this->json($response, 200, [], ['groups' => 'event']);
     }
+    
     #[Route('/getEventsBySection/{sectionId}', name: 'getEventsBySection', methods: ['POST'])]
     public function getEventsBySection(int $sectionId, Request $request, ValidatorInterface $validator): JsonResponse
     {
@@ -113,6 +114,7 @@ class EventController extends AbstractController
                 ApiResponse::error("Section not found", null, Response::HTTP_NOT_FOUND)
             );
         }
+
         try {
 
             // Définir les contraintes pour les données de la requête
@@ -123,7 +125,7 @@ class EventController extends AbstractController
                 ],
                 'dueDate' => [
                     new Assert\NotBlank(message: "Due date is required."),
-                    new Assert\DateTime(message: "Invalid date format. Expected format: 'Y-m-d H:i:s'.")
+                    new Assert\Date(message: "Invalid date format. Expected format: 'Y-m-d'")
                 ]
             ]);
 
@@ -136,23 +138,25 @@ class EventController extends AbstractController
             // Les données sont valides
             $type = $response->getData()[ 'type' ];
             $dueDate = new DateTimeImmutable($response->getData()[ 'dueDate' ]);
-            $user = $this->currentUser->getCurrentUser();
+            $userId = $this->currentUser->getCurrentUser()->getId();
 
             // récupérer les événements de la section
-            $events = $this->eventRepository->findEventsBySectionTypeAndDueDateForUser($sectionId, $type, $dueDate, $user);
+            $events = $this->eventRepository->findEventsBySectionTypeAndDueDateForUser($sectionId, $type, $dueDate, $userId);
 
             $response = ApiResponse::success(
                 "Events retrieved successfully",
-                ['events' => $events]
-            );
-            return $this->json($response, 200, [], ['groups' => 'event']);
+                ['events' => $events],
+                Response::HTTP_OK
+            ); 
+            return $this->json($response->getData()[ "events" ], $response->getStatusCode(), [], ['groups' => 'event']);
         } catch (\Exception $e) {
             $response = ApiResponse::error(
                 "An error occurred while retrieving events",
                 null,
                 Response::HTTP_INTERNAL_SERVER_ERROR
             );
-            return $this->json($response);
+           
+            return $this->json($response, $response->getStatusCode());
         }
     }
 

@@ -43,7 +43,7 @@ class ValidatorService
             );
         }
 
-        return ApiResponse::success("Validation successful");
+        return ApiResponse::success("Validation successful",[], Response::HTTP_OK);
     }
 
     /**
@@ -86,6 +86,6 @@ class ValidatorService
             );
         }
 
-        return ApiResponse::success("JSON content is valid");
+        return ApiResponse::success("JSON content is valid",$jsonContent,Response::HTTP_OK);
     }
 }

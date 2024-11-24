@@ -14,6 +14,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use phpDocumentor\Reflection\Types\Void_;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\HttpFoundation\Response;
 
 class CronService
 {
@@ -69,7 +70,7 @@ class CronService
         try {
             $todayEvents = $this->handleYesterdayEvents()->getData()[ 'todayEvents' ];
         } catch (Exception $e) {
-            return ApiResponse::error('Failed to handle yesterday\'s events: ' . $e->getMessage(), null, 'EVENTS_HANDLING_FAILED');
+            return ApiResponse::error('Failed to handle yesterday\'s events: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         // Step 2: Create tags for today's events
@@ -78,32 +79,32 @@ class CronService
                 $this->tagService->createTag($todayEvent);
             }
         } catch (Exception $e) {
-            return ApiResponse::error('Failed to create tags: ' . $e->getMessage(), null, 'TAGS_CREATION_FAILED');
+            return ApiResponse::error('Failed to create tags: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         // Step 3: Delete old tags
         try {
             $this->tagService->deletePastTag();
         } catch (Exception $e) {
-            return ApiResponse::error('Failed to delete old tags: ' . $e->getMessage(), null, 'DELETE_TAGS_FAILED');
+            return ApiResponse::error('Failed to delete old tags: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         // Step 4: Update timestamps for all events
         try {
             $this->updateAllEventsTimeStamps();
         } catch (Exception $e) {
-            return ApiResponse::error('Failed to update timestamps: ' . $e->getMessage(), null, 'TIMESTAMPS_UPDATE_FAILED');
+            return ApiResponse::error('Failed to update timestamps: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         // Step 5: Delete old events
         try {
             $this->deleteOldEvents();
         } catch (Exception $e) {
-            return ApiResponse::error('Failed to delete old events: ' . $e->getMessage(), null, 'DELETE_EVENTS_FAILED');
+            return ApiResponse::error('Failed to delete old events: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         // Final response: Success
-        return ApiResponse::success('Cron job is done');
+        return ApiResponse::success('Cron job is done', null, Response::HTTP_OK);
     }
 
 
@@ -143,12 +144,11 @@ class CronService
                 }
             }
 
-            return ApiResponse::success('Events handled successfully', ['todayEvents' => $todayEvents]);
+            return ApiResponse::success('Events handled successfully', ['todayEvents' => $todayEvents], Response::HTTP_OK);
         } catch (Exception $e) {
             return ApiResponse::error(
                 'Events handling failed: ' . $e->getMessage(),
                 null,
-                'EVENTS_HANDLING_FAILED'
             );
         }
     }
@@ -164,6 +164,7 @@ class CronService
 
         $query = $this->em->createQuery('SELECT e FROM App\Entity\Event\Event e WHERE e.dueDate = :dueDate');
         $yesterdayEvents = $query->setParameter('dueDate', $dueDate)->getResult();
+
         return $yesterdayEvents;
     }
 
@@ -308,7 +309,8 @@ class CronService
      */
     private function updateEventDates(Event $yesterdayEvent, Event $todayEvent): void
     {
-        $todayEvent->setDueDate($this->now);
+        $dueDate = $yesterdayEvent->getDueDate()->modify("+1 day");//! si on utilise $this->now et que l'on passe le cronJob alors on a une boucle infini de creatio d objet a la date de yesterday
+        $todayEvent->setDueDate($dueDate);
         $todayEvent->setFirstDueDate($yesterdayEvent->getFirstDueDate());
         $this->eventService->setTimestamps($todayEvent);
     }
@@ -433,9 +435,9 @@ class CronService
             }
             $this->em->flush();
 
-            return ApiResponse::success('Events timestamps updated successfully', ['events' => $events]);
+            return ApiResponse::success('Events timestamps updated successfully', ['events' => $events], Response::HTTP_OK);
         } catch (Exception $e) {
-            return ApiResponse::error('Event timestamp update failed: ' . $e->getMessage(), null, 'EVENT_TIMESTAMP_UPDATE_FAILED');
+            return ApiResponse::error('Event timestamp update failed: ' . $e->getMessage(), null);
         }
     }
 
@@ -473,7 +475,7 @@ class CronService
             $this->em->flush();
             return ApiResponse::success('Old events deleted successfully', ['oldEvents' => $oldEvents]);
         } catch (Exception $e) {
-            return ApiResponse::error('Old events deletion failed: ' . $e->getMessage(), null, 'OLD_EVENTS_DELETION_FAILED');
+            return ApiResponse::error('Old events deletion failed: ' . $e->getMessage());
         }
     }
 
