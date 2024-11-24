@@ -12,7 +12,6 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
-use phpDocumentor\Reflection\Types\Void_;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -22,6 +21,10 @@ class CronService
      * @var DateTimeImmutable The current date.
      */
     protected $now;
+    protected $todayEventsCreated;
+    protected $oldEventsDeleted;
+    protected $eventsActivated;
+
     public function __construct(
         protected EventRecurringRepository $eventRecurringRepository,
         protected EventRepository $eventRepository,
@@ -33,6 +36,9 @@ class CronService
 
     ) {
         $this->now = new DateTimeImmutable('today');
+        $this->todayEventsCreated = null;
+        $this->oldEventsDeleted = null;
+        $this->eventsActivated = null;
     }
 
     /**
@@ -104,7 +110,12 @@ class CronService
         }
 
         // Final response: Success
-        return ApiResponse::success('Cron job is done', null, Response::HTTP_OK);
+
+        return ApiResponse::success(
+            "Cron job is done, todayEventsCreated = {$this->todayEventsCreated}, oldEventsDeleted = {$this->oldEventsDeleted}, eventsActivated = {$this->eventsActivated}",
+            null,
+            Response::HTTP_OK
+        );
     }
 
 
@@ -113,6 +124,28 @@ class CronService
 
 
     //! Step 1: Handle yesterday's events by duplicating tasks or information for today --------------------------------------------
+
+
+    /**
+     * Finds events from yesterday that have not been processed yet.
+     * 
+     * @return Collection The list of yesterday's events that have not been processed.
+     */
+    public function findYesterdayEvents(): Collection
+    {
+        $dueDate = $this->now->modify('-1 day')->format('Y-m-d');
+
+        $yesterdayEvents = $this->em->createQueryBuilder()
+            ->select('e')
+            ->from(Event::class, 'e')
+            ->where('e.dueDate = :dueDate')
+            ->andWhere('e.isProcessed = false') // Exclure les événements déjà traités
+            ->setParameter('dueDate', $dueDate)
+            ->getQuery()
+            ->getResult();
+
+        return new ArrayCollection($yesterdayEvents);
+    }
 
     /**
      * Processes yesterday's events to handle overdue tasks or unread information.
@@ -124,12 +157,21 @@ class CronService
     public function handleYesterdayEvents(): ApiResponse
     {
         try {
+
             $yesterdayEvents = $this->findYesterdayEvents();
+            $this->todayEventsCreated = count($yesterdayEvents);
+            // Vérification si la collection est vide
+            if ($yesterdayEvents->isEmpty()) {
+                return ApiResponse::success('No events found for yesterday. Nothing to process.', ['todayEvents' => []], Response::HTTP_OK);
+            }
 
             $todayEvents = new ArrayCollection();
 
             foreach ($yesterdayEvents as $yesterdayEvent) {
                 $users = $this->eventService->getUsers($yesterdayEvent);
+
+                // Marquer l'événement comme traité
+                $yesterdayEvent->setIsProcessed(true);
 
                 // Gestion des tâches
                 if ($yesterdayEvent->getTask()) {
@@ -142,6 +184,8 @@ class CronService
                     $this->processInfoEvent($yesterdayEvent, $todayEvents);
                     continue;
                 }
+
+                $this->em->flush();
             }
 
             return ApiResponse::success('Events handled successfully', ['todayEvents' => $todayEvents], Response::HTTP_OK);
@@ -153,20 +197,7 @@ class CronService
         }
     }
 
-    /**
-     * Finds events that were due yesterday.
-     * 
-     * @return array List of events due yesterday.
-     */
-    public function findYesterdayEvents(): array
-    {
-        $dueDate = $this->now->modify('-1 day')->format('Y-m-d');
 
-        $query = $this->em->createQuery('SELECT e FROM App\Entity\Event\Event e WHERE e.dueDate = :dueDate');
-        $yesterdayEvents = $query->setParameter('dueDate', $dueDate)->getResult();
-
-        return $yesterdayEvents;
-    }
 
     /**
      * Process a task-based event.
@@ -255,6 +286,7 @@ class CronService
         }
 
         $todayEvent = $this->prepareEventForToday($yesterdayEvent, $users, $taskStatus);
+
         $this->em->persist($todayEvent);
         $this->em->flush();
 
@@ -272,10 +304,13 @@ class CronService
     private function prepareEventForToday(Event $yesterdayEvent, Collection $users, ?string $taskStatus = null): Event
     {
         $todayEvent = $this->duplicateEventBase($yesterdayEvent);
+
         $this->eventService->setRelations($todayEvent, $users, "late");
 
         $this->updateTaskOrInfoStatus($yesterdayEvent, $todayEvent, $taskStatus);
+
         $this->handleRecurringStatus($yesterdayEvent, $todayEvent);
+
         $this->updateEventDates($yesterdayEvent, $todayEvent);
 
         return $todayEvent;
@@ -382,7 +417,8 @@ class CronService
             ->setCreatedBy($originalEvent->getCreatedBy())
             ->setUpdatedBy($originalEvent->getUpdatedBy())
             ->setIsImportant($originalEvent->isImportant())
-            ->setSection($originalEvent->getSection());
+            ->setSection($originalEvent->getSection())
+            ->setIsProcessed(false);
         return $event;
     }
 
@@ -428,7 +464,12 @@ class CronService
 
             // Combine both sets of events.
             $events = array_merge($activeDayRangeEvents, $newActiveDayRangeEvents);
-
+            // count the number of events to display in the final cronJob response.
+            $eventsActivated = array_filter(
+                $newActiveDayRangeEvents,
+                fn($newActiveDayRangeEvent): bool => $newActiveDayRangeEvent->getDateStatus() !== "activeDayRange"
+            );
+            $this->eventsActivated = count($eventsActivated);
             // Update timestamps for each event.
             foreach ($events as $event) {
                 $this->eventService->setTimestamps($event);
@@ -467,6 +508,9 @@ class CronService
                 ->setParameter('latestDate', $latestDate)
                 ->getQuery()
                 ->getResult();
+
+            // count the number of old events to display in the final cronJob response.
+            $this->oldEventsDeleted = count($oldEvents);
 
             // Remove each fetched event from the database.
             foreach ($oldEvents as $oldEvent) {

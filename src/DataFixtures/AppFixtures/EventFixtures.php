@@ -82,7 +82,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setCreatedBy($createdBy)
             ->setUpdatedBy($updatedBy)
             ->setType($this->faker->randomElement(['task', 'info']))
-            ->setSection($section);
+            ->setSection($section)
+            ->setIsProcessed(false);
 
         return $event;
     }
@@ -373,7 +374,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setCreatedBy($originalEvent->getCreatedBy())
             ->setUpdatedBy($originalEvent->getUpdatedBy())
             ->setIsImportant($originalEvent->isImportant())
-            ->setSection($originalEvent->getSection());
+            ->setSection($originalEvent->getSection())
+            ->setIsProcessed(false);
 
         return $event;
     }
@@ -639,7 +641,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setCreatedBy($createdBy)
             ->setUpdatedBy($updatedBy)
             ->setType($eventRecurring->getType())
-            ->setSection($eventRecurring->getSection());
+            ->setSection($eventRecurring->getSection())
+            ->setIsProcessed(false);
 
         return $event;
     }
@@ -1043,7 +1046,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setCreatedBy($this->faker->randomElement($users)->getFullName())
             ->setUpdatedBy($this->faker->randomElement($users)->getFullName())
             ->setType($data[ "type" ])
-            ->setSection($data[ "section" ]);
+            ->setSection($data[ "section" ])
+            ->setIsProcessed(false);
     }
     /**
      * Définit les horodatages et le statut de date pour un événement en fonction d'un nombre de jours à ajouter.

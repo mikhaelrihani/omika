@@ -108,6 +108,9 @@ class Event extends BaseEntity
     #[Groups(['event'])]
     private ?\DateTimeImmutable $firstDueDate = null;
 
+    #[ORM\Column]// use for cron job to avoid repeating the same yesterday event if we do multiple cron jobs per day
+    private ?bool $isProcessed = null;
+
 
     public function __construct()
     {
@@ -317,6 +320,18 @@ class Event extends BaseEntity
     public function setFirstDueDate(\DateTimeImmutable $firstDueDate): static
     {
         $this->firstDueDate = $firstDueDate;
+
+        return $this;
+    }
+
+    public function isProcessed(): ?bool
+    {
+        return $this->isProcessed;
+    }
+
+    public function setIsProcessed(bool $isProcessed): static
+    {
+        $this->isProcessed = $isProcessed;
 
         return $this;
     }
