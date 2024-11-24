@@ -131,17 +131,17 @@ class EventController extends AbstractController
 
         if (!$event) {
             $response = ApiResponse::error("There is no event with this id", null, Response::HTTP_NOT_FOUND);
-            return $this->json($response);
+            return $this->json($response->getMessage(), $response->getStatusCode());
         }
 
         $this->em->remove($event);
         $this->em->flush();
 
         $response = ApiResponse::success("Event with id = {$id} has been deleted successfully", null, Response::HTTP_OK);
-        return $this->json($response->getMessage(), $response->getStatusCode(), [], ['groups' => 'event']);
+        return $this->json($response->getMessage(), $response->getStatusCode());
     }
 
-
+ //! --------------------------------------------------------------------------------------------
 
 
 
