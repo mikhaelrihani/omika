@@ -2,7 +2,6 @@
 
 namespace App\Controller\Event;
 
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 use App\Repository\Event\EventRepository;
 use App\Repository\Event\SectionRepository;
@@ -72,94 +71,93 @@ class EventController extends AbstractController
         $event = $this->eventRepository->find($id);
 
         if (!$event) {
-            $response = ApiResponse::error(
-                "There is no event with this id",
-                null,
-                Response::HTTP_NOT_FOUND
-            );
+            $response = ApiResponse::error("There is no event with this id",null,Response::HTTP_NOT_FOUND);
             return $this->json($response);
         }
 
         // Vérifie si l'utilisateur a les droits d'accès
         $isAllowed = $this->eventService->isAllowed($event);
-        if (!$isAllowed) {
-            $response = ApiResponse::error(
-                "You are not allowed to see this event",
-                null,
-                Response::HTTP_FORBIDDEN
-            );
+        if (!$isAllowed) {$response = ApiResponse::error("You are not allowed to see this event",null,Response::HTTP_FORBIDDEN);
             return $this->json($response);
         }
 
-        $response = ApiResponse::success(
-            "Event retrieved successfully",
-            ['event' => $event]
-        );
+        $response = ApiResponse::success("Event retrieved successfully",['event' => $event]);
         return $this->json($response, 200, [], ['groups' => 'event']);
     }
-    
+    /**
+     * Retrieve events by section ID, type, and due date.
+     *
+     * @param int $sectionId The ID of the section.
+     * @param Request $request The incoming HTTP request.
+     *
+     * @return JsonResponse A JSON response with the events or an error message.
+     *
+     * @Route("/getEventsBySection/{sectionId}", name="getEventsBySection", methods={"POST"})
+     */
     #[Route('/getEventsBySection/{sectionId}', name: 'getEventsBySection', methods: ['POST'])]
-    public function getEventsBySection(int $sectionId, Request $request, ValidatorInterface $validator): JsonResponse
+    public function getEventsBySection(int $sectionId, Request $request): JsonResponse
     {
         // Vérification utilisateur
         if (!$this->getUser()->isEnabled()) {
-            return $this->json(
-                ApiResponse::error("User is not allowed because disabled", null, Response::HTTP_FORBIDDEN)
-            );
-        }
-        // Vérification de l'existence de la section
-        $section = $this->sectionRepository->find($sectionId);
-        if (!$section) {
-            return $this->json(
-                ApiResponse::error("Section not found", null, Response::HTTP_NOT_FOUND)
-            );
+            return $this->json(ApiResponse::error("User is not allowed because disabled", null, Response::HTTP_FORBIDDEN));
         }
 
+        // Récupération et validation des données
+        [$type, $dueDate, $userId] = $this->getValidatedDataEventBySection($sectionId, $request);
         try {
-
-            // Définir les contraintes pour les données de la requête
-            $constraints = new Assert\Collection([
-                'type'    => [
-                    new Assert\NotBlank(message: "Type is required."),
-                    new Assert\Choice(choices: ['info', 'task'], message: "Invalid type. Allowed values: 'info', 'task'.")
-                ],
-                'dueDate' => [
-                    new Assert\NotBlank(message: "Due date is required."),
-                    new Assert\Date(message: "Invalid date format. Expected format: 'Y-m-d'")
-                ]
-            ]);
-
-            // Extraire les données validées
-            $response = $this->validatorService->validateJson($request, $constraints);
-            if (!$response->isSuccess()) {
-                return $this->json($response, $response->getStatusCode());
-            }
-
-            // Les données sont valides
-            $type = $response->getData()[ 'type' ];
-            $dueDate = new DateTimeImmutable($response->getData()[ 'dueDate' ]);
-            $userId = $this->currentUser->getCurrentUser()->getId();
-
-            // récupérer les événements de la section
+            // Récupération des événements
             $events = $this->eventRepository->findEventsBySectionTypeAndDueDateForUser($sectionId, $type, $dueDate, $userId);
 
-            $response = ApiResponse::success(
-                "Events retrieved successfully",
-                ['events' => $events],
-                Response::HTTP_OK
-            ); 
+            $response = ApiResponse::success("Events retrieved successfully",['events' => $events],Response::HTTP_OK);
             return $this->json($response->getData()[ "events" ], $response->getStatusCode(), [], ['groups' => 'event']);
         } catch (\Exception $e) {
-            $response = ApiResponse::error(
-                "An error occurred while retrieving events",
-                null,
-                Response::HTTP_INTERNAL_SERVER_ERROR
-            );
-           
+            $response = ApiResponse::error("An error occurred while retrieving events",null,Response::HTTP_INTERNAL_SERVER_ERROR);
             return $this->json($response, $response->getStatusCode());
         }
     }
 
+    /**
+     * Validate and extract data for event retrieval by section.
+     *
+     * @param int $sectionId The ID of the section.
+     * @param Request $request The incoming HTTP request.
+     *
+     * @return array|JsonResponse An array with type, dueDate, and userId if validation succeeds, 
+     *                            or a JsonResponse with an error message if validation fails.
+     */
+    private function getValidatedDataEventBySection(int $sectionId, Request $request): array|JsonResponse
+    {
+        // Vérification de l'existence de la section
+        $section = $this->sectionRepository->find($sectionId);
+        if (!$section) {
+            return $this->json(ApiResponse::error("Section not found", null, Response::HTTP_NOT_FOUND));
+        }
+
+        // Définition des contraintes pour la requête JSON
+        $constraints = new Assert\Collection([
+            'type'    => [
+                new Assert\NotBlank(message: "Type is required."),
+                new Assert\Choice(choices: ['info', 'task'], message: "Invalid type. Allowed values: 'info', 'task'.")
+            ],
+            'dueDate' => [
+                new Assert\NotBlank(message: "Due date is required."),
+                new Assert\Date(message: "Invalid date format. Expected format: 'Y-m-d'")
+            ]
+        ]);
+
+        // Validation des données
+        $response = $this->validatorService->validateJson($request, $constraints);
+        if (!$response->isSuccess()) {
+            return $this->json($response, $response->getStatusCode());
+        }
+
+        // Extraction des données validées
+        $type = $response->getData()[ 'type' ];
+        $dueDate = new DateTimeImmutable($response->getData()[ 'dueDate' ]);
+        $userId = $this->currentUser->getCurrentUser()->getId();
+
+        return [$type, $dueDate, $userId];
+    }
 
     // #[Route('/getEventsByDate', name: 'getEventsByDate', methods: ['post'])]
     // public function getEventsByDate(DateTimeImmutable $date): JsonResponse
