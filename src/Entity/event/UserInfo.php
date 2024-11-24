@@ -9,6 +9,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: UserInfoRepository::class)]
+#[ORM\Index(name: "idx_userinfo_user", columns: ["user_id"])]  
+
 class UserInfo extends BaseEntity
 {
     #[ORM\Id]
