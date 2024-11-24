@@ -41,6 +41,7 @@ class EventController extends AbstractController
     ) {
     }
 
+    //! --------------------------------------------------------------------------------------------
     /**
      * Récupère tous les événements.
      *
@@ -55,6 +56,8 @@ class EventController extends AbstractController
         return $this->json($events, 200, [], ['groups' => 'event']);
     }
 
+
+    //! --------------------------------------------------------------------------------------------
     /**
      * Récupère les événements d'une section en fonction du type et de la date d'échéance.
      *
@@ -71,19 +74,22 @@ class EventController extends AbstractController
         $event = $this->eventRepository->find($id);
 
         if (!$event) {
-            $response = ApiResponse::error("There is no event with this id",null,Response::HTTP_NOT_FOUND);
+            $response = ApiResponse::error("There is no event with this id", null, Response::HTTP_NOT_FOUND);
             return $this->json($response);
         }
 
         // Vérifie si l'utilisateur a les droits d'accès
         $isAllowed = $this->eventService->isAllowed($event);
-        if (!$isAllowed) {$response = ApiResponse::error("You are not allowed to see this event",null,Response::HTTP_FORBIDDEN);
+        if (!$isAllowed) {
+            $response = ApiResponse::error("You are not allowed to see this event", null, Response::HTTP_FORBIDDEN);
             return $this->json($response);
         }
 
-        $response = ApiResponse::success("Event retrieved successfully",['event' => $event]);
+        $response = ApiResponse::success("Event retrieved successfully", ['event' => $event]);
         return $this->json($response, 200, [], ['groups' => 'event']);
     }
+
+    //! --------------------------------------------------------------------------------------------
     /**
      * Retrieve events by section ID, type, and due date.
      *
@@ -108,13 +114,47 @@ class EventController extends AbstractController
             // Récupération des événements
             $events = $this->eventRepository->findEventsBySectionTypeAndDueDateForUser($sectionId, $type, $dueDate, $userId);
 
-            $response = ApiResponse::success("Events retrieved successfully",['events' => $events],Response::HTTP_OK);
+            $response = ApiResponse::success("Events retrieved successfully", ['events' => $events], Response::HTTP_OK);
             return $this->json($response->getData()[ "events" ], $response->getStatusCode(), [], ['groups' => 'event']);
         } catch (\Exception $e) {
-            $response = ApiResponse::error("An error occurred while retrieving events",null,Response::HTTP_INTERNAL_SERVER_ERROR);
+            $response = ApiResponse::error("An error occurred while retrieving events", null, Response::HTTP_INTERNAL_SERVER_ERROR);
             return $this->json($response, $response->getStatusCode());
         }
     }
+
+    //! --------------------------------------------------------------------------------------------
+
+    #[route('/deleteEvent/{id}', name: 'deleteEvent', methods: ['delete'])]
+    public function deleteEvent(int $id): JsonResponse
+    {
+        $event = $this->eventRepository->find($id);
+
+        if (!$event) {
+            $response = ApiResponse::error("There is no event with this id", null, Response::HTTP_NOT_FOUND);
+            return $this->json($response);
+        }
+
+        $this->em->remove($event);
+        $this->em->flush();
+
+        $response = ApiResponse::success("Event with id = {$id} has been deleted successfully", null, Response::HTTP_OK);
+        return $this->json($response->getMessage(), $response->getStatusCode(), [], ['groups' => 'event']);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Validate and extract data for event retrieval by section.
@@ -203,9 +243,6 @@ class EventController extends AbstractController
     // {
     // }
 
-    // public function deleteEvent(Event $event): JsonResponse
-    // {
-    // }
 
     // public function deleteDraftEventsByCurrentUser(Event $event): JsonResponse
     // {
