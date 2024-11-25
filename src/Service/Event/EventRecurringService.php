@@ -12,6 +12,7 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use App\Service\Event\TagService;
 use App\Utils\ApiResponse;
 use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Exception;
 
 class EventRecurringService
@@ -19,6 +20,7 @@ class EventRecurringService
     protected $now;
     protected $activeDayStart;
     protected $activeDayEnd;
+    protected $childrens;
 
     public function __construct(
         protected EventRecurringRepository $eventRecurringRepository,
@@ -31,25 +33,10 @@ class EventRecurringService
         $this->now = new DateTimeImmutable('today');
         $this->activeDayStart = $this->parameterBag->get('activeDayStart');
         $this->activeDayEnd = $this->parameterBag->get('activeDayEnd');
+        $this->childrens = [];
     }
 
-    /**
-     * Retrieves child events that are marked as recurring from the database.
-     *
-     * This method queries the database to fetch all events that have the "isRecurring" flag set to true.
-     * It returns the retrieved child events along with a success message, or an error message if the operation fails.
-     *
-     * @return ApiResponse Response object indicating success or error with the list of children events if successful.
-     */
-    public function getAllChildrensFromDatabase(): ApiResponse
-    {
-        try {
-            $childrens = $this->eventRepository->findBy(["isRecurring" => true]);
-            return ApiResponse::success('Children events retrieved successfully', ['childrens' => $childrens]);
-        } catch (Exception $e) {
-            return ApiResponse::error('Error retrieving children events: ' . $e->getMessage());
-        }
-    }
+
     /**
      * Handles the update of the children events of a recurring event.
      *
@@ -66,7 +53,7 @@ class EventRecurringService
      * 
      * @return ApiResponse Response object indicating success or error.
      */
-    public function handleRecurringEventUpdate(EventRecurring $eventRecurring): ApiResponse
+    public function UpdateRecurringEventParent(EventRecurring $eventRecurring): ApiResponse
     {
         try {
             $childrens = $eventRecurring->getEvents();
@@ -98,14 +85,11 @@ class EventRecurringService
             }
             $this->em->flush();
             $this->createChildrens($eventRecurring);
-
             return ApiResponse::success('Recurring event children updated successfully.');
         } catch (Exception $e) {
             // Handle any unexpected errors
             return ApiResponse::error(
-                'An error occurred while updating recurring event children: ' . $e->getMessage(),
-                null,
-                'RECURRING_EVENT_UPDATE_FAILED'
+                'An error occurred while updating recurring event children: ' . $e->getMessage()
             );
         }
     }
@@ -126,7 +110,6 @@ class EventRecurringService
     {
         try {
             $childrens = $eventRecurring->getEvents();
-            $users = $eventRecurring->getSharedWith();
             foreach ($childrens as $child) {
                 $this->eventService->removeEventAndUpdateTagCounters($child);
             }
@@ -140,36 +123,24 @@ class EventRecurringService
     }
 
     /**
-     * Creates children events for a recurring event and creates their associated tags.
-     * 
-     * This method generates child events for a recurring event based on its recurrence type
-     * and ensures that each child event has its associated tag properly handled.
-     * 
-     * @param EventRecurring $eventRecurring The recurring event for which child events will be created.
-     * 
-     * @return ApiResponse Returns a success response with the created child events if the operation is successful.
-     *                         Returns an error response if an exception occurs during the process.
-     * 
-     * @throws \Exception If an error occurs during the creation of child events or tag handling, it is caught
-     *                    and an error response is returned.
+     * Creates child events for a recurring event.
+     *
+     * This method processes the given recurring event and creates child events based on the recurrence type.
+     * The method calls the appropriate handler method based on the recurrence type of the event.
+     *
+     * @param EventRecurring $eventRecurring The recurring event for which child events are to be created.
+     * @param bool $cronJob A flag indicating if the method is called from a cron job.
+     *
+     * @return Collection A collection of child events created for the recurring event.
      */
-    public function createChildrens(EventRecurring $eventRecurring): ApiResponse
+    public function createChildrens(EventRecurring $eventRecurring, bool $cronJob = false): Collection
     {
-        try {
-            $childrens = $this->handleRecurrenceType($eventRecurring);
-            foreach ($childrens as $child) {
-                $this->tagService->createTag($child);
-            }
-            return ApiResponse::success('Recurring event children created successfully', ['childrens' => $childrens]);
-        } catch (Exception $e) {
-
-            return ApiResponse::error(
-                'An error occurred while creating recurring event children: ' . $e->getMessage(),
-                null,
-                'RECURRING_EVENT_CREATION_FAILED'
-            );
+        $this->childrens = [];
+        $this->handleRecurrenceType($eventRecurring, $cronJob);
+        foreach ($this->childrens as $child) {
+            $this->tagService->createTag($child);
         }
-
+        return new ArrayCollection($this->childrens);
     }
 
     /**
@@ -181,29 +152,42 @@ class EventRecurringService
      *
      * @param EventRecurring $parent The parent recurring event for which the child event is to be created.
      * @param DateTimeImmutable $dueDate The due date for the child event.
-     *
-     * @return ApiResponse Returns a success response if the child event is created successfully,
-     *                         or an error response if an exception occurs during the process.
      */
-    public function createOneChild(EventRecurring $parent, DateTimeImmutable $dueDate): ApiResponse
+    private function createOneChild(EventRecurring $parent, DateTimeImmutable $dueDate): void
     {
-        try {
-            $child = $this->setOneChildBase($parent);
-            $child->setDueDate($dueDate);
-            $this->eventService->setTimestamps($child);
-
-            $users = $parent->getSharedWith();
-            $status = $parent->getType() ? "todo" : null;
-            $this->eventService->setRelations($child, $users);
-
-            $this->em->persist($child);
-            $parent->addEvent($child);
-            $this->em->flush();
-            return ApiResponse::success('Child event created successfully');
-        } catch (Exception $e) {
-            return ApiResponse::error('Error creating child event: ' . $e->getMessage());
+        if ($this->isAlreadyCreated($parent, $dueDate)) {
+            return;
         }
+        $child = ($this->setOneChildBase($parent))
+            ->setDueDate($dueDate)
+            ->setFirstDueDate($dueDate);
+
+        $this->eventService->setTimestamps($child);
+
+        $users = $parent->getSharedWith();
+        $this->eventService->setRelations($child, $users);
+
+        $this->em->persist($child);
+        $parent->addEvent($child);
+        $this->em->flush();
+        $this->childrens[] = $child;
     }
+
+    /**
+     * Checks if a recurring event has already been created.
+     *
+     * This method checks if a recurring event with the same title and due date as the given event already exists.
+     *
+     * @param Event $event The event to check if it has already been created.
+     *
+     * @return bool Returns true if the event has already been created, false otherwise.
+     */
+    private function isAlreadyCreated(EventRecurring $parent, DateTimeImmutable $dueDate): bool
+    {
+        $event = $this->eventRepository->findOneBy(['title' => $parent->getTitle(), 'dueDate' => $dueDate]);
+        return $event ? true : false;
+    }
+
 
     /**
      * Sets the base properties of a child event based on a recurring event.
@@ -215,7 +199,7 @@ class EventRecurringService
      *
      * @return Event The child event with the base properties set from the parent event.
      */
-    public function setOneChildBase(EventRecurring $parent): Event
+    private function setOneChildBase(EventRecurring $parent): Event
     {
         $child = (new Event())
             ->setDescription($parent->getDescription())
@@ -226,6 +210,7 @@ class EventRecurringService
             ->setUpdatedBy($parent->getUpdatedBy()->getFullName())
             ->setType($parent->getType())
             ->setSection($parent->getSection())
+            ->setIsProcessed(false)
             ->setIsRecurring(true);
 
         return $child;
@@ -237,33 +222,29 @@ class EventRecurringService
      * The method calls the appropriate handler method based on the recurrence type of the event.
      *
      * @param EventRecurring $parent The recurring event whose recurrence type is to be handled.
-     *
-     * @return ApiResponse Response object indicating success or error.
      */
-    public function handleRecurrenceType(EventRecurring $parent): ApiResponse
+    private function handleRecurrenceType(EventRecurring $parent, bool $cronJob): void
     {
-        try {
-            $recurrenceType = $parent->getRecurrenceType();
-            switch ($recurrenceType) {
-                case "monthDays":
-                    $this->handleMonthDays($parent);
-                    break;
-                case "weekDays":
-                    $this->handleWeekdays($parent);
-                    break;
-                case "periodDates":
-                    $this->handlePeriodDates($parent);
-                    break;
-                case "everyday":
-                    $this->handleEveryday($parent);
-                    break;
-                default:
-                    return ApiResponse::error('Recurrence type not found');
-            }
-            return ApiResponse::success('Recurrence handled successfully');
-        } catch (Exception $e) {
-            return ApiResponse::error('Error handling recurrence type: ' . $e->getMessage());
+
+        $recurrenceType = $parent->getRecurrenceType();
+
+        switch ($recurrenceType) {
+            case "monthDays":
+                $this->handleMonthDays($parent, $cronJob);
+                break;
+            case "weekDays":
+                $this->handleWeekdays($parent, $cronJob);
+                break;
+            case "periodDates":
+                $this->handlePeriodDates($parent, $cronJob);
+                break;
+            case "isEveryday":
+                $this->handleEveryday($parent, $cronJob);
+                break;
+            default:
+                throw new \InvalidArgumentException('Invalid recurrence type');
         }
+
     }
 
     /**
@@ -273,36 +254,28 @@ class EventRecurringService
      * days of the month, within a defined period of recurrence.
      * 
      * @param EventRecurring $parent The parent recurring event that contains the configuration for the recurrence.
-     * 
-     * @return ApiResponse Returns a success response if the child events are generated successfully,
-     *                         or an error response if an exception occurs during the process.
-     * 
-     * @throws \Exception If an error occurs while handling the recurrence, it is caught and returned in the error response.
      */
-    public function handleMonthDays(EventRecurring $parent): ApiResponse
+    private function handleMonthDays(EventRecurring $parent, bool $cronJob): void
     {
-        try {
-            $monthDays = $parent->getMonthDays();
-            [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent);
 
-            $currentMonthDate = $earliestCreationDate->modify('first day of this month');
-            $endPeriodDate = $latestCreationDate->modify('first day of next month');
+        $monthDays = $parent->getMonthDays();
+        [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent, $cronJob);
 
-            while ($currentMonthDate <= $endPeriodDate) {
-                foreach ($monthDays as $monthDay) {
-                    $day = $monthDay->getDay();
-                    $dueDate = $currentMonthDate->modify("+{$day} days -1 day");
+        $currentMonthDate = $earliestCreationDate->modify('first day of this month');
+        $endPeriodDate = $latestCreationDate->modify('first day of next month');
 
-                    if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
-                        $this->createOneChild($parent, $dueDate);
-                    }
+        while ($currentMonthDate <= $endPeriodDate) {
+            foreach ($monthDays as $monthDay) {
+                $day = $monthDay->getDay();
+                $dueDate = $currentMonthDate->modify("+{$day} days -1 day");
+
+                if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
+                    $this->createOneChild($parent, $dueDate);
                 }
-                $currentMonthDate = $currentMonthDate->modify('first day of next month');
             }
-            return ApiResponse::success('Month days recurrence handled successfully');
-        } catch (Exception $e) {
-            return ApiResponse::error('Error handling month days recurrence: ' . $e->getMessage());
+            $currentMonthDate = $currentMonthDate->modify('first day of next month');
         }
+
     }
 
     /**
@@ -312,35 +285,27 @@ class EventRecurringService
      * days of the week, within a defined period of recurrence.
      * 
      * @param EventRecurring $parent The parent recurring event that contains the configuration for the recurrence.
-     * 
-     * @return ApiResponse Returns a success response if the child events are generated successfully,
-     *                         or an error response if an exception occurs during the process.
-     * 
-     * @throws \Exception If an error occurs while handling the recurrence, it is caught and returned in the error response.
      */
-    public function handleWeekdays(EventRecurring $parent): ApiResponse
+    private function handleWeekdays(EventRecurring $parent, bool $cronJob): void
     {
-        try {
-            $weekDays = $parent->getWeekDays();
-            [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent);
 
-            $currentWeekDate = $earliestCreationDate->modify('this week');
+        $weekDays = $parent->getWeekDays();
+        [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent, $cronJob);
 
-            while ($currentWeekDate <= $latestCreationDate) {
-                foreach ($weekDays as $weekDay) {
-                    $day = $weekDay->getDay();
-                    $dueDate = $currentWeekDate->modify("+{$day} days -1 day");
+        $currentWeekDate = $earliestCreationDate->modify('this week');
 
-                    if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
-                        $this->createOneChild($parent, $dueDate);
-                    }
+        while ($currentWeekDate <= $latestCreationDate) {
+            foreach ($weekDays as $weekDay) {
+                $day = $weekDay->getDay();
+                $dueDate = $currentWeekDate->modify("+{$day} days -1 day");
+
+                if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
+                    $this->createOneChild($parent, $dueDate);
                 }
-                $currentWeekDate = $currentWeekDate->modify('next week');
             }
-            return ApiResponse::success('Weekdays recurrence handled successfully');
-        } catch (Exception $e) {
-            return ApiResponse::error('Error handling weekdays recurrence: ' . $e->getMessage());
+            $currentWeekDate = $currentWeekDate->modify('next week');
         }
+
     }
 
     /**
@@ -351,27 +316,18 @@ class EventRecurringService
      * 
      * @param EventRecurring $parent The parent recurring event that defines the period and the dates for recurrence.
      * 
-     * @return ApiResponse Returns a success response if the child events are generated successfully,
-     *                         or an error response if an exception occurs during the process.
-     * 
-     * @throws \Exception If an error occurs while handling the recurrence, it is caught and returned in the error response.
      */
-    public function handlePeriodDates(EventRecurring $parent): ApiResponse
+    private function handlePeriodDates(EventRecurring $parent, bool $cronJob): void
     {
-        try {
-            [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent);
-            $dates = $parent->getPeriodDates();
+        [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent, $cronJob);
+        $dates = $parent->getPeriodDates();
 
-            foreach ($dates as $date) {
-                $dueDate = $date->getDate();
+        foreach ($dates as $date) {
+            $dueDate = $date->getDate();
 
-                if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
-                    $this->createOneChild($parent, $dueDate);
-                }
+            if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
+                $this->createOneChild($parent, $dueDate);
             }
-            return ApiResponse::success('Period dates recurrence handled successfully');
-        } catch (Exception $e) {
-            return ApiResponse::error('Error handling period dates recurrence: ' . $e->getMessage());
         }
     }
 
@@ -383,27 +339,19 @@ class EventRecurringService
      * 
      * @param EventRecurring $parent The parent recurring event that defines the period for recurrence.
      * 
-     * @return ApiResponse Returns a success response if the child events are generated successfully,
-     *                         or an error response if an exception occurs during the process.
-     * 
-     * @throws \Exception If an error occurs while handling the recurrence, it is caught and returned in the error response.
      */
-    public function handleEveryday(EventRecurring $parent): ApiResponse
+    private function handleEveryday(EventRecurring $parent, bool $cronJob): void
     {
-        try {
-            [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent);
-            $diff = (int) $earliestCreationDate->diff($latestCreationDate)->format('%r%a');
 
-            for ($i = 0; $i <= $diff; $i++) {
-                $dueDate = $earliestCreationDate->modify("+{$i} day");
+        [$earliestCreationDate, $latestCreationDate] = $this->calculatePeriodLimits($parent, $cronJob);
+        $diff = (int) $earliestCreationDate->diff($latestCreationDate)->format('%r%a');
 
-                if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
-                    $this->createOneChild($parent, $dueDate);
-                }
+        for ($i = 0; $i <= $diff; $i++) {
+            $dueDate = $earliestCreationDate->modify("+{$i} day");
+
+            if ($this->isWithinTargetPeriod($dueDate, $earliestCreationDate, $latestCreationDate)) {
+                $this->createOneChild($parent, $dueDate);
             }
-            return ApiResponse::success('Everyday recurrence handled successfully');
-        } catch (Exception $e) {
-            return ApiResponse::error('Error handling everyday recurrence: ' . $e->getMessage());
         }
     }
 
@@ -416,7 +364,7 @@ class EventRecurringService
      *
      * @return bool Returns true if the due date is within the target period, false otherwise.
      */
-    public function isWithinTargetPeriod(DateTimeImmutable $dueDate, DateTimeImmutable $earliestCreationDate, DateTimeImmutable $latestCreationDate): bool
+    private function isWithinTargetPeriod(DateTimeImmutable $dueDate, DateTimeImmutable $earliestCreationDate, DateTimeImmutable $latestCreationDate): bool
     {
         return $dueDate >= $earliestCreationDate && $dueDate <= $latestCreationDate;
     }
@@ -429,23 +377,24 @@ class EventRecurringService
      *
      * @param EventRecurring $parent The parent recurring event for which the period limits are to be calculated.
      *
-     * @return array|ApiResponse Returns an array containing the earliest and latest creation dates if successful,
-     *                               or an error response if an exception occurs during the process.
+     * @return array Returns an array containing the earliest and latest creation dates if successful,
+     *                              
      */
-    private function calculatePeriodLimits(EventRecurring $parent): array|ApiResponse
+    private function calculatePeriodLimits(EventRecurring $parent, bool $cronJob): array
     {
-        try {
-            $latestDate = (new DateTimeImmutable($this->now->format('Y-m-d')))->modify("+{$this->activeDayEnd} day");
-            $latestCreationDate = min($latestDate, $parent->getPeriodeEnd());
+        // on créee les events children dans la periode aujourdhui a 7 jours a chaque creation d'un eventrecurring parent,
+        $latestDate = (new DateTimeImmutable($this->now->format('Y-m-d')))->modify("+{$this->activeDayEnd} day");
+        $latestCreationDate = min($latestDate, $parent->getPeriodeEnd());
 
-            $earliestCreationDate = max($this->now, $parent->getPeriodeStart());
-            $earliestCreationDate = new DateTimeImmutable($earliestCreationDate->format('Y-m-d'));
+        $earliestCreationDate = max($this->now, $parent->getPeriodeStart());
+        $earliestCreationDate = new DateTimeImmutable($earliestCreationDate->format('Y-m-d'));
 
-            return [$earliestCreationDate, $latestCreationDate];
-        } catch (Exception $e) {
-            return ApiResponse::error('Error calculating period limits: ' . $e->getMessage());
+        // si nous sommes dans le processus du cronJob, on créee les events children a la date finale de active day range soit activeDayEnd
+        if ($cronJob) {
+            $earliestCreationDate = $latestDate;
         }
-    }
 
+        return [$earliestCreationDate, $latestCreationDate];
+    }
 
 }

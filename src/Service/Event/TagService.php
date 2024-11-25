@@ -12,6 +12,7 @@ use App\Utils\ApiResponse;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
+use Symfony\Component\HttpFoundation\Response;
 
 class TagService
 {
@@ -38,9 +39,13 @@ class TagService
      * 
      * @throws Exception If any error occurs during the tag creation process, it is caught and returned in the error response.
      */
-    public function createTag(Event $event): ApiResponse
+    public function createTag(?Event $event): ApiResponse
     {
         try {
+            // Vérifier si l'événement est null ou invalide
+            if ($event === null) {
+                return ApiResponse::error('No event provided for creating a tag.', null, Response::HTTP_BAD_REQUEST);
+            }
             $this->createTagBase($event);
             $this->setTagRelation($event);
             return ApiResponse::success('Tag created successfully.');
@@ -58,7 +63,7 @@ class TagService
      * @param Event $event The event for which the base tag is being created.
      * 
      */
-    public function createTagBase(Event $event)
+    private function createTagBase(Event $event)
     {
         $tag = new Tag();
         $tag
@@ -81,7 +86,7 @@ class TagService
      * @param Event $event The event whose tag relationships need to be updated.
      * 
      */
-    public function setTagRelation(Event $event)
+    private function setTagRelation(Event $event)
     {
         $type = $event->getType();
         $type === "task" ?
@@ -101,7 +106,7 @@ class TagService
      * 
      * @throws \Exception If an error occurs during the search, it is handled and a meaningful error message is returned.
      */
-    public function findTag($event): ApiResponse|Tag
+    private function findTag($event): ApiResponse|Tag
     {
         $day = $event->getDueDate();
         $side = $event->getSide();
@@ -153,43 +158,7 @@ class TagService
         }
     }
 
-    /**
-     * Deletes tags that are older than yesterday.
-     * we delete past tags because they are no longer relevant , tags are made to inform about the current day events or future events only.
-     * This method identifies tags that have a `day` field corresponding to either
-     * yesterday or the day before yesterday and deletes them from the database.
-     * The operation directly interacts with the database using Doctrine's QueryBuilder
-     * for optimal performance.
-     *
-     * @return ApiResponse Returns a success message if the tags are deleted successfully,
-     *                         or an error message if an exception occurs.
-     *
-     * @throws Exception If an unexpected error occurs during the tag deletion process.
-     */
-    public function deletePastTag(): ApiResponse
-    {
-        try {
-            $today = (new DateTimeImmutable("today"))->format('Y-m-d');
 
-            $tags = $this->em->createQueryBuilder()
-                ->select('t')
-                ->from(Tag::class, 't')
-                ->where('t.day < :today')
-                ->setParameter('today', $today)
-                ->getQuery()
-                ->getResult();
-            foreach ($tags as $tag) {
-                $this->em->remove($tag);
-            }
-            $this->em->flush();
-
-            return ApiResponse::success('Past tags deleted successfully.');
-        } catch (Exception $e) {
-            return ApiResponse::error(
-                'An error occurred while deleting past tags: ' . $e->getMessage(),
-            );
-        }
-    }
 
     //! --------------------------------------------------------------------------------------------
     /**

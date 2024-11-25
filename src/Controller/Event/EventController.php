@@ -78,9 +78,9 @@ class EventController extends AbstractController
             return $this->json($response);
         }
 
-        // Vérifie si l'utilisateur a les droits d'accès
-        $isAllowed = $this->eventService->isAllowed($event);
-        if (!$isAllowed) {
+       // Vérification de la visibilité de l'événement pour l'utilisateur courant
+        $isVisible = $this->eventService->isVisibleForCurrentUser($event);
+        if (!$isVisible) {
             $response = ApiResponse::error("You are not allowed to see this event", null, Response::HTTP_FORBIDDEN);
             return $this->json($response);
         }

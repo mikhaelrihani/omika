@@ -450,17 +450,15 @@ class EventService
     }
 
     /**
-     * Vérifie si l'utilisateur a les droits d'accès à un événement.
+     * Vérifie si l'événement est visible pour l'utilisateur connecté.
      *
-     * Cette méthode vérifie deux conditions : 
-     * - L'utilisateur doit être activé (`isEnabled()`).
-     * - L'événement doit être partagé avec l'utilisateur.
+     * Cette méthode vérifie si l'utilisateur est activé et si l'événement est partagé avec l'utilisateur.
      *
-     * @param Event $event L'événement pour lequel on vérifie les droits d'accès.
+     * @param Event $event L'événement à vérifier.
      *
-     * @return bool True si l'utilisateur a les droits d'accès, sinon false.
+     * @return bool True si l'événement est visible pour l'utilisateur courant, sinon false.
      */
-    public function isAllowed(Event $event): bool
+    public function isVisibleForCurrentUser(Event $event): bool
     {
         return $this->security->getUser()->isEnabled() && $this->isSharedWithUser($event);
     }
