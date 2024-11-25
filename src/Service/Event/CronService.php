@@ -24,7 +24,7 @@ class CronService
     protected int $todayEventsCreated;
     protected int $oldEventsDeleted;
     protected int $eventsActivated;
-    protected int $createdRecurringChildrens;
+    protected int $recurringChildrensCreated;
 
     public function __construct(
         protected EventRecurringRepository $eventRecurringRepository,
@@ -40,7 +40,7 @@ class CronService
         $this->todayEventsCreated = 0;
         $this->oldEventsDeleted = 0;
         $this->eventsActivated = 0;
-        $this->createdRecurringChildrens = 0;
+        $this->recurringChildrensCreated = 0;
     }
 
     /**
@@ -62,23 +62,32 @@ class CronService
 
     public function load(): JsonResponse
     {
-        $todayEvents = [];
+        $todayEvents = new ArrayCollection();
+        $createdChildrens = new ArrayCollection();
 
         // Définir les étapes à exécuter
         $steps = [
-            'handleYesterdayEvents'     => function () use (&$todayEvents) {
+            'handleYesterdayEvents'           => function () use (&$todayEvents): void {
                 $result = $this->handleYesterdayEvents();
                 $todayEvents = $result[ 'todayEvents' ] ?? [];
             },
-            'createTagsForToday'        => function () use (&$todayEvents) {
+            'createTagsForToday'              => function () use (&$todayEvents): void {
                 foreach ($todayEvents as $todayEvent) {
                     $this->tagService->createTag($todayEvent);
                 }
             },
-            'deletePastTags'            => fn(): null => $this->deletePastTag(),
-            'updateAllEventsTimeStamps' => fn(): Collection => $this->updateAllEventsTimeStamps(),
-            'deleteOldEvents'           => fn(): null => $this->deleteOldEvents(),
-            'createRecurringChildrens'  => fn(): Collection => $this->createRecurringChildrens(),
+            'deletePastTags'                  => fn(): null => $this->deletePastTag(),
+            'updateAllEventsTimeStamps'       => fn(): Collection => $this->updateAllEventsTimeStamps(),
+            'deleteOldEvents'                 => fn(): null => $this->deleteOldEvents(),
+            'createRecurringChildrens'        => function () use (&$createdChildrens): void {
+                $createdChildrens = $this->createRecurringChildrens();
+            },
+            'createTagsForRecurringChildrens' => function () use (&$createdChildrens): void {
+                foreach ($createdChildrens as $createdChildren) {
+                    $this->tagService->createTag($createdChildren);
+                }
+            },
+
         ];
 
         // Exécuter chaque étape et capturer les exceptions
@@ -98,7 +107,7 @@ class CronService
 
         // Toutes les étapes réussies
         $response = ApiResponse::success(
-            "Cron job completed successfully. Today Events Created: {$this->todayEventsCreated}, Old Events Deleted: {$this->oldEventsDeleted}, Events Activated: {$this->eventsActivated}, CreatedRecurringChildrens:{$this->createdRecurringChildrens}.",
+            "Cron job completed successfully. Today Events Created: {$this->todayEventsCreated}, Old Events Deleted: {$this->oldEventsDeleted}, Events Activated: {$this->eventsActivated}, RecurringChildrensCreated:{$this->recurringChildrensCreated}.",
             null,
             Response::HTTP_OK
         );
@@ -117,7 +126,7 @@ class CronService
      * 
      * @return Collection The list of yesterday's events that have not been processed.
      */
-    public function findYesterdayEvents(): Collection
+    private function findYesterdayEvents(): Collection
     {
         $dueDate = $this->now->modify('-1 day')->format('Y-m-d');
 
@@ -137,7 +146,7 @@ class CronService
      *
      * @return array An array containing today's events.
      */
-    public function handleYesterdayEvents(): array
+    private function handleYesterdayEvents(): array
     {
         $yesterdayEvents = $this->findYesterdayEvents();
         $this->todayEventsCreated = count($yesterdayEvents);
@@ -333,7 +342,7 @@ class CronService
      * 
      * @return void
      */
-    public function handleRecurringStatus(Event $yesterdayEvent, Event $todayEvent): void
+    private function handleRecurringStatus(Event $yesterdayEvent, Event $todayEvent): void
     {
         if (!$yesterdayEvent || !$yesterdayEvent->isRecurring()) {
             return; // Rien à faire si l'événement d'hier n'existe pas ou n'est pas récurrent
@@ -353,7 +362,7 @@ class CronService
      * @param Event $yesterdayEvent The event to check.
      * @return bool True if the event has a brother for today, false otherwise.
      */
-    public function hasBrotherToday(Event $yesterdayEvent): bool|null
+    private function hasBrotherToday(Event $yesterdayEvent): bool|null
     {
 
         $parentId = $yesterdayEvent->getEventRecurring()->getId();
@@ -378,7 +387,7 @@ class CronService
      * @param Event $originalEvent The event to duplicate.
      * @return Event A new event with duplicated base data.
      */
-    public function duplicateEventBase(Event $originalEvent): Event
+    private function duplicateEventBase(Event $originalEvent): Event
     {
         $event = (new Event())
             ->setSide($originalEvent->getSide())
@@ -409,7 +418,7 @@ class CronService
      * 
      * @return Collection The list of events that were processed.
      */
-    public function updateAllEventsTimeStamps(): Collection
+    private function updateAllEventsTimeStamps(): Collection
     {
         $datestatus = "activeDayRange";
 
@@ -465,7 +474,7 @@ class CronService
      * 
      * @return null
      */
-    public function deleteOldEvents(): null
+    private function deleteOldEvents(): null
     {
         // Calculate the cutoff date (30 days ago).
         $latestDate = $this->now->modify('-30 days')->format('Y-m-d');
@@ -502,7 +511,7 @@ class CronService
      * 
      * @return Collection The list of created children events.
      */
-    public function createRecurringChildrens(): Collection
+    private function createRecurringChildrens(): Collection
     {
         $createdChildrens = [];
 
@@ -514,8 +523,8 @@ class CronService
             }
         }
 
-        $this->createdRecurringChildrens = count($createdChildrens);
-    
+        $this->recurringChildrensCreated = count($createdChildrens);
+
         return new ArrayCollection($createdChildrens);
     }
 
@@ -529,7 +538,7 @@ class CronService
      *
      * @return null
      */
-    public function deletePastTag(): null
+    private function deletePastTag(): null
     {
         $today = (new DateTimeImmutable("today"))->format('Y-m-d');
 

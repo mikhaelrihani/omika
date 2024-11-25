@@ -34,47 +34,48 @@ class TagService
      * `createTagBase` and then establishes the necessary relationships using `setTagRelation`.
      * 
      * @param Event $event The event for which the tag is being created.
-     * 
-     * @return ApiResponse Returns a success response if the tag is created successfully or an error response in case of failure.
-     * 
-     * @throws Exception If any error occurs during the tag creation process, it is caught and returned in the error response.
+     * @return Tag|ApiResponse Returns the created `Tag` entity if successful. Otherwise, returns an error response.
      */
-    public function createTag(?Event $event): ApiResponse
+    public function createTag(?Event $event): ?Tag
     {
-        try {
-            // Vérifier si l'événement est null ou invalide
-            if ($event === null) {
-                return ApiResponse::error('No event provided for creating a tag.', null, Response::HTTP_BAD_REQUEST);
-            }
-            $this->createTagBase($event);
-            $this->setTagRelation($event);
-            return ApiResponse::success('Tag created successfully.');
-        } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while creating the tag: ' . $e->getMessage());
+        // Vérifier si l'événement est null ou invalide
+        if ($event === null) {
+            return null;
         }
+        $tag = $this->createTagBase($event);
+        $this->setTagRelation($event);
+        return $tag;
     }
 
     /**
-     * Creates the base tag entity for the given event.
+     * Creates a base tag for the given event.
      * 
-     * This method initializes and persists a `Tag` entity based on the details of the provided event,
-     * including section, due date, date status, active day, and side.
+     * This method creates a new tag entity based on the event's due date, side, and section.
+     * If a tag already exists for the event, it updates the date status and active day.
      * 
-     * @param Event $event The event for which the base tag is being created.
-     * 
+     * @param Event $event The event for which the tag is being created.
+     * @return Tag Returns the created or updated `Tag` entity.
      */
-    private function createTagBase(Event $event)
+    private function createTagBase(Event $event): tag
     {
-        $tag = new Tag();
+        // Vérifie si le tag pour cet événement existe déjà.
+        $day = $event->getDueDate();
+        $side = $event->getSide();
+        $section = $event->getSection()->getName();
+        $tag = $this->em->getRepository(Tag::class)->findOneByDaySideSection($day, $side, $section);
+        if (!$tag) {
+            $tag = (new Tag())
+                ->setSection($section)
+                ->setDay($event->getDueDate())
+                ->setSide($event->getSide());
+            $this->em->persist($tag);
+        }
         $tag
-            ->setSection($event->getSection()->getName())
-            ->setDay($event->getDueDate())
             ->setDateStatus($event->getDateStatus())
-            ->setActiveDay($event->getActiveDay())
-            ->setSide($event->getSide());
+            ->setActiveDay($event->getActiveDay());
 
-        $this->em->persist($tag);
         $this->em->flush();
+        return $tag;
     }
 
     /**
@@ -86,12 +87,12 @@ class TagService
      * @param Event $event The event whose tag relationships need to be updated.
      * 
      */
-    private function setTagRelation(Event $event)
+    private function setTagRelation(Event $event): void
     {
         $type = $event->getType();
         $type === "task" ?
-            $this->incrementSharedUsersTagTaskCount($event) :
-            $this->incrementSharedUsersTagInfoCount($event);
+            $tag = $this->incrementSharedUsersTagTaskCount($event) :
+            $tag = $this->incrementSharedUsersTagInfoCount($event);
     }
 
     /**
