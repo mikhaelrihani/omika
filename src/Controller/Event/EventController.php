@@ -2,9 +2,12 @@
 
 namespace App\Controller\Event;
 
+use App\Entity\Event\Event;
+use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\Validator\Constraints as Assert;
 use App\Repository\Event\EventRepository;
 use App\Repository\Event\SectionRepository;
+use App\Repository\User\UserRepository;
 use App\Service\Event\EventService;
 use App\Service\Event\TagService;
 use App\Service\ValidatorService;
@@ -17,6 +20,10 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
+use Symfony\Component\Serializer\Serializer;
+use Symfony\Component\Serializer\SerializerInterface;
+
 
 /**
  * Contrôleur API pour gérer les événements.
@@ -39,7 +46,9 @@ class EventController extends AbstractController
         private EventRepository $eventRepository,
         private SectionRepository $sectionRepository,
         private CurrentUser $currentUser,
-        private EntityManagerInterface $em
+        private EntityManagerInterface $em,
+        private SerializerInterface $serializer,
+        private UserRepository $userRepository
     ) {
     }
 
@@ -105,12 +114,12 @@ class EventController extends AbstractController
     #[Route('/getEventsBySection/{sectionId}', name: 'getEventsBySection', methods: ['POST'])]
     public function getEventsBySection(int $sectionId, Request $request): JsonResponse
     {
+        // Récupération et validation des données
         $data = $this->getValidatedDataEventBySection($sectionId, $request);
         if ($data instanceof JsonResponse) {
             return $data;
         }
         [$type, $dueDate, $userId] = $data;
-        // Récupération et validation des données
 
         try {
             // Récupération des événements
@@ -126,13 +135,30 @@ class EventController extends AbstractController
 
     //! --------------------------------------------------------------------------------------------
 
+
+    /**
+     * Delete an event by its ID.
+     *
+     * This method deletes an event from the database by its ID.
+     * The event is removed from the database and the shared users count of the tag is decremented by one.
+     *
+     * @param int $id The ID of the event to delete.
+     *
+     * @return JsonResponse A JSON response with a success message or an error message.
+     *
+     * @Route("/deleteEvent/{id}", name="deleteEvent", methods={"DELETE"})
+     */
     #[route('/deleteEvent/{id}', name: 'deleteEvent', methods: ['delete'])]
     public function deleteEvent(int $id): JsonResponse
     {
         $event = $this->eventRepository->find($id);
-
         if (!$event) {
             $response = ApiResponse::error("There is no event with this id", null, Response::HTTP_NOT_FOUND);
+            return $this->json($response->getMessage(), $response->getStatusCode());
+        }
+
+        $response = $this->tagService->decrementSharedUsersTagCountByOne($event);
+        if (!$response->isSuccess()) {
             return $this->json($response->getMessage(), $response->getStatusCode());
         }
 
@@ -151,6 +177,7 @@ class EventController extends AbstractController
      *
      * This method creates a new event in the database.
      * The event data is extracted from the incoming HTTP request.
+     * The event cannot be duplicated.
      * Tags are created for the event.
      *
      * @param Request $request The incoming HTTP request.
@@ -162,8 +189,11 @@ class EventController extends AbstractController
     #[Route("/createEvent", name: "createEvent", methods: ["POST"])]
     public function createEvent(Request $request): JsonResponse
     {
-        $data = $this->validatorService->validateJson($request)->getData();
-        $response = $this->eventService->createOneEvent($data);
+        $responseValidator = $this->validatorService->validateJson($request);
+        if (!$responseValidator->isSuccess()) {
+            return $this->json($responseValidator->getMessage(), $responseValidator->getStatusCode());
+        }
+        $response = $this->eventService->createOneEvent($responseValidator->getData());
 
         if ($response->getData() !== null) {
             $event = $response->getData()[ "event" ];
@@ -176,9 +206,51 @@ class EventController extends AbstractController
         return $this->json([$response->getMessage()], $response->getStatusCode());
     }
 
+    //! --------------------------------------------------------------------------------------------
 
 
+    #[Route('/updateEvent/{id}', name: 'updateEvent', methods: ['PUT'])]
+    public function updateEvent(request $request, int $id): JsonResponse
+    {
+        $responseValidator = $this->validatorService->validateJson($request);
+        if (!$responseValidator->isSuccess()) {
+            return $this->json($responseValidator->getMessage(), $responseValidator->getStatusCode());
+        }
+        $data = $request->getContent();
+        $event = $this->eventRepository->find($id);
+        if (!$event) {
+            return $this->json('Event not found', Response::HTTP_NOT_FOUND);
+        }
+        // Peupler les relations manuellement
+        if (isset($data[ 'users' ])) {
+            $users = $this->userRepository->findBy(['id' => $data[ 'users' ]]);
+            if (count($users) !== count(json_decode($data[ 'users' ], true))) {
+                return $this->json('Some users not found', Response::HTTP_BAD_REQUEST);
+            }
+            $event->setUsers(new ArrayCollection($users));
+        }
+        if ($event->getSection() !== null) {
+            // Supprimer uniquement la relation
+            $event->setSection(null);
+        }
+        if (isset($data[ 'section' ])) {
+            $section = $this->sectionRepository->find($data[ 'section' ]);
+            if (!$section) {
+                return $this->json('Section not found', Response::HTTP_BAD_REQUEST);
+            }
+            $event->setSection($section);
+        }
 
+        // Désérialiser et peupler l'objet existant
+        $this->serializer->deserialize(
+            $data,
+            Event::class,
+            'json',
+            [AbstractNormalizer::OBJECT_TO_POPULATE => $event]
+        );
+        $this->em->flush();
+        return new JsonResponse(['message' => 'event updated successfully '], Response::HTTP_OK);
+    }
 
 
 
@@ -250,9 +322,7 @@ class EventController extends AbstractController
 
     // }
 
-    // private function validateEvent(Event $event)
-    // {
-    // }
+
 
     // public function getPublishedEventsByCurrentUser(Event $event): JsonResponse
     // {
@@ -262,9 +332,7 @@ class EventController extends AbstractController
     // public function getDraftEventsByCurrentUser(Event $event): JsonResponse
     // {
     // }
-    // public function updateEvent(Event $event): JsonResponse
-    // {
-    // }
+
 
 
     // public function deleteDraftEventsByCurrentUser(Event $event): JsonResponse
