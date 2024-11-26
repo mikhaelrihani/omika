@@ -53,7 +53,7 @@ class JwtAuthenticator extends AbstractAuthenticator
      */
     public function supports(Request $request): ?bool
     {
-        return $request->headers->has('Authorization') && strpos($request->headers->get('Authorization'), 'Bearer ') === 0;
+        return $request->headers->has('Authorization') && strpos($request->headers->get('Authorization'), 'bearer ') === 0;
     }
 
     /**
@@ -66,6 +66,7 @@ class JwtAuthenticator extends AbstractAuthenticator
      */
     public function authenticate(Request $request): Passport
     {
+        
         // Extract the JWT credentials from the request
         $jwtCredentials = $this->JwtTokenService->getJwtCredential($request);
         $jwtToken = $jwtCredentials[ 'jwtToken' ];

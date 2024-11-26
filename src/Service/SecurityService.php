@@ -9,6 +9,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * Class SecurityService
@@ -72,7 +73,7 @@ class SecurityService
      * 
      * @return UserInterface The user object corresponding to the email.
      */
-    public function getUserNotConnected()
+    public function getUserNotConnected(): UserInterface
     {
         $email = $this->getEmail();
         $user = $this->userProvider->loadUserByIdentifier($email);

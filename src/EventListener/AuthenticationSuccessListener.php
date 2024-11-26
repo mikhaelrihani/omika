@@ -1,7 +1,7 @@
 <?php
 namespace App\EventListener;
 
-use App\Service\JwtTokenService; // Assurez-vous que cette ligne est correcte
+use App\Service\JwtTokenService; 
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 
 class AuthenticationSuccessListener

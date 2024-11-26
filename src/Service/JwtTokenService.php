@@ -51,8 +51,8 @@ class JwtTokenService
     public function getJwtCredential(Request $request): array
     {
         $authHeader = $request->headers->get('Authorization');
-        if ($authHeader && strpos($authHeader, 'Bearer ') === 0) {
-            $jwtToken = str_replace('Bearer ', '', $authHeader);
+        if ($authHeader && strpos($authHeader, 'bearer ') === 0) {
+            $jwtToken = str_replace('bearer ', '', $authHeader);
             return ['jwtToken' => $jwtToken];
         } else {
             throw new AuthenticationException('No Authorization header found, No API token provided');
