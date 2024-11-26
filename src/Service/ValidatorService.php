@@ -31,7 +31,7 @@ class ValidatorService
             $errorMessages = [];
             foreach ($errors as $error) {
                 $errorMessages[] = [
-                    'field' => $error->getPropertyPath(),
+                    'field'   => $error->getPropertyPath(),
                     'message' => $error->getMessage(),
                 ];
             }
@@ -43,7 +43,7 @@ class ValidatorService
             );
         }
 
-        return ApiResponse::success("Validation successful",[], Response::HTTP_OK);
+        return ApiResponse::success("Validation successful", [], Response::HTTP_OK);
     }
 
     /**
@@ -54,7 +54,7 @@ class ValidatorService
      *
      * @return ApiResponse Validation result encapsulated in an ApiResponse object.
      */
-    public function validateJson(Request $request, Assert\Collection $constraints): ApiResponse
+    public function validateJson(Request $request, Assert\Collection $constraints = null): ApiResponse
     {
         // Decode JSON content
         $jsonContent = json_decode($request->getContent(), true);
@@ -74,7 +74,7 @@ class ValidatorService
             $errorMessages = [];
             foreach ($errors as $error) {
                 $errorMessages[] = [
-                    'field' => $error->getPropertyPath(),
+                    'field'   => $error->getPropertyPath(),
                     'message' => $error->getMessage(),
                 ];
             }
@@ -86,6 +86,6 @@ class ValidatorService
             );
         }
 
-        return ApiResponse::success("JSON content is valid",$jsonContent,Response::HTTP_OK);
+        return ApiResponse::success("JSON content is valid", $jsonContent, Response::HTTP_OK);
     }
 }

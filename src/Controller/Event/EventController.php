@@ -6,6 +6,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 use App\Repository\Event\EventRepository;
 use App\Repository\Event\SectionRepository;
 use App\Service\Event\EventService;
+use App\Service\Event\TagService;
 use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
 use App\Utils\CurrentUser;
@@ -33,6 +34,7 @@ class EventController extends AbstractController
      */
     public function __construct(
         private EventService $eventService,
+        private TagService $tagService,
         private ValidatorService $validatorService,
         private EventRepository $eventRepository,
         private SectionRepository $sectionRepository,
@@ -78,7 +80,7 @@ class EventController extends AbstractController
             return $this->json($response);
         }
 
-       // Vérification de la visibilité de l'événement pour l'utilisateur courant
+        // Vérification de la visibilité de l'événement pour l'utilisateur courant
         $isVisible = $this->eventService->isVisibleForCurrentUser($event);
         if (!$isVisible) {
             $response = ApiResponse::error("You are not allowed to see this event", null, Response::HTTP_FORBIDDEN);
@@ -86,7 +88,7 @@ class EventController extends AbstractController
         }
 
         $response = ApiResponse::success("Event retrieved successfully", ['event' => $event]);
-        return $this->json($response, 200, [], ['groups' => 'event']);
+        return $this->json($response->getData(), 200, [], ['groups' => 'event']);
     }
 
     //! --------------------------------------------------------------------------------------------
@@ -103,13 +105,13 @@ class EventController extends AbstractController
     #[Route('/getEventsBySection/{sectionId}', name: 'getEventsBySection', methods: ['POST'])]
     public function getEventsBySection(int $sectionId, Request $request): JsonResponse
     {
-        // Vérification utilisateur
-        if (!$this->getUser()->isEnabled()) {
-            return $this->json(ApiResponse::error("User is not allowed because disabled", null, Response::HTTP_FORBIDDEN));
+        $data = $this->getValidatedDataEventBySection($sectionId, $request);
+        if ($data instanceof JsonResponse) {
+            return $data;
         }
-
+        [$type, $dueDate, $userId] = $data;
         // Récupération et validation des données
-        [$type, $dueDate, $userId] = $this->getValidatedDataEventBySection($sectionId, $request);
+
         try {
             // Récupération des événements
             $events = $this->eventRepository->findEventsBySectionTypeAndDueDateForUser($sectionId, $type, $dueDate, $userId);
@@ -141,10 +143,38 @@ class EventController extends AbstractController
         return $this->json($response->getMessage(), $response->getStatusCode());
     }
 
- //! --------------------------------------------------------------------------------------------
+    //! --------------------------------------------------------------------------------------------
 
 
+    /**
+     * Create an event.
+     *
+     * This method creates a new event in the database.
+     * The event data is extracted from the incoming HTTP request.
+     * Tags are created for the event.
+     *
+     * @param Request $request The incoming HTTP request.
+     *
+     * @return JsonResponse A JSON response with a success message or an error message.
+     *
+     * @Route("/createEvent", name="createEvent", methods={"POST"})
+     */
+    #[Route("/createEvent", name: "createEvent", methods: ["POST"])]
+    public function createEvent(Request $request): JsonResponse
+    {
+        $data = $this->validatorService->validateJson($request)->getData();
+        $response = $this->eventService->createOneEvent($data);
 
+        if ($response->getData() !== null) {
+            $event = $response->getData()[ "event" ];
+            $responseTag = $this->tagService->createTag($event);
+            if (!$responseTag->isSuccess()) {
+                return $this->json([$responseTag->getMessage()], $responseTag->getStatusCode());
+            }
+            return $this->json(["{$response->getMessage()} and {$responseTag->getMessage()}"], $response->getStatusCode());
+        }
+        return $this->json([$response->getMessage()], $response->getStatusCode());
+    }
 
 
 
@@ -199,15 +229,8 @@ class EventController extends AbstractController
         return [$type, $dueDate, $userId];
     }
 
-    // #[Route('/getEventsByDate', name: 'getEventsByDate', methods: ['post'])]
-    // public function getEventsByDate(DateTimeImmutable $date): JsonResponse
-    // {
-    //     $user = $this->currentUser->getCurrentUser();
-    // }
 
-    // public function createEvent(): JsonResponse
-    // {
-    // }
+
 
     // #[Route('/toggleImportant/{id}', name: 'toggleImportant', methods: ['post'])]
     // public function toggleImportant(Event $event): JsonResponse

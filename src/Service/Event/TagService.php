@@ -34,17 +34,21 @@ class TagService
      * `createTagBase` and then establishes the necessary relationships using `setTagRelation`.
      * 
      * @param Event $event The event for which the tag is being created.
-     * @return Tag|ApiResponse Returns the created `Tag` entity if successful. Otherwise, returns an error response.
+     * @return ApiResponse Returns the created `Tag` entity if successful. Otherwise, returns an error response.
      */
-    public function createTag(?Event $event): ?Tag
+    public function createTag(?Event $event): ApiResponse
     {
         // Vérifier si l'événement est null ou invalide
         if ($event === null) {
-            return null;
+            return ApiResponse::error('Event not found while creating related tags.', null, Response::HTTP_NOT_FOUND);
         }
-        $tag = $this->createTagBase($event);
-        $this->setTagRelation($event);
-        return $tag;
+        try {
+            $tag = $this->createTagBase($event);
+            $this->setTagRelation($event);
+            return ApiResponse::success('Tag created successfully.', ["tag" => $tag], Response::HTTP_OK);
+        } catch (Exception $e) {
+            return ApiResponse::error('An error occurred while creating the tag: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**

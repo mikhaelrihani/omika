@@ -40,7 +40,6 @@ class Event extends BaseEntity
 
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: false)]
     #[Assert\NotBlank(message: "Due date is required.")]
-    #[Assert\Date(message: "Invalid date format. Expected format: 'Y-m-d'.")]
     #[Groups(['event'])]
     private ?\DateTimeImmutable $dueDate = null;
 

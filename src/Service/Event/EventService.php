@@ -5,12 +5,14 @@ namespace App\Service\Event;
 use App\Entity\Event\Event;
 use App\Entity\Event\EventInfo;
 use App\Entity\Event\EventTask;
+use App\Entity\Event\Section;
 use App\Entity\Event\UserInfo;
 use App\Entity\User\User;
 use App\Repository\Event\EventRepository;
 use App\Repository\Event\EventTaskRepository;
 use App\Repository\Event\UserInfoRepository;
 use App\Service\Event\TagService;
+use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
 use App\Utils\CurrentUser;
 use DateTimeImmutable;
@@ -20,8 +22,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
 use Doctrine\ORM\PersistentCollection;
 use Exception;
-use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\HttpFoundation\Response;
 
 class EventService
 {
@@ -37,7 +39,7 @@ class EventService
         protected UserInfoRepository $userInfoRepository,
         protected EventTaskRepository $eventTaskRepository,
         protected CurrentUser $currentUser,
-        protected Security $security
+        protected ValidatorService $validatorService
     ) {
         $this->now = new DateTimeImmutable('today');
         $this->activeDayStart = $this->parameterBag->get('activeDayStart');
@@ -45,56 +47,146 @@ class EventService
     }
 
     /**
-     * Crée un événement en utilisant les données spécifiées.
+     * Crée un nouvel événement dans la base de données.
      *
-     * @param array $data Les données de l'événement.
+     * @param array $data Les données de l'événement à créer.
      * @return ApiResponse L'objet de réponse de succès ou d'erreur.
      */
     public function createOneEvent(array $data): ApiResponse
     {
+        $currentUser = $this->currentUser->getCurrentUser();
+
+        $event = $this->setEventBase($data, $currentUser);
+        if ($event === null) {
+            return ApiResponse::error('Error creating event: Invalid event data');
+        }
+
+        $this->setTimestamps($event);
+
+        $users = $this->getEventUsers($currentUser, $data);
+        // Si getEventUsers retourne un ApiResponse (erreur), on renvoie cette réponse
+        if ($users instanceof ApiResponse) {
+            return $users;
+        }
+
+        $this->setRelations($event, $users);
+
+        $validator = $this->validatorService->validateEntity($event);
+        if (!$validator->isSuccess()) {
+            return $validator;
+        }
+
+        return $this->flushEvent($event);
+    }
+
+    /**
+     * Vérifie si un événement existe déjà dans la base de données.
+     *
+     * @param Event $event L'événement à vérifier.
+     * @return bool True si l'événement existe déjà, sinon false.
+     */
+    private function doesEventAlreadyExist(Event $event): bool
+    {
+        $query = $this->em->createQuery(
+            'SELECT COUNT(e.id)
+             FROM App\Entity\Event\Event e
+             WHERE e.title = :title
+               AND e.dueDate = :dueDate
+               AND e.section = :section
+               AND e.type = :type
+               AND e.side = :side
+               AND e.isRecurring = :isRecurring'
+        );
+
+        $query->setParameters([
+            'title'       => $event->getTitle(),
+            'dueDate'     => $event->getDueDate()->format('Y-m-d'),
+            'section'     => $event->getSection(),
+            'type'        => $event->getType(),
+            'side'        => $event->getSide(),
+            'isRecurring' => $event->isRecurring(),
+        ]);
+
+        return (bool) $query->getSingleScalarResult();
+
+    }
+
+    /**
+     * Enregistre un événement dans la base de données.
+     *
+     * @param Event $event L'événement à enregistrer.
+     * @return ApiResponse L'objet de réponse de succès ou d'erreur.
+     */
+    private function flushEvent(Event $event): ApiResponse
+    {
         try {
-            $event = $this->setEventBase($data);
-            if ($event === null) {
-                return ApiResponse::error('Error creating event: Invalid event data');
+            if ($this->doesEventAlreadyExist($event)) {
+                return ApiResponse::error("Error creating event: Event already exists", null, Response::HTTP_CONFLICT);
             }
-
-            $this->setTimestamps($event);
-            $this->setRelations($event, $data[ "users" ]);
-            $this->em->flush();
-            return ApiResponse::success('Event created successfully', ['event' => $event]);
-
+            try {
+                $this->em->flush();
+                return ApiResponse::success("Event created successfully", ["event" => $event], Response::HTTP_OK);
+            } catch (ORMException $e) {
+                return ApiResponse::error('Error saving event: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
         } catch (Exception $e) {
-            return ApiResponse::error('Error creating event: ' . $e->getMessage());
+            return ApiResponse::error('Unexpected error: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
-     * Définit les propriétés de base de l'événement.
+     * Récupère les utilisateurs associés à un événement.
      *
-     * @param array $data Les données pour initialiser l'événement.
-     * @return Event|null L'événement nouvellement créé ou null si une erreur se produit.
+     * @param User $currentUser L'utilisateur connecté.
+     * @param array $data Les données de l'événement.
+     * @return ApiResponse|ArrayCollection La collection d'utilisateurs associés à l'événement.
      */
-    public function setEventBase(array $data): Event|ApiResponse
+    private function getEventUsers(User $currentUser, array $data): ApiResponse|ArrayCollection
     {
-        try {
-            $event = new Event();
-            $event
-                ->setDescription($data[ "description" ])
-                ->setIsImportant($data[ "isImportant" ])
-                ->setSide($data[ "side" ])
-                ->setTitle($data[ "title" ])
-                ->setCreatedBy($data[ "createdBy" ])
-                ->setUpdatedBy($data[ "updatedBy" ])
-                ->setType($data[ "type" ])
-                ->setSection($data[ "section" ])
-                ->setDueDate($data[ "dueDate" ])
-                ->setFirstDueDate($data[ "dueDate" ]);
-
-            return $event;
-        } catch (Exception $e) {
-            // Retourne une erreur avec un message précis
-            return ApiResponse::error('Error setting event base properties: ' . $e->getMessage());
+        $users = [];
+        $usersId = $data[ "usersId" ] ?? [];
+        // Ajoute le current user uniquement s'il n'est pas déjà dans la liste
+        if (!in_array($currentUser->getId(), $usersId)) {
+            $usersId[] = $currentUser->getId();
         }
+        foreach ($usersId as $userId) {
+
+            $user = $this->em->getRepository(User::class)->find($userId);
+            if (!$user) {
+                return ApiResponse::error("Error creating event: User with id {$userId} not found", null, Response::HTTP_NOT_FOUND);
+            }
+            $users[] = $user;
+        }
+
+        return new ArrayCollection($users);
+    }
+    /**
+     * Met à jour un événement existant avec les données spécifiées.
+     *
+     * @param Event $event L'événement à mettre à jour.
+     * @param array $data Les données de l'événement.
+     * @return Event $event
+     */
+    private function setEventBase(array $data, User $user): Event
+    {
+        $section = $this->em->getRepository(Section::class)->findOneBy(["name" => $data[ "section" ]]);
+        $dueDate = new DateTimeImmutable($data[ "dueDate" ]);
+        $event = new Event();
+        $event
+            ->setDescription($data[ "description" ])
+            ->setIsImportant($data[ "isImportant" ])
+            ->setSide($data[ "side" ])
+            ->setTitle($data[ "title" ])
+            ->setCreatedBy($user->getFullName())
+            ->setUpdatedBy($user->getFullName())
+            ->setType($data[ "type" ])
+            ->setSection($section)
+            ->setDueDate($dueDate)
+            ->setFirstDueDate($dueDate)
+            ->setIsProcessed(false);
+        $this->em->persist($event);
+        return $event;
+
     }
 
     /**
@@ -451,8 +543,7 @@ class EventService
 
     /**
      * Vérifie si l'événement est visible pour l'utilisateur connecté.
-     *
-     * Cette méthode vérifie si l'utilisateur est activé et si l'événement est partagé avec l'utilisateur.
+     *  Cette méthode vérifie si l'utilisateur est activé et si l'événement est partagé avec l'utilisateur.
      *
      * @param Event $event L'événement à vérifier.
      *
@@ -460,7 +551,7 @@ class EventService
      */
     public function isVisibleForCurrentUser(Event $event): bool
     {
-        return $this->security->getUser()->isEnabled() && $this->isSharedWithUser($event);
+        return $this->isSharedWithUser($event);
     }
 
 
