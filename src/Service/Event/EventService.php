@@ -31,6 +31,24 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 
+
+/**
+ * Service class for handling event-related operations.
+ * 
+ * Methods:
+ * - createOneEvent: Creates a new event in the database.
+ * - updateEvent: Updates an existing event in the database.
+ * - deleteEvent: Deletes an event from the database.
+ * - getEventById: Retrieves an event by its ID.
+ * - getEventsBySection: Retrieves events by section ID, type, and due date.
+ * - getUserPendingEvents: Retrieves pending events created by the current user.
+ * - getEventsCreatedByUser: Retrieves all events created by the current user.
+ * - setTimestamps: Sets the timestamps for an event.
+ * - setRelations: Sets the relations for an event.
+ * - isVisibleForCurrentUser: Checks if an event is visible for the current user.
+ * - getValidatedDataEventBySection: Validates and retrieves data for events by section.
+ * - getEventsByCriteria: Retrieves events based on specified criteria.
+ */
 class EventService
 {
     protected $now;
@@ -54,6 +72,7 @@ class EventService
         $this->activeDayStart = $this->parameterBag->get('activeDayStart');
         $this->activeDayEnd = $this->parameterBag->get('activeDayEnd');
     }
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Crée un nouvel événement dans la base de données.
@@ -87,6 +106,7 @@ class EventService
 
         return $this->flushEvent($event);
     }
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Vérifie si un événement existe déjà dans la base de données.
@@ -119,6 +139,7 @@ class EventService
         return (bool) $query->getSingleScalarResult();
 
     }
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Enregistre un événement dans la base de données.
@@ -142,6 +163,7 @@ class EventService
             return ApiResponse::error('Unexpected error: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Récupère les utilisateurs associés à un événement.
@@ -169,6 +191,9 @@ class EventService
 
         return new ArrayCollection($users);
     }
+
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Met à jour un événement existant avec les données spécifiées.
      *
@@ -205,6 +230,8 @@ class EventService
 
     }
 
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Retrieves the collection of users associated with a specific event.
      * 
@@ -237,6 +264,8 @@ class EventService
         return $users ?? new ArrayCollection();
     }
 
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Définit les timestamps (date de statut et jour actif) pour un événement.
      *
@@ -262,6 +291,8 @@ class EventService
             ->setDateStatus($dateStatus);
     }
 
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Définit les relations pour un événement, en fonction du type (task ou info).
      *
@@ -275,6 +306,8 @@ class EventService
             $this->setTask($event, $taskStatus, $users) :
             $this->setInfo($event, $users);
     }
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Définit la tâche associée à un événement.
@@ -303,6 +336,8 @@ class EventService
         $event->setPending($taskStatus === "pending");
     }
 
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Définit les informations associées à un événement.
      *
@@ -325,6 +360,8 @@ class EventService
         return $info;
     }
 
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Définit les informations partagées avec les utilisateurs.
      *
@@ -343,6 +380,8 @@ class EventService
             $info->addSharedWith($sharedInfo);
         }
     }
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Marks an info event as read for a specific user.
@@ -365,6 +404,7 @@ class EventService
         $event->getInfo()->syncCounts();
     }
 
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Removes an event and updates the tag counters for associated users.
@@ -391,6 +431,7 @@ class EventService
         }
     }
 
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Removes the user from all EventInfos they are associated with.
@@ -433,6 +474,9 @@ class EventService
         }
     }
 
+
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Removes the user from all EventTasks they are associated with.
      * 
@@ -473,6 +517,8 @@ class EventService
         }
     }
 
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Removes the user from all EventInfos and EventTasks they are associated with.
      * 
@@ -495,6 +541,7 @@ class EventService
         }
     }
 
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Filters events from the database based on one or more criteria: dueDate, side, section, or status.
@@ -547,6 +594,8 @@ class EventService
         }
     }
 
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Vérifie si l'événement est partagé avec l'utilisateur connecté.
      *
@@ -561,6 +610,8 @@ class EventService
         $user = $this->currentUser->getCurrentUser();
         return $this->getUsers($event)->contains($user);
     }
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Vérifie si l'événement est visible pour l'utilisateur connecté.
@@ -579,6 +630,8 @@ class EventService
 
         return $this->isSharedWithUser($event) && $isPublishedByCurrentUser;
     }
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Récupère une liste d'événements en fonction de critères donnés.
@@ -622,6 +675,9 @@ class EventService
             return $this->jsonResponseBuilder->createJsonResponse($response->getMessage(), $response->getStatusCode());
         }
     }
+
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Validate and extract data for event retrieval by section.
      *
@@ -664,6 +720,7 @@ class EventService
 
         return [$type, $dueDate, $userId];
     }
+    //! --------------------------------------------------------------------------------------------
 
 
 }
