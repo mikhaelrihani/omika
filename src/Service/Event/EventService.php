@@ -183,6 +183,7 @@ class EventService
             ->setSection($section)
             ->setDueDate($dueDate)
             ->setFirstDueDate($dueDate)
+            ->setPublished($data[ "isPublished" ])
             ->setIsProcessed(false);
         $this->em->persist($event);
         return $event;
@@ -270,6 +271,10 @@ class EventService
      */
     public function setTask(Event $event, string $taskStatus, Collection $users): void
     {
+        // on verifie que l'event est published, sinon on passe le status a pending
+        if (!$event->isPublished()) {
+            $taskStatus = "pending";
+        }
         $task = (new EventTask())
             ->setTaskStatus($taskStatus)
             ->setSharedWithCount($users->count())

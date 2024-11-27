@@ -393,6 +393,7 @@ class CronService
             ->setUpdatedBy($originalEvent->getUpdatedBy())
             ->setIsImportant($originalEvent->isImportant())
             ->setSection($originalEvent->getSection())
+            ->setPublished($originalEvent->isPublished())
             ->setIsProcessed(false);
         return $event;
     }

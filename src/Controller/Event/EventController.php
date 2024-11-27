@@ -125,7 +125,14 @@ class EventController extends AbstractController
         try {
             // Récupération des événements
             $events = $this->eventRepository->findEventsBySectionTypeAndDueDateForUser($sectionId, $type, $dueDate, $userId);
-
+            // Filtrer les events pour traiter le cas is_published is false
+            $events = new ArrayCollection($events);
+            $events = $events->filter(function ($event): bool {
+                if (!$event->isPublished() && $event->getCreatedBy() !== $this->currentUser->getCurrentUser()->getFullName()) {
+                    return false;
+                }
+                return true;
+            });
             $response = ApiResponse::success("Events retrieved successfully", ['events' => $events], Response::HTTP_OK);
             return $this->json($response->getData()[ "events" ], $response->getStatusCode(), [], ['groups' => 'event']);
         } catch (Exception $e) {
@@ -210,7 +217,7 @@ class EventController extends AbstractController
     //! --------------------------------------------------------------------------------------------
 
 
-   
+
     /**
      * Updates an event by deleting the existing one and creating a new one.
      * 

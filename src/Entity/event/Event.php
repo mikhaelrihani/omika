@@ -110,6 +110,10 @@ class Event extends BaseEntity
     #[ORM\Column]// use for cron job to avoid repeating the same yesterday event if we do multiple cron jobs per day
     private ?bool $isProcessed = null;
 
+    #[ORM\Column]
+    #[Groups(['event'])]
+    private ?bool $isPublished = null;
+
 
     public function __construct()
     {
@@ -331,6 +335,18 @@ class Event extends BaseEntity
     public function setIsProcessed(bool $isProcessed): static
     {
         $this->isProcessed = $isProcessed;
+
+        return $this;
+    }
+
+    public function isPublished(): ?bool
+    {
+        return $this->isPublished;
+    }
+
+    public function setPublished(bool $isPublished): static
+    {
+        $this->isPublished = $isPublished;
 
         return $this;
     }
