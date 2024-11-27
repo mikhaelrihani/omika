@@ -307,8 +307,24 @@ class EventController extends AbstractController
         return [$type, $dueDate, $userId];
     }
 
+    //! --------------------------------------------------------------------------------------------
+
+    #[Route("/getUserPendingEvents", name: "getUserPendingEvents", methods: ["GET"])]
+    public function getUserPendingEvents(Event $event): JsonResponse
+    {
+        $qb = $this->em->createQueryBuilder();
+        $qb->select('e')
+            ->from(Event::class, 'e')
+            ->where('e.is = :createdBy')
+            ->andWhere('e.isImportant = :isImportant')
+            ->andWhere('e.isPublished = :isPublished')
+            ->setParameter('createdBy', $event->getCreatedBy())
+            ->setParameter('isImportant', true)
+            ->setParameter('isPublished', false);
+    }
 
 
+    //! --------------------------------------------------------------------------------------------
 
     // #[Route('/toggleImportant/{id}', name: 'toggleImportant', methods: ['post'])]
     // public function toggleImportant(Event $event): JsonResponse
@@ -316,11 +332,15 @@ class EventController extends AbstractController
 
     // }
 
+    //! --------------------------------------------------------------------------------------------
+
     // #[Route('/toggleFavorite/{id}', name: 'toggleFavorite', methods: ['post'])]
     // public function toggleFavorite(Event $event): JsonResponse
     // {
 
     // }
+
+    //! --------------------------------------------------------------------------------------------
 
     // #[Route('/toggleStatus/{id}', name: 'toggleStatus', methods: ['post'])]
     // public function toggleStatus(Event $event): JsonResponse
@@ -328,41 +348,12 @@ class EventController extends AbstractController
 
     // }
 
-
-
-    // public function getPublishedEventsByCurrentUser(Event $event): JsonResponse
-    // {
-
-    // }
-
-    // public function getDraftEventsByCurrentUser(Event $event): JsonResponse
-    // {
-    // }
+    //! --------------------------------------------------------------------------------------------
 
 
 
-    // public function deleteDraftEventsByCurrentUser(Event $event): JsonResponse
-    // {
-    // }
 
-    // public function updatePublishedEventsByCurrentUser(Event $event): JsonResponse
-    // {
 
-    // }
 
-    //! divers flows
 
-    /**
-     * Effectue diverses actions liées aux événements. Ces actions incluent, entre autres :
-     * - Récupérer les événements selon des critères (type, section, active_day_range).
-     * - Créer un événement.
-     * - Créer un service pour la validation des événements.
-     * - Ajouter des fonctionnalités pour compter les événements par section.
-     * - Modifier un événement par son ID.
-     * - Supprimer un événement par son ID.
-     * 
-     * Ces méthodes seront mises en œuvre ultérieurement.
-     *
-     * @todo Mettre en œuvre des fonctionnalités supplémentaires pour gérer les événements.
-     */
 }

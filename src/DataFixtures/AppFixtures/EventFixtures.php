@@ -84,6 +84,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setType($this->faker->randomElement(['task', 'info']))
             ->setSection($section)
             ->setIsProcessed(false)
+            ->setPending(False)
             ->setPublished(true);
 
 
@@ -174,8 +175,6 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
             if ($taskStatus === 'unrealised') {
                 $this->setTaskStatus($event, 'unrealised', $eventRecurring);
-                $isPending = $this->faker->boolean(20);
-                $event->getTask()->setPending($isPending);
                 if (!$eventRecurring)
                     $this->duplicateNonRecurringUnrealisedEvent($event);
             } else {
@@ -241,9 +240,9 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setCreatedAt($event->getCreatedAt())
             ->setUpdatedAt($event->getUpdatedAt());
 
-        ($taskStatus === "pending") ?
-            $task->setPending(true) :
-            $task->setPending(false);
+        if ($taskStatus === "pending") {
+            $event->setPending(true);
+        }
 
         $this->em->persist($task);
 
@@ -344,9 +343,9 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             // vérifie le statut de la tâche de l'événement original pour  pouvoir afficher double statut "late" et "pending"
             $isPending = $originalEvent->getTask()->getTaskStatus() === "pending";
             if ($taskStatus === 'done' || !$isPending) {
-                $event->getTask()->setPending(false);
+                $event->setPending(false);
             } else {
-                $event->getTask()->setPending(true);
+                $event->setPending(true);
             }
 
             $this->em->persist($event);
@@ -381,6 +380,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setIsImportant($originalEvent->isImportant())
             ->setSection($originalEvent->getSection())
             ->setIsProcessed(false)
+            ->setPending(false)
             ->setPublished(true);
 
         return $event;
@@ -649,6 +649,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setType($eventRecurring->getType())
             ->setSection($eventRecurring->getSection())
             ->setIsProcessed(false)
+            ->setPending(False)
             ->setPublished(true);
 
         return $event;
@@ -876,7 +877,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
         // vérifie le statut de la tâche de l'événement original pour  pouvoir afficher double statut "late" et "pending"
         if ($originalEvent->getTask()->getTaskStatus() === "pending") {
-            $event->getTask()->setPending(true);
+            $event->setPending(true);
         }
         $event->setIsRecurring(True);
 
@@ -1055,6 +1056,7 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             ->setType($data[ "type" ])
             ->setSection($data[ "section" ])
             ->setIsProcessed(false)
+            ->setPending(False)
             ->setPublished(true);
     }
     /**

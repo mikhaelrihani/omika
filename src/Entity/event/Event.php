@@ -114,6 +114,9 @@ class Event extends BaseEntity
     #[Groups(['event'])]
     private ?bool $isPublished = null;
 
+    #[ORM\Column]
+    private ?bool $isPending = null;
+
 
     public function __construct()
     {
@@ -347,6 +350,18 @@ class Event extends BaseEntity
     public function setPublished(bool $isPublished): static
     {
         $this->isPublished = $isPublished;
+
+        return $this;
+    }
+
+    public function isPending(): ?bool
+    {
+        return $this->isPending;
+    }
+
+    public function setPending(bool $isPending): static
+    {
+        $this->isPending = $isPending;
 
         return $this;
     }

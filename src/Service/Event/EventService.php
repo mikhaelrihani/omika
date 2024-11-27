@@ -185,6 +185,12 @@ class EventService
             ->setFirstDueDate($dueDate)
             ->setPublished($data[ "isPublished" ])
             ->setIsProcessed(false);
+
+        // on verifie si l'event est published, sinon on passe isPending a true
+        if (!$event->isPublished()) {
+            $event->setPending(true);
+        }
+
         $this->em->persist($event);
         return $event;
 
@@ -277,14 +283,15 @@ class EventService
         }
         $task = (new EventTask())
             ->setTaskStatus($taskStatus)
-            ->setSharedWithCount($users->count())
-            ->setPending($taskStatus === "pending");
+            ->setSharedWithCount($users->count());
         foreach ($users as $user) {
             $task->addSharedWith($user);
         }
         $task->setEvent($event);
         $this->em->persist($task);
+
         $event->setTask($task);
+        $event->setPending($taskStatus === "pending");
     }
 
     /**
@@ -548,7 +555,8 @@ class EventService
 
     /**
      * Vérifie si l'événement est visible pour l'utilisateur connecté.
-     *  Cette méthode vérifie si l'utilisateur est activé et si l'événement est partagé avec l'utilisateur.
+     *
+     * Cette méthode vérifie si l'événement est partagé avec l'utilisateur connecté et si l'événement n'est pas encore publié, que l'auteur est l'utilisateur courant.
      *
      * @param Event $event L'événement à vérifier.
      *
@@ -556,7 +564,11 @@ class EventService
      */
     public function isVisibleForCurrentUser(Event $event): bool
     {
-        return $this->isSharedWithUser($event);
+        // verify that the event is shared with the user and if the event is not yet published that the author is the current user
+        $isPublishedByCurrentUser =
+            !$event->isPublished() && $event->getCreatedBy() !== $this->currentUser->getCurrentUser()->getFullName();
+
+        return $this->isSharedWithUser($event) && $isPublishedByCurrentUser;
     }
 
 

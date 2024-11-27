@@ -193,7 +193,7 @@ class CronService
         $yesterdayEvent->getTask()->setTaskStatus('unrealised');
 
         // Create today's event
-        $todayEvent = $this->createTodayEvent($yesterdayEvent, $users, $taskStatus);
+        $todayEvent = $this->createTodayEvent($yesterdayEvent, $users);
 
         if ($todayEvent) {
             $todayEvents->add($todayEvent);
@@ -251,16 +251,15 @@ class CronService
      *
      * @param Event $yesterdayEvent The event to duplicate.
      * @param Collection $users The users associated with the event.
-     * @param string|null $taskStatus The status of the task associated with the event.
      * @return Event|null The new event for today, or null if the event is recurring and has a brother event for today.
      */
-    public function createTodayEvent(Event $yesterdayEvent, Collection $users, ?string $taskStatus = null): ?Event
+    public function createTodayEvent(Event $yesterdayEvent, Collection $users): ?Event
     {
         if ($yesterdayEvent && $yesterdayEvent->isRecurring() && $this->hasBrotherToday($yesterdayEvent)) {
             return null;
         }
 
-        $todayEvent = $this->prepareEventForToday($yesterdayEvent, $users, $taskStatus);
+        $todayEvent = $this->prepareEventForToday($yesterdayEvent, $users);
 
         $this->em->persist($todayEvent);
         $this->em->flush();
@@ -273,16 +272,18 @@ class CronService
      *
      * @param Event $yesterdayEvent The event to duplicate.
      * @param Collection $users The users associated with the event.
-     * @param string|null $taskStatus The status of the task associated with the event.
      * @return Event The new event for today.
      */
-    private function prepareEventForToday(Event $yesterdayEvent, Collection $users, ?string $taskStatus = null): Event
+    private function prepareEventForToday(Event $yesterdayEvent, Collection $users): Event
     {
         $todayEvent = $this->duplicateEventBase($yesterdayEvent);
 
         $this->eventService->setRelations($todayEvent, $users, "late");
 
-        $this->updateTaskOrInfoStatus($yesterdayEvent, $todayEvent, $taskStatus);
+        $todayEvent->setPending($yesterdayEvent->isPending());
+        if ($todayEvent->getInfo()) {
+            $todayEvent->getInfo()->setOld(true);
+        }
 
         $this->handleRecurringStatus($yesterdayEvent, $todayEvent);
 
@@ -291,25 +292,6 @@ class CronService
         return $todayEvent;
     }
 
-    /**
-     * Updates the task status or marks the info as old.
-     *
-     * @param Event $yesterdayEvent
-     * @param Event $todayEvent
-     * @param string|null $taskStatus
-     */
-    private function updateTaskOrInfoStatus(Event $yesterdayEvent, Event $todayEvent, ?string $taskStatus): void
-    {
-        $todayEventTask = $todayEvent->getTask();
-
-        if ($todayEventTask) {
-            $isPending = $taskStatus === 'pending' || $yesterdayEvent->getTask()?->isPending();
-            $yesterdayEvent->getTask()?->setPending($isPending);
-            $todayEventTask->setPending($isPending);
-        } else {
-            $todayEvent->getInfo()->setOld(true);
-        }
-    }
 
     /**
      * Updates the due dates for the new event.
