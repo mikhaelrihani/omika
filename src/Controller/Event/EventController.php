@@ -210,47 +210,20 @@ class EventController extends AbstractController
 
 
     #[Route('/updateEvent/{id}', name: 'updateEvent', methods: ['PUT'])]
-    public function updateEvent(request $request, int $id): JsonResponse
+    public function updateEvent(request $request, int $id): void
     {
-        $responseValidator = $this->validatorService->validateJson($request);
-        if (!$responseValidator->isSuccess()) {
-            return $this->json($responseValidator->getMessage(), $responseValidator->getStatusCode());
-        }
-        $data = $request->getContent();
-        $event = $this->eventRepository->find($id);
-        if (!$event) {
-            return $this->json('Event not found', Response::HTTP_NOT_FOUND);
-        }
-        // Peupler les relations manuellement
-        if (isset($data[ 'users' ])) {
-            $users = $this->userRepository->findBy(['id' => $data[ 'users' ]]);
-            if (count($users) !== count(json_decode($data[ 'users' ], true))) {
-                return $this->json('Some users not found', Response::HTTP_BAD_REQUEST);
-            }
-            $event->setUsers(new ArrayCollection($users));
-        }
-        if ($event->getSection() !== null) {
-            // Supprimer uniquement la relation
-            $event->setSection(null);
-        }
-        if (isset($data[ 'section' ])) {
-            $section = $this->sectionRepository->find($data[ 'section' ]);
-            if (!$section) {
-                return $this->json('Section not found', Response::HTTP_BAD_REQUEST);
-            }
-            $event->setSection($section);
+        $this->em->beginTransaction();
+        try {
+            $this->deleteEvent($id);
+            $this->createEvent($request);
+            $this->em->commit();
+        } catch (\Exception $e) {
+            $this->em->rollback();
+            throw $e; 
         }
 
-        // Désérialiser et peupler l'objet existant
-        $this->serializer->deserialize(
-            $data,
-            Event::class,
-            'json',
-            [AbstractNormalizer::OBJECT_TO_POPULATE => $event]
-        );
-        $this->em->flush();
-        return new JsonResponse(['message' => 'event updated successfully '], Response::HTTP_OK);
     }
+
 
 
 

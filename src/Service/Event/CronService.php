@@ -62,14 +62,11 @@ class CronService
 
     public function load(): JsonResponse
     {
-        $todayEvents = new ArrayCollection();
-        $createdChildrens = new ArrayCollection();
 
         // Définir les étapes à exécuter
         $steps = [
             'handleYesterdayEvents'           => function () use (&$todayEvents): void {
-                $result = $this->handleYesterdayEvents();
-                $todayEvents = $result[ 'todayEvents' ] ?? [];
+                $todayEvents = $this->handleYesterdayEvents() ?? new ArrayCollection();
             },
             'createTagsForToday'              => function () use (&$todayEvents): void {
                 foreach ($todayEvents as $todayEvent) {
@@ -80,7 +77,7 @@ class CronService
             'updateAllEventsTimeStamps'       => fn(): Collection => $this->updateAllEventsTimeStamps(),
             'deleteOldEvents'                 => fn(): null => $this->deleteOldEvents(),
             'createRecurringChildrens'        => function () use (&$createdChildrens): void {
-                $createdChildrens = $this->createRecurringChildrens();
+                $createdChildrens = $this->createRecurringChildrens() ?? new ArrayCollection();
             },
             'createTagsForRecurringChildrens' => function () use (&$createdChildrens): void {
                 foreach ($createdChildrens as $createdChildren) {
@@ -144,18 +141,16 @@ class CronService
     /**
      * Handles yesterday's events by duplicating tasks or information for today.
      *
-     * @return array An array containing today's events.
+     * @return Collection The list of today's events that were created.
      */
-    private function handleYesterdayEvents(): array
+    private function handleYesterdayEvents(): Collection
     {
         $yesterdayEvents = $this->findYesterdayEvents();
-        $this->todayEventsCreated = count($yesterdayEvents);
-
-        if ($yesterdayEvents->isEmpty()) {
-            return ['todayEvents' => []];
-        }
 
         $todayEvents = new ArrayCollection();
+        if ($yesterdayEvents->isEmpty()) {
+            return $todayEvents;
+        }
 
         foreach ($yesterdayEvents as $yesterdayEvent) {
             $users = $this->eventService->getUsers($yesterdayEvent);
@@ -173,8 +168,8 @@ class CronService
 
             $this->em->flush();
         }
-
-        return ['todayEvents' => $todayEvents];
+        $this->todayEventsCreated = count($todayEvents);
+        return $todayEvents;
     }
 
 
@@ -513,19 +508,25 @@ class CronService
      */
     private function createRecurringChildrens(): Collection
     {
-        $createdChildrens = [];
-
         $eventRecurrings = $this->eventRecurringRepository->findAll();
+
+        $createdChildrens = new ArrayCollection();
+        if (empty($eventRecurrings)) {
+            return $createdChildrens;
+        }
+
         foreach ($eventRecurrings as $eventRecurring) {
             $response = $this->eventRecurringService->createChildrens($eventRecurring, true);
             if (!$response->isEmpty()) {
-                $createdChildrens[] = $response;
+                foreach ($response as $createdChildren) {
+                    $createdChildrens->add($createdChildren);
+                }
             }
         }
 
         $this->recurringChildrensCreated = count($createdChildrens);
+        return $createdChildrens;
 
-        return new ArrayCollection($createdChildrens);
     }
 
     /**
