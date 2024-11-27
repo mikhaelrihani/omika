@@ -187,7 +187,20 @@ En cas de suppression ou modification d’un événement récurrent, les `TagInf
 
 
 
+//! lorsque un user realise une tache comme passer une cde ou ecrire une info , 
+// il peut decider d'enregistrer ou de mettre en pending.mais un event doit etre associer ou  creer.
+// dans le cas ou l'event existe l'event reste partage avce ces users associé meme en pending.
+// dans le cas ou l'event doit etre creer alors on doit demander a l'user de remplir les champs necessaires a la création
+// puis si il veut publier cet event pour tous les users partagé ou le garder en pending pour lui jusqua ce que l event lui plaise
+// cad que l'event lui sera visible chez lui de suite mais plus tard pour les autres .
+// par ex je prepare une cde je veux qu'elle soit publier pour tous de suite , par contre si je prepare une info je veux d'abord la garder chez moi puis la publier.
 
+// on doit donc lorsque l on fait une recherche par section , verifier que le ispublished est vrai pour le rendre visible aux user partage.
+// creer une propriete ispublished
+// verifeir que la propriete isPending est passe a false lorsque l'event est done,sauf si l event est past pour le cronjob
+// lorsque l'event est en ispublished false l'event a un status pending
+// ajouter un viewId/link pour afficher un lien direct dans l'event, ainsi que dans la vue de l'event, pointant vers la tache lié(cde, inventaire...) qui peut etre null dans le cas d'une info
+// ce view id correspond a l'id de la tache "cde, inventaire..." qui est lié a l'event comme ca on peut rechecher la vue de la tache  liée a l'event
 
 
 

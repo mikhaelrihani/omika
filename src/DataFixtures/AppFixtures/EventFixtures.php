@@ -233,13 +233,16 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
             $eventRecurring->getSharedWith()->toArray() :
             $this->faker->randomElements($users, rand(1, count($users)));
 
-        $task = new EventTask();
-        $task
+        $task = (new EventTask())
             ->setTaskStatus($taskStatus)
             ->setSharedWithCount(count($users))
-            ->setPending(false)
             ->setCreatedAt($event->getCreatedAt())
             ->setUpdatedAt($event->getUpdatedAt());
+
+        ($taskStatus === "pending") ?
+            $task->setPending(true) :
+            $task->setPending(false);
+
         $this->em->persist($task);
 
         $event->setTask($task);
