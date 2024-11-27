@@ -2,9 +2,9 @@
 
 namespace App\Controller\Event;
 
-use App\Entity\Event\Event;
+
 use Doctrine\Common\Collections\ArrayCollection;
-use Symfony\Component\Validator\Constraints as Assert;
+
 use App\Repository\Event\EventRepository;
 use App\Repository\Event\SectionRepository;
 use App\Repository\User\UserRepository;
@@ -13,7 +13,6 @@ use App\Service\Event\TagService;
 use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
 use App\Utils\CurrentUser;
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -21,9 +20,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
-use Symfony\Component\Serializer\Serializer;
-use Symfony\Component\Serializer\SerializerInterface;
 
 
 /**
@@ -48,7 +44,6 @@ class EventController extends AbstractController
         private SectionRepository $sectionRepository,
         private CurrentUser $currentUser,
         private EntityManagerInterface $em,
-        private SerializerInterface $serializer,
         private UserRepository $userRepository
     ) {
     }
@@ -70,16 +65,19 @@ class EventController extends AbstractController
 
 
     //! --------------------------------------------------------------------------------------------
+
     /**
-     * Récupère les événements d'une section en fonction du type et de la date d'échéance.
+     * Récupère un événement spécifique par son identifiant.
      *
-     * @Route("/getEventsBySection/{sectionId}", name="getEventsBySection", methods={"POST"})
+     * @Route("/{id<\d+>}", name="getEvent", methods={"GET"})
      *
-     * @param int $sectionId L'identifiant de la section.
-     * @param Request $request La requête HTTP contenant les paramètres.
-     * @return JsonResponse La réponse JSON avec les événements ou une erreur.
+     * @param int $id L'identifiant de l'événement à récupérer.
+     *
+     * @return JsonResponse La réponse contenant l'événement ou un message d'erreur.
+     *
+     * @throws JsonResponse Une réponse d'erreur si l'événement n'existe pas ou si l'utilisateur n'a pas les droits pour le consulter.
      */
-    #[Route('/{id}', name: 'getEvent', methods: ['GET'])]
+    #[Route('/{id<\d+>}', name: 'getEvent', methods: ['GET'])]
     public function getEvent(int $id): JsonResponse
     {
 
@@ -116,7 +114,7 @@ class EventController extends AbstractController
     public function getEventsBySection(int $sectionId, Request $request): JsonResponse
     {
         // Récupération et validation des données
-        $data = $this->getValidatedDataEventBySection($sectionId, $request);
+        $data = $this->eventService->getValidatedDataEventBySection($sectionId, $request);
         if ($data instanceof JsonResponse) {
             return $data;
         }
@@ -264,64 +262,46 @@ class EventController extends AbstractController
 
     //! --------------------------------------------------------------------------------------------
 
-    /**
-     * Validate and extract data for event retrieval by section.
-     *
-     * @param int $sectionId The ID of the section.
-     * @param Request $request The incoming HTTP request.
-     *
-     * @return array|JsonResponse An array with type, dueDate, and userId if validation succeeds, 
-     *                            or a JsonResponse with an error message if validation fails.
-     */
-    private function getValidatedDataEventBySection(int $sectionId, Request $request): array|JsonResponse
-    {
-        // Vérification de l'existence de la section
-        $section = $this->sectionRepository->find($sectionId);
-        if (!$section) {
-            return $this->json(ApiResponse::error("Section not found", null, Response::HTTP_NOT_FOUND));
-        }
-
-        // Définition des contraintes pour la requête JSON
-        $constraints = new Assert\Collection([
-            'type'    => [
-                new Assert\NotBlank(message: "Type is required."),
-                new Assert\Choice(choices: ['info', 'task'], message: "Invalid type. Allowed values: 'info', 'task'.")
-            ],
-            'dueDate' => [
-                new Assert\NotBlank(message: "Due date is required."),
-                new Assert\Date(message: "Invalid date format. Expected format: 'Y-m-d'")
-            ]
-        ]);
-
-        // Validation des données
-        $response = $this->validatorService->validateJson($request, $constraints);
-        if (!$response->isSuccess()) {
-            return $this->json($response, $response->getStatusCode());
-        }
-
-        // Extraction des données validées
-        $type = $response->getData()[ 'type' ];
-        $dueDate = new DateTimeImmutable($response->getData()[ 'dueDate' ]);
-        $userId = $this->currentUser->getCurrentUser()->getId();
-
-        return [$type, $dueDate, $userId];
-    }
 
     //! --------------------------------------------------------------------------------------------
 
+    /**
+     * Récupère les événements en attente créés par l'utilisateur courant.
+     *
+     * @Route("/getUserPendingEvents", name="getUserPendingEvents", methods={"GET"})
+     *
+     * @return JsonResponse La réponse contenant les événements en attente.
+     */
     #[Route("/getUserPendingEvents", name: "getUserPendingEvents", methods: ["GET"])]
-    public function getUserPendingEvents(Event $event): JsonResponse
+    public function getUserPendingEvents(): JsonResponse
     {
-        $qb = $this->em->createQueryBuilder();
-        $qb->select('e')
-            ->from(Event::class, 'e')
-            ->where('e.is = :createdBy')
-            ->andWhere('e.isImportant = :isImportant')
-            ->andWhere('e.isPublished = :isPublished')
-            ->setParameter('createdBy', $event->getCreatedBy())
-            ->setParameter('isImportant', true)
-            ->setParameter('isPublished', false);
+        $criteria = [
+            'createdBy' => $this->currentUser->getCurrentUser()->getFullName(),
+            'isPending' => true,
+        ];
+        return $this->eventService->getEventsByCriteria($criteria);
     }
+
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Récupère tous les événements créés par l'utilisateur courant.
+     *
+     * @Route("/getEventsCreatedByUser", name="getEventsCreatedByUser", methods={"GET"})
+     *
+     * @return JsonResponse La réponse contenant les événements créés par l'utilisateur.
+     */
+    #[Route("/getEventsCreatedByUser", name: "getEventsCreatedByUser", methods: ["GET"])]
+    public function getEventsCreatedByUser(): JsonResponse
+    {
+        $criteria = [
+            'createdBy' => $this->currentUser->getCurrentUser()->getFullName(),
+        ];
+
+        return $this->eventService->getEventsByCriteria($criteria);
+    }
+
 
 
     //! --------------------------------------------------------------------------------------------

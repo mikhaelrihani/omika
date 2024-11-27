@@ -10,11 +10,13 @@ use App\Entity\Event\UserInfo;
 use App\Entity\User\User;
 use App\Repository\Event\EventRepository;
 use App\Repository\Event\EventTaskRepository;
+use App\Repository\Event\SectionRepository;
 use App\Repository\Event\UserInfoRepository;
 use App\Service\Event\TagService;
 use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
 use App\Utils\CurrentUser;
+use App\Utils\JsonResponseBuilder;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -23,7 +25,11 @@ use Doctrine\ORM\Exception\ORMException;
 use Doctrine\ORM\PersistentCollection;
 use Exception;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Validator\Constraints as Assert;
 
 class EventService
 {
@@ -39,7 +45,10 @@ class EventService
         protected UserInfoRepository $userInfoRepository,
         protected EventTaskRepository $eventTaskRepository,
         protected CurrentUser $currentUser,
-        protected ValidatorService $validatorService
+        protected ValidatorService $validatorService,
+        protected SectionRepository $sectionRepository,
+        protected SerializerInterface $serializer,
+        protected JsonResponseBuilder $jsonResponseBuilder
     ) {
         $this->now = new DateTimeImmutable('today');
         $this->activeDayStart = $this->parameterBag->get('activeDayStart');
@@ -569,6 +578,91 @@ class EventService
             !$event->isPublished() && $event->getCreatedBy() !== $this->currentUser->getCurrentUser()->getFullName();
 
         return $this->isSharedWithUser($event) && $isPublishedByCurrentUser;
+    }
+
+    /**
+     * Récupère une liste d'événements en fonction de critères donnés.
+     *
+     * @param array $criteria Tableau associatif de critères pour filtrer les événements.
+     *                        - Les clés correspondent aux champs de l'entité `Event`.
+     *                        - Les valeurs peuvent être des valeurs simples (égalité) ou des tableaux (inclusion dans une liste).
+     *
+     * @return JsonResponse Réponse JSON contenant les événements correspondant aux critères ou un message d'erreur.
+     *
+     * @throws \Exception Peut lever une exception en cas d'erreur avec la requête ou la sérialisation des données.
+     *
+     * Exemple d'utilisation :
+     * ```php
+     * $criteria = ['createdBy' => 'John Doe', 'isPending' => true];
+     * $response = $this->getEventsByCriteria($criteria);
+     * ```
+     */
+    public function getEventsByCriteria(array $criteria): JsonResponse
+    {
+        $qb = $this->em->createQueryBuilder();
+        $qb->select('e')
+            ->from(Event::class, 'e');
+
+        foreach ($criteria as $field => $value) {
+            if (is_array($value)) {
+                $qb->andWhere($qb->expr()->in("e.$field", ":$field"))
+                    ->setParameter($field, $value);
+            } else {
+                $qb->andWhere("e.$field = :$field")
+                    ->setParameter($field, $value);
+            }
+        }
+
+        $events = $qb->getQuery()->getResult();
+
+        $response = ApiResponse::success("Events retrieved successfully", ['events' => $events], Response::HTTP_OK);
+        if ($response->isSuccess()) {
+            return $this->jsonResponseBuilder->createJsonResponse([$response->getMessage(), $response->getData()], $response->getStatusCode(), $response->isSuccess() ? ["eventIds"] : []);
+        } else {
+            return $this->jsonResponseBuilder->createJsonResponse($response->getMessage(), $response->getStatusCode());
+        }
+    }
+    /**
+     * Validate and extract data for event retrieval by section.
+     *
+     * @param int $sectionId The ID of the section.
+     * @param Request $request The incoming HTTP request.
+     *
+     * @return array|JsonResponse An array with type, dueDate, and userId if validation succeeds, 
+     *                            or a JsonResponse with an error message if validation fails.
+     */
+    public function getValidatedDataEventBySection(int $sectionId, Request $request): array|JsonResponse
+    {
+        // Vérification de l'existence de la section
+        $section = $this->sectionRepository->find($sectionId);
+        if (!$section) {
+            return new JsonResponse(ApiResponse::error("Section not found", null, Response::HTTP_NOT_FOUND));
+        }
+
+        // Définition des contraintes pour la requête JSON
+        $constraints = new Assert\Collection([
+            'type'    => [
+                new Assert\NotBlank(message: "Type is required."),
+                new Assert\Choice(choices: ['info', 'task'], message: "Invalid type. Allowed values: 'info', 'task'.")
+            ],
+            'dueDate' => [
+                new Assert\NotBlank(message: "Due date is required."),
+                new Assert\Date(message: "Invalid date format. Expected format: 'Y-m-d'")
+            ]
+        ]);
+
+        // Validation des données
+        $response = $this->validatorService->validateJson($request, $constraints);
+        if (!$response->isSuccess()) {
+            return new JsonResponse($response, $response->getStatusCode());
+        }
+
+        // Extraction des données validées
+        $type = $response->getData()[ 'type' ];
+        $dueDate = new DateTimeImmutable($response->getData()[ 'dueDate' ]);
+        $userId = $this->currentUser->getCurrentUser()->getId();
+
+        return [$type, $dueDate, $userId];
     }
 
 

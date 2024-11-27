@@ -14,13 +14,13 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: EventRepository::class)]
 #[ORM\Index(name: "Event_dateStatus_dueDate_idx", columns: ["date_status", "due_date"])]
-#[ORM\Index(name: "idx_section_date_status_active_day_type", columns: ["section_id", "date_status", "active_day", "type"])]  
+#[ORM\Index(name: "idx_section_date_status_active_day_type", columns: ["section_id", "date_status", "active_day", "type"])]
 class Event extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
-    #[Groups(['event', 'eventRecurring'])]
+    #[Groups(['event', 'eventRecurring',"eventIds"])]
     private ?int $id = null;
 
 
@@ -115,6 +115,7 @@ class Event extends BaseEntity
     private ?bool $isPublished = null;
 
     #[ORM\Column]
+    #[Groups(['event'])]
     private ?bool $isPending = null;
 
 
