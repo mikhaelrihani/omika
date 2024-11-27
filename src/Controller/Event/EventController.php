@@ -15,6 +15,7 @@ use App\Utils\ApiResponse;
 use App\Utils\CurrentUser;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -127,7 +128,7 @@ class EventController extends AbstractController
 
             $response = ApiResponse::success("Events retrieved successfully", ['events' => $events], Response::HTTP_OK);
             return $this->json($response->getData()[ "events" ], $response->getStatusCode(), [], ['groups' => 'event']);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $response = ApiResponse::error("An error occurred while retrieving events", null, Response::HTTP_INTERNAL_SERVER_ERROR);
             return $this->json($response, $response->getStatusCode());
         }
@@ -209,23 +210,48 @@ class EventController extends AbstractController
     //! --------------------------------------------------------------------------------------------
 
 
+   
+    /**
+     * Updates an event by deleting the existing one and creating a new one.
+     * 
+     * This method begins a database transaction, deletes the event identified by its ID, and recreates it based on the request payload.
+     * If any operation fails, the transaction is rolled back, and an error response is returned.
+     *
+     * @param Request $request The HTTP request containing the updated event data.
+     * @param int $id The ID of the event to update.
+     * 
+     * @return Response A JSON response indicating the result of the operation.
+     * 
+     * @throws Exception If an error occurs during the transaction.
+     */
     #[Route('/updateEvent/{id}', name: 'updateEvent', methods: ['PUT'])]
-    public function updateEvent(request $request, int $id): void
+    public function updateEvent(Request $request, int $id): Response
     {
         $this->em->beginTransaction();
+
         try {
-            $this->deleteEvent($id);
-            $this->createEvent($request);
+            $response = $this->deleteEvent($id);
+            if ($response->getStatusCode() !== 200) {
+                $this->em->rollback();
+                return $response;
+            }
+            $response = $this->createEvent($request);
+            if ($response->getStatusCode() !== 200) {
+                $this->em->rollback();
+                return $response;
+            }
+
             $this->em->commit();
-        } catch (\Exception $e) {
+
+            $response = ApiResponse::success("Event updated successfully", null, Response::HTTP_OK);
+            return $this->json($response->getMessage(), $response->getStatusCode());
+
+        } catch (Exception $e) {
             $this->em->rollback();
-            throw $e; 
+            $response = ApiResponse::error("An error occurred while updating the event", null, Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->json($response->getMessage(), $response->getStatusCode());
         }
-
     }
-
-
-
 
 
 
