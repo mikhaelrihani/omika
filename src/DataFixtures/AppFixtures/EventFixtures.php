@@ -471,8 +471,8 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
         $periodeEnd = $this->faker->dateTimeImmutableBetween($updatedAt->format('Y-m-d H:i:s'), "+1 month");
 
         $users = $this->em->getRepository(User::class)->findAll();
-        $createdBy = $this->faker->randomElement($users);
-        $updatedBy = $this->faker->randomElement($users);
+        $createdBy = $this->faker->randomElement($users)->getFullName();
+        $updatedBy = $this->faker->randomElement($users)->getFullName();
 
 
         $sections = $this->retrieveEntities("section", $this);
@@ -634,18 +634,15 @@ class EventFixtures extends BaseFixtures implements DependentFixtureInterface
 
     public function setEventChildrenBase(EventRecurring $eventRecurring): Event
     {
-        $createdByUser = $eventRecurring->getCreatedBy();
-        $updatedByUser = $eventRecurring->getUpdatedBy();
-        $createdBy = $createdByUser->getFullName();
-        $updatedBy = $updatedByUser->getFullName();
+
         $event = new Event();
         $event
             ->setDescription($eventRecurring->getDescription())
             ->setIsImportant($this->faker->boolean)
             ->setSide($eventRecurring->getSide())
             ->setTitle($eventRecurring->getTitle())
-            ->setCreatedBy($createdBy)
-            ->setUpdatedBy($updatedBy)
+            ->setCreatedBy($eventRecurring->getCreatedBy())
+            ->setUpdatedBy($eventRecurring->getUpdatedBy())
             ->setType($eventRecurring->getType())
             ->setSection($eventRecurring->getSection())
             ->setIsProcessed(false)

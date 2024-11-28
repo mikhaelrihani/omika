@@ -86,7 +86,7 @@ class Event extends BaseEntity
     #[Groups(['event'])]
     private ?string $createdBy = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\Column(length: 255, nullable: false)]
     #[Groups(['event'])]
     private ?string $updatedBy = null;
 

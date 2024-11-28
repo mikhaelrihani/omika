@@ -82,15 +82,13 @@ class EventRecurring extends BaseEntity
     #[ORM\Column(length: 255)]
     private ?string $recurrenceType = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\Column(length: 255)]
     #[Groups(['eventRecurring'])]
-    private ?User $createdBy = null;
+    private ?string $createdBy = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\Column(length: 255)]
     #[Groups(['eventRecurring'])]
-    private ?User $updatedBy = null;
+    private ?string $updatedBy = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
@@ -301,27 +299,25 @@ class EventRecurring extends BaseEntity
         return $this;
     }
 
-    public function getCreatedBy(): ?User
+    public function getCreatedBy(): ?string
     {
         return $this->createdBy;
     }
 
-    public function setCreatedBy(?User $createdBy): static
+    public function setCreatedBy(string $createdBy): static
     {
         $this->createdBy = $createdBy;
-
         return $this;
     }
 
-    public function getUpdatedBy(): ?User
+    public function getUpdatedBy(): ?string
     {
         return $this->updatedBy;
     }
 
-    public function setUpdatedBy(?User $updatedBy): static
+    public function setUpdatedBy(?string $updatedBy): static
     {
         $this->updatedBy = $updatedBy;
-
         return $this;
     }
 

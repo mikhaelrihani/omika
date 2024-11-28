@@ -8,11 +8,13 @@ use Doctrine\Common\Collections\ArrayCollection;
 use App\Repository\Event\EventRepository;
 use App\Repository\Event\SectionRepository;
 use App\Repository\User\UserRepository;
+use App\Service\Event\EventRecurringService;
 use App\Service\Event\EventService;
 use App\Service\Event\TagService;
 use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
 use App\Utils\CurrentUser;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -38,6 +40,7 @@ class EventController extends AbstractController
      */
     public function __construct(
         private EventService $eventService,
+        private EventRecurringService $eventRecurringService,
         private TagService $tagService,
         private ValidatorService $validatorService,
         private EventRepository $eventRepository,
@@ -195,20 +198,37 @@ class EventController extends AbstractController
     #[Route("/createEvent", name: "createEvent", methods: ["POST"])]
     public function createEvent(Request $request): JsonResponse
     {
-        $responseValidator = $this->validatorService->validateJson($request);
-        if (!$responseValidator->isSuccess()) {
-            return $this->json($responseValidator->getMessage(), $responseValidator->getStatusCode());
+        $response = $this->validatorService->validateJson($request);
+        if (!$response->isSuccess()) {
+            return $this->json($response->getMessage(), $response->getStatusCode());
         }
-        $response = $this->eventService->createOneEvent($responseValidator->getData());
+      if ($dueDate !== null) {
+            $response = $this->eventService->createOneEvent($response->getData());
 
-        if ($response->getData() !== null) {
-            $event = $response->getData()[ "event" ];
-            $responseTag = $this->tagService->createTag($event);
-            if (!$responseTag->isSuccess()) {
-                return $this->json([$responseTag->getMessage()], $responseTag->getStatusCode());
+            if ($response->getData() !== null) {
+                $event = $response->getData()[ "event" ];
+                $responseTag = $this->tagService->createTag($event);
+                if (!$responseTag->isSuccess()) {
+                    return $this->json([$responseTag->getMessage()], $responseTag->getStatusCode());
+                }
+                return $this->json(["{$response->getMessage()} and {$responseTag->getMessage()}"], $response->getStatusCode());
             }
-            return $this->json(["{$response->getMessage()} and {$responseTag->getMessage()}"], $response->getStatusCode());
+        } else {
+            $response = $this->eventRecurringService->createOneEventRecurringParent($response->getData());
+            if ($response->getData() !== null) {
+                $eventRecurringParent = $response->getData()[ "eventRecurringParent" ];
+                $events = $this->eventRecurringService->createChildrens($eventRecurringParent);
+                $response = ApiResponse::success(
+                    "Event Recurring created successfully with its {$events->count()} children and related Tags.",
+                    ['eventRecurring' => $eventRecurringParent, "events" => $events],
+                    Response::HTTP_CREATED
+                );
+
+                return $this->json(["{$response->getMessage()}"], $response->getStatusCode());
+            }
+
         }
+
         return $this->json([$response->getMessage()], $response->getStatusCode());
     }
 
@@ -257,10 +277,6 @@ class EventController extends AbstractController
             return $this->json($response->getMessage(), $response->getStatusCode());
         }
     }
-
-
-
-    //! --------------------------------------------------------------------------------------------
 
 
     //! --------------------------------------------------------------------------------------------
@@ -330,10 +346,5 @@ class EventController extends AbstractController
 
     //! --------------------------------------------------------------------------------------------
 
-
-
-
-
-
-
+    //removeUserFromAllEvents
 }

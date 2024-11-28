@@ -92,7 +92,7 @@ class EventService
         $this->setTimestamps($event);
 
         $users = $this->getEventUsers($currentUser, $data);
-        // Si getEventUsers retourne un ApiResponse (erreur), on renvoie cette réponse
+        // Si getEventUsers retourne une ApiResponse (erreur), on renvoie cette réponse
         if ($users instanceof ApiResponse) {
             return $users;
         }
@@ -204,6 +204,7 @@ class EventService
     private function setEventBase(array $data, User $user): Event
     {
         $section = $this->em->getRepository(Section::class)->findOneBy(["name" => $data[ "section" ]]);
+        
         $dueDate = new DateTimeImmutable($data[ "dueDate" ]);
         $event = new Event();
         $event
@@ -722,5 +723,34 @@ class EventService
     }
     //! --------------------------------------------------------------------------------------------
 
+    public function getValidatedDataEventCreation(int $sectionId, Request $request): array|JsonResponse
+    {
+        // Vérification de l'existence de la section
+        $section = $this->sectionRepository->find($sectionId);
+        if (!$section) {
+            return new JsonResponse(ApiResponse::error("Section not found", null, Response::HTTP_NOT_FOUND));
+        }
+
+        // Définition des contraintes pour la requête JSON
+        $constraints = new Assert\Collection([
+            'dueDate' => [
+                new Assert\NotBlank(message: "Due date is required."),
+                new Assert\Date(message: "Invalid date format. Expected format: 'Y-m-d'")
+            ]
+        ]);
+
+        // Validation des données
+        $response = $this->validatorService->validateJson($request, $constraints);
+        if (!$response->isSuccess()) {
+            return new JsonResponse($response, $response->getStatusCode());
+        }
+
+        // Extraction des données validées
+        $type = $response->getData()[ 'type' ];
+        $dueDate = new DateTimeImmutable($response->getData()[ 'dueDate' ]);
+        $userId = $this->currentUser->getCurrentUser()->getId();
+
+        return [$type, $dueDate, $userId];
+    }
 
 }

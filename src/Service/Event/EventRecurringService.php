@@ -4,16 +4,23 @@ namespace App\Service\Event;
 
 use App\Entity\Event\Event;
 use App\Entity\Event\EventRecurring;
+use App\Entity\Event\MonthDay;
+use App\Entity\Event\PeriodDate;
+use App\Entity\Event\Section;
+use App\Entity\Event\WeekDay;
 use App\Repository\Event\EventRecurringRepository;
 use App\Repository\Event\EventRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use App\Service\Event\TagService;
+use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
+use App\Utils\CurrentUser;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Exception;
+use Symfony\Component\HttpFoundation\Response;
 
 class EventRecurringService
 {
@@ -28,15 +35,122 @@ class EventRecurringService
         protected EntityManagerInterface $em,
         protected EventService $eventService,
         protected TagService $tagService,
-        protected ParameterBagInterface $parameterBag
+        protected CurrentUser $currentUser,
+        protected ParameterBagInterface $parameterBag,
+        protected ValidatorService $validatorService
     ) {
         $this->now = new DateTimeImmutable('today');
         $this->activeDayStart = $this->parameterBag->get('activeDayStart');
         $this->activeDayEnd = $this->parameterBag->get('activeDayEnd');
         $this->childrens = [];
     }
+    public function createOneEventRecurringParent(array $data): ApiResponse
+    {
+        try {
+            $currentUser = $this->currentUser->getCurrentUser();
+            $users = $this->eventService->getUsers($data[ 'usersId' ]);
 
+            $recurrenceType = match (true) {
+                !empty($data[ 'isEveryday' ]) => "isEveryday",
+                !empty($data[ 'monthDays' ]) => "monthDays",
+                !empty($data[ 'weekDays' ]) => "weekDays",
+                !empty($data[ 'periodDates' ]) => "periodDates",
+                default => null
+            };
 
+            if ($recurrenceType === null) {
+                return ApiResponse::error('Invalid recurrence type');
+            }
+
+            $section = $this->em->getRepository(Section::class)->findOneBy(["name" => $data[ "section" ]]);
+            if (!$section) {
+                return ApiResponse::error('Section not found');
+            }
+
+            $eventRecurring = new EventRecurring();
+            $eventRecurring
+                ->setPeriodeStart($data[ "periodeStart" ])
+                ->setPeriodeEnd($data[ "periodeEnd" ])
+                ->setCreatedAt($this->now)
+                ->setUpdatedAt($this->now)
+                ->setCreatedBy($currentUser->getFullName())
+                ->setUpdatedBy($currentUser->getFullName())
+                ->setSection($section)
+                ->setDescription($data[ "description" ])
+                ->setSide($data[ "side" ])
+                ->setTitle($data[ "title" ])
+                ->setType($data[ "type" ]);
+
+            $validator = $this->validatorService->validateEntity($eventRecurring);
+            if (!$validator->isSuccess()) {
+                return $validator;
+            }
+
+            foreach ($users as $user) {
+                $eventRecurring->addSharedWith($user);
+            }
+
+            $response = $this->addRecurringParentsRelations($eventRecurring, $recurrenceType, $data[$recurrenceType]);
+            if (!$response->isSuccess()) {
+                return $response;
+            }
+            $this->em->persist($eventRecurring);
+            $this->em->flush();
+
+            return ApiResponse::success('EventRecurring parent created successfully.', ["eventRecurringParent" => $eventRecurring], Response::HTTP_CREATED);
+        } catch (Exception $e) {
+            return ApiResponse::error('An error occurred while creating eventRecurring parent: ' . $e->getMessage());
+        }
+    }
+
+    private function addRecurringParentsRelations(EventRecurring $eventRecurring, string $recurrenceType, array $recurrenceData, ): ApiResponse
+    {
+        try {
+            switch ($recurrenceType) {
+
+                case 1:
+                    $recurrenceType = "monthDays";
+                    foreach ($recurrenceData as $day) {
+                        $monthDay = new MonthDay();
+                        $monthDay->setDay($day);
+                        $eventRecurring->addMonthDay($monthDay);
+                    }
+                    break;
+
+                case 2:
+                    $recurrenceType = "weekDays";
+                    foreach ($recurrenceData as $day) {
+                        $weekDay = new WeekDay();
+                        $weekDay->setDay($day);
+                        $eventRecurring->addWeekDay($weekDay);
+                    }
+                    break;
+
+                case 3:
+                    $recurrenceType = "periodDates";
+                    foreach ($recurrenceData as $date) {
+                        $periodDate = new PeriodDate();
+                        $periodDate->setDate($date);
+                        $eventRecurring->addPeriodDate($periodDate);
+                    }
+
+                    break;
+
+                case 4:
+                    $recurrenceType = "isEveryday";
+                    $eventRecurring->setEveryday(true);
+                    break;
+
+                default:
+                    return ApiResponse::error('Invalid recurrence type provided.', [], Response::HTTP_BAD_REQUEST);
+            }
+            $eventRecurring->setRecurrenceType($recurrenceType);
+            return ApiResponse::success('Recurring event parent relations set successfully.', [], Response::HTTP_CREATED);
+        } catch (Exception $e) {
+            return ApiResponse::error('An error occurred while setting recurring event parent relations: ' . $e->getMessage(), [], Response::HTTP_INTERNAL_SERVER_ERROR);
+
+        }
+    }
     /**
      * Handles the update of the children events of a recurring event.
      *
@@ -206,11 +320,13 @@ class EventRecurringService
             ->setIsImportant(false)
             ->setSide($parent->getSide())
             ->setTitle($parent->getTitle())
-            ->setCreatedBy($parent->getCreatedBy()->getFullName())
-            ->setUpdatedBy($parent->getUpdatedBy()->getFullName())
+            ->setCreatedBy($parent->getCreatedBy())
+            ->setUpdatedBy($parent->getUpdatedBy())
             ->setType($parent->getType())
             ->setSection($parent->getSection())
             ->setIsProcessed(false)
+            ->setPublished(true)
+            ->setPending(false)
             ->setIsRecurring(true);
 
         return $child;
