@@ -24,6 +24,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
 use Doctrine\ORM\PersistentCollection;
 use Exception;
+use InvalidArgumentException;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -204,7 +205,7 @@ class EventService
     private function setEventBase(array $data, User $user): Event
     {
         $section = $this->em->getRepository(Section::class)->findOneBy(["name" => $data[ "section" ]]);
-        
+
         $dueDate = new DateTimeImmutable($data[ "dueDate" ]);
         $event = new Event();
         $event
@@ -218,8 +219,9 @@ class EventService
             ->setSection($section)
             ->setDueDate($dueDate)
             ->setFirstDueDate($dueDate)
-            ->setPublished($data[ "isPublished" ])
-            ->setIsProcessed(false);
+            ->setPublished($data[ "isPublished" ] ?? true)
+            ->setPending($data[ "isPending" ] ?? false)
+            ->setIsProcessed($data[ "isProcessed" ] ?? false);
 
         // on verifie si l'event est published, sinon on passe isPending a true
         if (!$event->isPublished()) {
@@ -260,7 +262,7 @@ class EventService
             $users->initialize();
         }
         if (!$users) {
-            throw new \InvalidArgumentException('Users not found');
+            throw new InvalidArgumentException('Users not found');
         }
         return $users ?? new ArrayCollection();
     }
@@ -723,34 +725,38 @@ class EventService
     }
     //! --------------------------------------------------------------------------------------------
 
-    public function getValidatedDataEventCreation(int $sectionId, Request $request): array|JsonResponse
+    /**
+     * Handles the creation of tags for an event and returns a JsonResponse.
+     *
+     * This method takes an ApiResponse object containing event data, attempts to create tags 
+     * for the event, and returns a JSON response indicating the success or failure of the operation.
+     * 
+     * @param ApiResponse $response The response object containing event data.
+     *
+     * @return JsonResponse A JSON response with a success or error message and the corresponding HTTP status code.
+     * 
+     * - If the response contains event data:
+     *     - It attempts to create tags for the event using the `TagService`.
+     *     - If tag creation fails, an error JSON response is returned with the tag-related message and status code.
+     *     - If tag creation succeeds, a success message combining the initial response message and the tag message is returned.
+     * - If the response does not contain event data:
+     *     - A JSON response is returned with the initial response message and status code.
+     *
+     * @throws \InvalidArgumentException If the response data is improperly formatted or invalid.
+     */
+
+    public function handleTags(ApiResponse $response): JsonResponse
     {
-        // Vérification de l'existence de la section
-        $section = $this->sectionRepository->find($sectionId);
-        if (!$section) {
-            return new JsonResponse(ApiResponse::error("Section not found", null, Response::HTTP_NOT_FOUND));
+        if ($response->getData() !== null) {
+            $event = $response->getData()[ "event" ];
+            $responseTag = $this->tagService->createTag($event);
+            if (!$responseTag->isSuccess()) {
+                return $this->jsonResponseBuilder->createJsonResponse([$responseTag->getMessage()], $responseTag->getStatusCode());
+            }
+            return $this->jsonResponseBuilder->createJsonResponse(["{$response->getMessage()} and {$responseTag->getMessage()}"], $response->getStatusCode());
+        } else {
+            return $this->jsonResponseBuilder->createJsonResponse([$response->getMessage()], $response->getStatusCode());
         }
-
-        // Définition des contraintes pour la requête JSON
-        $constraints = new Assert\Collection([
-            'dueDate' => [
-                new Assert\NotBlank(message: "Due date is required."),
-                new Assert\Date(message: "Invalid date format. Expected format: 'Y-m-d'")
-            ]
-        ]);
-
-        // Validation des données
-        $response = $this->validatorService->validateJson($request, $constraints);
-        if (!$response->isSuccess()) {
-            return new JsonResponse($response, $response->getStatusCode());
-        }
-
-        // Extraction des données validées
-        $type = $response->getData()[ 'type' ];
-        $dueDate = new DateTimeImmutable($response->getData()[ 'dueDate' ]);
-        $userId = $this->currentUser->getCurrentUser()->getId();
-
-        return [$type, $dueDate, $userId];
     }
 
 }

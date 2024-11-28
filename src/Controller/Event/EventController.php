@@ -2,7 +2,7 @@
 
 namespace App\Controller\Event;
 
-
+use App\Repository\Event\EventRecurringRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 
 use App\Repository\Event\EventRepository;
@@ -14,7 +14,6 @@ use App\Service\Event\TagService;
 use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
 use App\Utils\CurrentUser;
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,6 +22,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
+use function PHPUnit\Framework\isEmpty;
 
 /**
  * Contrôleur API pour gérer les événements.
@@ -47,7 +47,8 @@ class EventController extends AbstractController
         private SectionRepository $sectionRepository,
         private CurrentUser $currentUser,
         private EntityManagerInterface $em,
-        private UserRepository $userRepository
+        private UserRepository $userRepository,
+        private EventRecurringRepository $eventRecurringRepository
     ) {
     }
 
@@ -182,14 +183,12 @@ class EventController extends AbstractController
 
 
     /**
-     * Create an event.
+     * Create a new event.
      *
-     * This method creates a new event in the database.
-     * The event data is extracted from the incoming HTTP request.
-     * The event cannot be duplicated.
-     * Tags are created for the event.
+     * This method creates a new event in the database based on the request payload.
+     * The event is created and the tags are handled.
      *
-     * @param Request $request The incoming HTTP request.
+     * @param Request $request The HTTP request containing the event data.
      *
      * @return JsonResponse A JSON response with a success message or an error message.
      *
@@ -198,38 +197,20 @@ class EventController extends AbstractController
     #[Route("/createEvent", name: "createEvent", methods: ["POST"])]
     public function createEvent(Request $request): JsonResponse
     {
+
         $response = $this->validatorService->validateJson($request);
         if (!$response->isSuccess()) {
             return $this->json($response->getMessage(), $response->getStatusCode());
         }
-      if ($dueDate !== null) {
+        $dueDate = $response->getData()[ "dueDate" ] ?? null;
+
+        if ($dueDate !== null) {
             $response = $this->eventService->createOneEvent($response->getData());
-
-            if ($response->getData() !== null) {
-                $event = $response->getData()[ "event" ];
-                $responseTag = $this->tagService->createTag($event);
-                if (!$responseTag->isSuccess()) {
-                    return $this->json([$responseTag->getMessage()], $responseTag->getStatusCode());
-                }
-                return $this->json(["{$response->getMessage()} and {$responseTag->getMessage()}"], $response->getStatusCode());
-            }
+            return $this->eventService->handleTags($response);
         } else {
-            $response = $this->eventRecurringService->createOneEventRecurringParent($response->getData());
-            if ($response->getData() !== null) {
-                $eventRecurringParent = $response->getData()[ "eventRecurringParent" ];
-                $events = $this->eventRecurringService->createChildrens($eventRecurringParent);
-                $response = ApiResponse::success(
-                    "Event Recurring created successfully with its {$events->count()} children and related Tags.",
-                    ['eventRecurring' => $eventRecurringParent, "events" => $events],
-                    Response::HTTP_CREATED
-                );
-
-                return $this->json(["{$response->getMessage()}"], $response->getStatusCode());
-            }
-
+            return $this->eventRecurringService->createOneEventRecurringParentWithChildrenAndTags($response);
         }
 
-        return $this->json([$response->getMessage()], $response->getStatusCode());
     }
 
     //! --------------------------------------------------------------------------------------------
@@ -318,7 +299,75 @@ class EventController extends AbstractController
         return $this->eventService->getEventsByCriteria($criteria);
     }
 
+    //! --------------------------------------------------------------------------------------------
+    #[Route("/getOneEventRecurring/{id}", name: "getOneEventRecurring", methods: ["GET"])]
+    public function getOneEventRecurring(int $id): JsonResponse
+    {
+        $eventRecurring = $this->eventRecurringRepository->find($id);
 
+        if (!$eventRecurring) {
+            $response = ApiResponse::error("There is no event recurring with this id", null, Response::HTTP_NOT_FOUND);
+            return $this->json($response, $response->getStatusCode());
+        }
+
+        $response = ApiResponse::success("Event recurring retrieved successfully", ['eventRecurring' => $eventRecurring], Response::HTTP_OK);
+        return $this->json($response->getData(), $response->getStatusCode(), [], ['groups' => 'eventRecurring']);
+    }
+
+
+    //! --------------------------------------------------------------------------------------------
+    /**
+     * Retrieves all recurring events from the database.
+     *
+     * This method handles the retrieval of all recurring events using the
+     * EventRecurringRepository. If no recurring events are found, an error 
+     * response with a 404 status is returned. Otherwise, a success response 
+     * containing the list of recurring events is returned.
+     *
+     * @Route("/getAllEventsRecurring", name="getAllEventsRecurring", methods={"GET"})
+     *
+     * @return JsonResponse The response containing either the recurring events
+     *                      or an error message.
+     */
+    #[Route("/getAllEventsRecurring", name: "getAllEventsRecurring", methods: ["GET"])]
+    public function getAllEventsRecurring(): JsonResponse
+    {
+        $eventsRecurring = $this->eventRecurringRepository->findAll();
+        if (!$eventsRecurring) {
+            $response = ApiResponse::error("There is no event recurring", null, Response::HTTP_NOT_FOUND);
+            return $this->json($response, $response->getStatusCode());
+        }
+        $response = ApiResponse::success("Events recurring retrieved successfully", ['eventRecurring' => $eventsRecurring], Response::HTTP_OK);
+        return $this->json($eventsRecurring, $response->getStatusCode(), [], ['groups' => 'eventRecurring']);
+    }
+
+    //! --------------------------------------------------------------------------------------------
+    /**
+     * Deletes an EventRecurring by its ID.
+     * 
+     * This method attempts to find an `EventRecurring` by its ID, and if it exists, it removes it from the database.
+     * If the `EventRecurring` is not found, a `404 Not Found` response is returned.
+     * 
+     * @Route("/deleteEventRecurring/{id}", name="deleteEventRecurring", methods={"DELETE"})
+     * 
+     * @param int $id The ID of the EventRecurring entity to delete.
+     * 
+     * @return JsonResponse The response indicating whether the deletion was successful or not.
+     */
+    public function deleteEventRecurring(int $id): JsonResponse
+    {
+        $eventRecurring = $this->eventRecurringRepository->find($id);
+        if (!$eventRecurring) {
+            $response = ApiResponse::error("There is no event recurring with this id", null, Response::HTTP_NOT_FOUND);
+            return $this->json($response, $response->getStatusCode());
+        }
+
+        $this->em->remove($eventRecurring);
+        $this->em->flush();
+
+        $response = ApiResponse::success("Event recurring with id = {$id} has been deleted successfully", null, Response::HTTP_OK);
+        return $this->json($response, $response->getStatusCode());
+    }
 
     //! --------------------------------------------------------------------------------------------
 

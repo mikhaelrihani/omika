@@ -8,6 +8,7 @@ use App\Entity\Event\MonthDay;
 use App\Entity\Event\PeriodDate;
 use App\Entity\Event\Section;
 use App\Entity\Event\WeekDay;
+use App\Entity\User\User;
 use App\Repository\Event\EventRecurringRepository;
 use App\Repository\Event\EventRepository;
 use DateTimeImmutable;
@@ -17,9 +18,12 @@ use App\Service\Event\TagService;
 use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
 use App\Utils\CurrentUser;
+use App\Utils\JsonResponseBuilder;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Exception;
+use InvalidArgumentException;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class EventRecurringService
@@ -27,7 +31,7 @@ class EventRecurringService
     protected $now;
     protected $activeDayStart;
     protected $activeDayEnd;
-    protected $childrens;
+    protected $children;
 
     public function __construct(
         protected EventRecurringRepository $eventRecurringRepository,
@@ -37,18 +41,67 @@ class EventRecurringService
         protected TagService $tagService,
         protected CurrentUser $currentUser,
         protected ParameterBagInterface $parameterBag,
-        protected ValidatorService $validatorService
+        protected ValidatorService $validatorService,
+        protected JsonResponseBuilder $jsonResponseBuilder
     ) {
         $this->now = new DateTimeImmutable('today');
         $this->activeDayStart = $this->parameterBag->get('activeDayStart');
         $this->activeDayEnd = $this->parameterBag->get('activeDayEnd');
-        $this->childrens = [];
+        $this->children = [];
     }
+
+
+    //! --------------------------------------------------------------------------------------------
+    /**
+     * Creates a single recurring event parent entity based on provided data.
+     *
+     * This method handles the creation of a recurring event parent (`EventRecurring`) and associates 
+     * it with the appropriate recurrence type, users, and other related entities.
+     *
+     * @param array $data The data required to create the recurring event. Expected keys:
+     *     - 'periodeStart': DateTimeImmutable, the start date of the recurrence period.
+     *     - 'periodeEnd': DateTimeImmutable, the end date of the recurrence period.
+     *     - 'isEveryday': bool, (optional) indicates if the event recurs every day.
+     *     - 'monthDays': array, (optional) days of the month for recurrence.
+     *     - 'weekDays': array, (optional) days of the week for recurrence.
+     *     - 'periodDates': array, (optional) specific dates for recurrence.
+     *     - 'usersId': array, IDs of users to share the event with.
+     *     - 'section': string, name of the section associated with the event.
+     *     - 'description': string, description of the event.
+     *     - 'side': string, side associated with the event.
+     *     - 'title': string, title of the event.
+     *     - 'type': string, type of the event.
+     *
+     * @return ApiResponse An ApiResponse object indicating success or error:
+     *     - On success, the response contains the created `EventRecurring` entity and an HTTP 201 Created status.
+     *     - On failure, the response contains an error message and an appropriate HTTP status code.
+     *
+     * @throws Exception If an error occurs during the creation process.
+     *
+     * ### Workflow
+     * 1. Determines the recurrence type (`isEveryday`, `monthDays`, `weekDays`, `periodDates`).
+     * 2. Validates the section by finding it in the repository.
+     * 3. Creates a new `EventRecurring` entity and sets its properties.
+     * 4. Calls `addRecurringParentsRelations` to associate recurrence data.
+     * 5. Associates the event with users by calling `addSharedWith`.
+     * 6. Validates the entity using `validatorService`.
+     * 7. Persists the entity and flushes the data to the database.
+     *
+     * ### Error Scenarios
+     * - Invalid or missing recurrence type returns an error response.
+     * - Section not found returns an error response.
+     * - Validation failures return an error response.
+     * - General exceptions are caught and returned as an error response.
+     */
+
     public function createOneEventRecurringParent(array $data): ApiResponse
     {
         try {
             $currentUser = $this->currentUser->getCurrentUser();
-            $users = $this->eventService->getUsers($data[ 'usersId' ]);
+            $users = $this->em->getRepository(User::class)->findBy(['id' => $data[ 'usersId' ]]);
+            if (count($users) !== count($data[ 'usersId' ])) {
+                throw new InvalidArgumentException('Some user IDs could not be found.');
+            }
 
             $recurrenceType = match (true) {
                 !empty($data[ 'isEveryday' ]) => "isEveryday",
@@ -59,18 +112,18 @@ class EventRecurringService
             };
 
             if ($recurrenceType === null) {
-                return ApiResponse::error('Invalid recurrence type');
+                return ApiResponse::error('Invalid recurrence type', null, Response::HTTP_BAD_REQUEST);
             }
 
             $section = $this->em->getRepository(Section::class)->findOneBy(["name" => $data[ "section" ]]);
             if (!$section) {
-                return ApiResponse::error('Section not found');
+                return ApiResponse::error('Section not found', null, Response::HTTP_NOT_FOUND);
             }
 
             $eventRecurring = new EventRecurring();
             $eventRecurring
-                ->setPeriodeStart($data[ "periodeStart" ])
-                ->setPeriodeEnd($data[ "periodeEnd" ])
+                ->setPeriodeStart(new DateTimeImmutable($data[ "periodeStart" ]))
+                ->setPeriodeEnd(new DateTimeImmutable($data[ "periodeEnd" ]))
                 ->setCreatedAt($this->now)
                 ->setUpdatedAt($this->now)
                 ->setCreatedBy($currentUser->getFullName())
@@ -81,35 +134,69 @@ class EventRecurringService
                 ->setTitle($data[ "title" ])
                 ->setType($data[ "type" ]);
 
-            $validator = $this->validatorService->validateEntity($eventRecurring);
-            if (!$validator->isSuccess()) {
-                return $validator;
+
+            $response = $this->addRecurringParentsRelations($eventRecurring, $recurrenceType, $data[$recurrenceType]);
+            if (!$response->isSuccess()) {
+                return $response;
             }
 
             foreach ($users as $user) {
                 $eventRecurring->addSharedWith($user);
             }
 
-            $response = $this->addRecurringParentsRelations($eventRecurring, $recurrenceType, $data[$recurrenceType]);
-            if (!$response->isSuccess()) {
-                return $response;
+            $validator = $this->validatorService->validateEntity($eventRecurring);
+            if (!$validator->isSuccess()) {
+                return $validator;
+            }
+            $alreadyExist = $this->doesEventRecurringAlreadyExist($eventRecurring);
+            if ($alreadyExist) {
+                return ApiResponse::error('EventRecurring already exists', null, Response::HTTP_CONFLICT);
             }
             $this->em->persist($eventRecurring);
             $this->em->flush();
 
             return ApiResponse::success('EventRecurring parent created successfully.', ["eventRecurringParent" => $eventRecurring], Response::HTTP_CREATED);
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while creating eventRecurring parent: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while creating eventRecurring parent: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+    //! --------------------------------------------------------------------------------------------
 
+    /**
+     * Adds parent relations to a recurring event based on the recurrence type and provided data.
+     *
+     * This method updates the given `EventRecurring` entity by associating it with parent relations 
+     * (such as `MonthDay`, `WeekDay`, or `PeriodDate`) depending on the provided recurrence type and data.
+     *
+     * @param EventRecurring $eventRecurring The recurring event entity to update.
+     * @param string $recurrenceType The type of recurrence. Expected values:
+     *     - "1" for "monthDays"
+     *     - "2" for "weekDays"
+     *     - "3" for "periodDates"
+     *     - "4" for "isEveryday".
+     * @param array $recurrenceData The data used to create the parent relations (e.g., days, dates).
+     *
+     * @return ApiResponse An ApiResponse object indicating success or error:
+     *     - On success, the response contains a success message and an HTTP 201 Created status.
+     *     - On failure, the response contains an error message with the appropriate HTTP status code.
+     *
+     * @throws Exception If an error occurs while processing the recurrence data.
+     *
+     * ### Behavior
+     * - Based on the `$recurrenceType`:
+     *     - Case 1: Adds `MonthDay` entities with the specified days to the recurring event.
+     *     - Case 2: Adds `WeekDay` entities with the specified days to the recurring event.
+     *     - Case 3: Adds `PeriodDate` entities with the specified dates to the recurring event.
+     *     - Case 4: Marks the event as occurring "everyday".
+     * - If an invalid recurrence type is provided, an error response is returned.
+     * - If an exception occurs during processing, an error response with HTTP 500 status is returned.
+     */
     private function addRecurringParentsRelations(EventRecurring $eventRecurring, string $recurrenceType, array $recurrenceData, ): ApiResponse
     {
         try {
             switch ($recurrenceType) {
 
-                case 1:
-                    $recurrenceType = "monthDays";
+                case "monthDays":
                     foreach ($recurrenceData as $day) {
                         $monthDay = new MonthDay();
                         $monthDay->setDay($day);
@@ -117,8 +204,7 @@ class EventRecurringService
                     }
                     break;
 
-                case 2:
-                    $recurrenceType = "weekDays";
+                case "weekDays":
                     foreach ($recurrenceData as $day) {
                         $weekDay = new WeekDay();
                         $weekDay->setDay($day);
@@ -126,23 +212,20 @@ class EventRecurringService
                     }
                     break;
 
-                case 3:
-                    $recurrenceType = "periodDates";
+                case "periodDates":
                     foreach ($recurrenceData as $date) {
                         $periodDate = new PeriodDate();
                         $periodDate->setDate($date);
                         $eventRecurring->addPeriodDate($periodDate);
                     }
-
                     break;
 
-                case 4:
-                    $recurrenceType = "isEveryday";
+                case "isEveryday":
                     $eventRecurring->setEveryday(true);
                     break;
 
                 default:
-                    return ApiResponse::error('Invalid recurrence type provided.', [], Response::HTTP_BAD_REQUEST);
+                    throw new Exception('Invalid recurrence type');
             }
             $eventRecurring->setRecurrenceType($recurrenceType);
             return ApiResponse::success('Recurring event parent relations set successfully.', [], Response::HTTP_CREATED);
@@ -151,6 +234,9 @@ class EventRecurringService
 
         }
     }
+
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Handles the update of the children events of a recurring event.
      *
@@ -198,7 +284,7 @@ class EventRecurringService
                 }
             }
             $this->em->flush();
-            $this->createChildrens($eventRecurring);
+            $this->createChildrenWithTag($eventRecurring);
             return ApiResponse::success('Recurring event children updated successfully.');
         } catch (Exception $e) {
             // Handle any unexpected errors
@@ -207,6 +293,7 @@ class EventRecurringService
             );
         }
     }
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Deletes a recurring event along with its associated child events and updates tag counters.
@@ -220,6 +307,7 @@ class EventRecurringService
      *
      * @throws \Exception If an error occurs during the deletion process.
      */
+
     public function deleteRecurringEvent(EventRecurring $eventRecurring): ApiResponse
     {
         try {
@@ -235,27 +323,30 @@ class EventRecurringService
             return ApiResponse::error('An error occurred while deleting recurring event: ' . $e->getMessage());
         }
     }
+    //! --------------------------------------------------------------------------------------------
 
     /**
-     * Creates child events for a recurring event.
+     * Creates child events for a recurring event and tags them.
      *
-     * This method processes the given recurring event and creates child events based on the recurrence type.
-     * The method calls the appropriate handler method based on the recurrence type of the event.
+     * This method processes the given recurring event and creates child events based on the recurrence type
+     * and configuration of the event. The child events are then tagged and persisted to the database.
      *
      * @param EventRecurring $eventRecurring The recurring event for which child events are to be created.
      * @param bool $cronJob A flag indicating if the method is called from a cron job.
      *
-     * @return Collection A collection of child events created for the recurring event.
+     * @return Collection A collection of the created child events.
      */
-    public function createChildrens(EventRecurring $eventRecurring, bool $cronJob = false): Collection
+    public function createChildrenWithTag(EventRecurring $eventRecurring, bool $cronJob = false): Collection
     {
-        $this->childrens = [];
+        $this->children = [];
         $this->handleRecurrenceType($eventRecurring, $cronJob);
-        foreach ($this->childrens as $child) {
+        foreach ($this->children as $child) {
             $this->tagService->createTag($child);
         }
-        return new ArrayCollection($this->childrens);
+        return new ArrayCollection($this->children);
     }
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Creates a single child event for a recurring event.
@@ -284,8 +375,10 @@ class EventRecurringService
         $this->em->persist($child);
         $parent->addEvent($child);
         $this->em->flush();
-        $this->childrens[] = $child;
+        $this->children[] = $child;
     }
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Checks if a recurring event has already been created.
@@ -302,6 +395,7 @@ class EventRecurringService
         return $event ? true : false;
     }
 
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Sets the base properties of a child event based on a recurring event.
@@ -331,6 +425,9 @@ class EventRecurringService
 
         return $child;
     }
+
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Handles the recurrence type of a recurring event.
      *
@@ -358,10 +455,11 @@ class EventRecurringService
                 $this->handleEveryday($parent, $cronJob);
                 break;
             default:
-                throw new \InvalidArgumentException('Invalid recurrence type');
+                throw new InvalidArgumentException('Invalid recurrence type');
         }
 
     }
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Handles the generation of recurring child events based on specific days of the month.
@@ -394,6 +492,7 @@ class EventRecurringService
 
     }
 
+    //! --------------------------------------------------------------------------------------------
     /**
      * Handles the generation of recurring child events based on specific days of the week.
      * 
@@ -424,6 +523,7 @@ class EventRecurringService
 
     }
 
+    //! --------------------------------------------------------------------------------------------
     /**
      * Handles the generation of recurring child events based on specific dates in a period.
      * 
@@ -447,6 +547,7 @@ class EventRecurringService
         }
     }
 
+    //! --------------------------------------------------------------------------------------------
     /**
      * Handles the generation of recurring child events for everyday recurrence.
      * 
@@ -470,7 +571,7 @@ class EventRecurringService
             }
         }
     }
-
+    //! --------------------------------------------------------------------------------------------
     /**
      * Checks if a given date is within the target period defined by the earliest and latest creation dates.
      *
@@ -485,6 +586,7 @@ class EventRecurringService
         return $dueDate >= $earliestCreationDate && $dueDate <= $latestCreationDate;
     }
 
+    //! --------------------------------------------------------------------------------------------
     /**
      * Calculates the limits of the period for creating child events.
      *
@@ -513,4 +615,63 @@ class EventRecurringService
         return [$earliestCreationDate, $latestCreationDate];
     }
 
+    //! --------------------------------------------------------------------------------------------
+
+    public function createOneEventRecurringParentWithChildrenAndTags(ApiResponse $response): JsonResponse
+    {
+        $response = $this->createOneEventRecurringParent($response->getData());
+        if (!$response->isSuccess()) {
+            return $this->jsonResponseBuilder->createJsonResponse([$response->getMessage()], $response->getStatusCode());
+        }
+        if ($response->getData() !== null) {
+            $eventRecurringParent = $response->getData()[ "eventRecurringParent" ];
+            $events = $this->createChildrenWithTag($eventRecurringParent);
+            $response = ApiResponse::success(
+                "Event Recurring created successfully with its {$events->count()} children and related Tags.",
+                ['eventRecurring' => $eventRecurringParent, "events" => $events],
+                Response::HTTP_CREATED
+            );
+            return $this->jsonResponseBuilder->createJsonResponse(["{$response->getMessage()}"], $response->getStatusCode());
+        } else {
+            return $this->jsonResponseBuilder->createJsonResponse([$response->getMessage()], $response->getStatusCode());
+        }
+    }
+
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Checks if an EventRecurring entity with the same attributes already exists.
+     *
+     * This method verifies the existence of an EventRecurring entity by comparing
+     * the title, creation date, section, and type.
+     *
+     * @param EventRecurring $eventRecurring The EventRecurring entity to check for duplication.
+     *
+     * @return bool True if a matching EventRecurring entity exists, false otherwise.
+     *
+     * @throws \Doctrine\ORM\NonUniqueResultException If the query does not return a single scalar result.
+     */
+
+    private function doesEventRecurringAlreadyExist(EventRecurring $eventRecurring): bool
+    {
+        $query = $this->em->createQuery(
+            'SELECT COUNT(e.id)
+             FROM App\Entity\Event\EventRecurring e
+             WHERE e.title = :title
+               AND e.createdAt = :createdAt
+               AND e.section = :section
+               AND e.type = :type'
+        );
+
+        $query->setParameters([
+            'title'     => $eventRecurring->getTitle(),
+            'createdAt' => $eventRecurring->getCreatedAt()->format('Y-m-d'),
+            'section'   => $eventRecurring->getSection(),
+            'type'      => $eventRecurring->getType(),
+        ]);
+
+        return (bool) $query->getSingleScalarResult();
+
+    }
 }

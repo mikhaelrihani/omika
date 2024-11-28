@@ -24,7 +24,7 @@ class CronService
     protected int $todayEventsCreated;
     protected int $oldEventsDeleted;
     protected int $eventsActivated;
-    protected int $recurringChildrensCreated;
+    protected int $recurringChildrenCreated;
 
     public function __construct(
         protected EventRecurringRepository $eventRecurringRepository,
@@ -40,7 +40,7 @@ class CronService
         $this->todayEventsCreated = 0;
         $this->oldEventsDeleted = 0;
         $this->eventsActivated = 0;
-        $this->recurringChildrensCreated = 0;
+        $this->recurringChildrenCreated = 0;
     }
 
     /**
@@ -76,15 +76,9 @@ class CronService
             'deletePastTags'                  => fn(): null => $this->deletePastTag(),
             'updateAllEventsTimeStamps'       => fn(): Collection => $this->updateAllEventsTimeStamps(),
             'deleteOldEvents'                 => fn(): null => $this->deleteOldEvents(),
-            'createRecurringChildrens'        => function () use (&$createdChildrens): void {
-                $createdChildrens = $this->createRecurringChildrens() ?? new ArrayCollection();
+            'createRecurringChildrenWithTag'        => function () use (&$createdChildren): void {
+                $createdChildren = $this->createRecurringChildrenWithTag() ?? new ArrayCollection();
             },
-            'createTagsForRecurringChildrens' => function () use (&$createdChildrens): void {
-                foreach ($createdChildrens as $createdChildren) {
-                    $this->tagService->createTag($createdChildren);
-                }
-            },
-
         ];
 
         // Exécuter chaque étape et capturer les exceptions
@@ -104,7 +98,7 @@ class CronService
 
         // Toutes les étapes réussies
         $response = ApiResponse::success(
-            "Cron job completed successfully. Today Events Created: {$this->todayEventsCreated}, Old Events Deleted: {$this->oldEventsDeleted}, Events Activated: {$this->eventsActivated}, RecurringChildrensCreated:{$this->recurringChildrensCreated}.",
+            "Cron job completed successfully. Today Events Created: {$this->todayEventsCreated}, Old Events Deleted: {$this->oldEventsDeleted}, Events Activated: {$this->eventsActivated}, RecurringChildrensCreated:{$this->recurringChildrenCreated}.",
             null,
             Response::HTTP_OK
         );
@@ -481,34 +475,34 @@ class CronService
     //! step 6 Create new event from eventRecurringParents ----------------------------------------------------------------
 
     /**
-     * Creates recurring children events from eventRecurringParents.
+     * Creates recurring children events with tags.
      * 
-     * - Fetches all eventRecurringParents from the database.
+     * - Fetches all eventRecurring parents.
      * - Creates children events for each parent.
-     * - Returns the list of created children events.
+     * - Creates tags for each child event.
      * 
-     * @return Collection The list of created children events.
+     * @return Collection The list of created recurring children events.
      */
-    private function createRecurringChildrens(): Collection
+    private function createRecurringChildrenWithTag(): Collection
     {
         $eventRecurrings = $this->eventRecurringRepository->findAll();
 
-        $createdChildrens = new ArrayCollection();
+        $createdChildren = new ArrayCollection();
         if (empty($eventRecurrings)) {
-            return $createdChildrens;
+            return $createdChildren;
         }
 
         foreach ($eventRecurrings as $eventRecurring) {
-            $response = $this->eventRecurringService->createChildrens($eventRecurring, true);
+            $response = $this->eventRecurringService-> createChildrenWithTag($eventRecurring, true);
             if (!$response->isEmpty()) {
                 foreach ($response as $createdChildren) {
-                    $createdChildrens->add($createdChildren);
+                    $createdChildren->add($createdChildren);
                 }
             }
         }
 
-        $this->recurringChildrensCreated = count($createdChildrens);
-        return $createdChildrens;
+        $this->recurringChildrenCreated = count($createdChildren);
+        return $createdChildren;
 
     }
 

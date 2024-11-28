@@ -43,7 +43,7 @@ class EventRecurring extends BaseEntity
     /**
      * @var Collection<int, Event>
      */
-    #[ORM\OneToMany(targetEntity: Event::class, mappedBy: 'eventRecurring')]
+    #[ORM\OneToMany(targetEntity: Event::class, mappedBy: 'eventRecurring', cascade: ['remove'])]
     #[Assert\Valid]
     #[Groups(['eventRecurring'])]
     private Collection $events;
@@ -80,6 +80,7 @@ class EventRecurring extends BaseEntity
     private ?bool $isEveryday = false;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['eventRecurring'])]
     private ?string $recurrenceType = null;
 
     #[ORM\Column(length: 255)]

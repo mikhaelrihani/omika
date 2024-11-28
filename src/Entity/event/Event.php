@@ -27,7 +27,8 @@ class Event extends BaseEntity
     #[ORM\Column(type: 'boolean', nullable: false)]
     private ?bool $isRecurring = false;
 
-    #[ORM\ManyToOne(inversedBy: 'events')]
+    #[ORM\ManyToOne(inversedBy: 'events', cascade:["remove"])]
+    #[ORM\JoinColumn(nullable: true)]
     private ?EventRecurring $eventRecurring = null;
 
     #[ORM\OneToOne(targetEntity: EventTask::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
@@ -93,7 +94,7 @@ class Event extends BaseEntity
     #[ORM\Column(type: 'boolean', nullable: false)]
     #[Assert\NotNull]
     #[Groups(['event'])]
-    private ?bool $isImportant = null;
+    private ?bool $isImportant = false;
 
     /**
      * @var Collection<int, User>
@@ -108,15 +109,15 @@ class Event extends BaseEntity
     private ?\DateTimeImmutable $firstDueDate = null;
 
     #[ORM\Column]// use for cron job to avoid repeating the same yesterday event if we do multiple cron jobs per day
-    private ?bool $isProcessed = null;
+    private ?bool $isProcessed = false;
 
     #[ORM\Column]
     #[Groups(['event'])]
-    private ?bool $isPublished = null;
+    private ?bool $isPublished = true;
 
     #[ORM\Column]
     #[Groups(['event'])]
-    private ?bool $isPending = null;
+    private ?bool $isPending = false;
 
 
     public function __construct()
