@@ -354,6 +354,7 @@ class EventController extends AbstractController
      * 
      * @return JsonResponse The response indicating whether the deletion was successful or not.
      */
+    #[Route("/deleteEventRecurring/{id}", name: "deleteEventRecurring", methods: ["DELETE"])]
     public function deleteEventRecurring(int $id): JsonResponse
     {
         $eventRecurring = $this->eventRecurringRepository->find($id);
