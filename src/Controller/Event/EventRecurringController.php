@@ -30,6 +30,20 @@ class EventRecurringController extends AbstractController
     ) {
     }
 
+    /**
+     * Retrieves a specific recurring event by its ID.
+     *
+     * This method attempts to retrieve an event recurring from the database based on the provided event ID.
+     * If the event is found, a successful response with the event data is returned. Otherwise, a 404 error response
+     * is returned, indicating that no event was found with the given ID.
+     *
+     * @param int $id The ID of the event recurring to retrieve.
+     *
+     * @return JsonResponse A JSON response containing either the retrieved event recurring or an error message.
+     *                      If the event is found, it includes the event data, otherwise an error message is returned.
+     *
+     * @throws \Doctrine\ORM\NonUniqueResultException If there is an issue with the database query.
+     */
     //! --------------------------------------------------------------------------------------------
     #[Route("/getOneEventRecurring/{id}", name: "getOneEventRecurring", methods: ["GET"])]
     public function getOneEventRecurring(int $id): JsonResponse

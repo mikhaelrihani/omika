@@ -631,24 +631,49 @@ class EventRecurringService
 
     //! --------------------------------------------------------------------------------------------
 
+    /**
+     * Creates a recurring event along with its associated children and related tags.
+     *
+     * This method first attempts to create a recurring event parent. If successful, it creates the associated
+     * children events and tags. It then returns a JSON response with the success message and the created entities.
+     * 
+     * If any part of the process fails, an appropriate error message is returned.
+     *
+     * @param ApiResponse $response The API response object containing the data required for creating the event.
+     *                              This will be processed to create the recurring event and its associated entities.
+     *
+     * @return JsonResponse A JSON response containing the result of the event creation process. 
+     *                      This could include a success message, event data, or an error message in case of failure.
+     * 
+     * @throws \Exception If an error occurs during the event creation process, such as a database or validation issue.
+     */
     public function createOneEventRecurringParentWithChildrenAndTags(ApiResponse $response): JsonResponse
     {
         $response = $this->createOneEventRecurringParent($response->getData());
+
+        // If parent creation fails, return error message
         if (!$response->isSuccess()) {
             return $this->jsonResponseBuilder->createJsonResponse([$response->getMessage()], $response->getStatusCode());
         }
+
+        // Proceed if the parent creation is successful
         if ($response->getData() !== null) {
+            // Extract the event recurring parent data
             $eventRecurringParent = $response->getData()[ "eventRecurringParent" ];
+
+            // Create associated children events and tags
             $events = $this->createChildrenWithTag($eventRecurringParent);
+
+            // Prepare the success response with created events and parent data
             $response = ApiResponse::success(
                 "Event Recurring created successfully with its {$events->count()} children and related Tags.",
                 ['eventRecurring' => $eventRecurringParent, "events" => $events],
                 Response::HTTP_CREATED
             );
-            return $this->jsonResponseBuilder->createJsonResponse([$response->getMessage()], $response->getStatusCode());
-        
 
+            return $this->jsonResponseBuilder->createJsonResponse([$response->getMessage()], $response->getStatusCode());
         } else {
+            // In case of no data or failure, return the error response
             return $this->jsonResponseBuilder->createJsonResponse([$response->getMessage()], $response->getStatusCode());
         }
     }

@@ -747,7 +747,6 @@ class EventService
      *
      * @throws \InvalidArgumentException If the response data is improperly formatted or invalid.
      */
-
     public function handleTags(ApiResponse $response): JsonResponse
     {
         if ($response->getData() !== null) {
@@ -762,6 +761,25 @@ class EventService
         }
     }
 
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Handles the creation of an event, including validation, creation of event children, and handling of tags.
+     *
+     * This method validates the incoming request data, processes the event creation based on the presence of
+     * a `dueDate`, and returns an appropriate JSON response based on the success or failure of the operations.
+     *
+     * If the `dueDate` is provided in the request, it proceeds to create a single event. If the `dueDate` is
+     * not provided, the method will attempt to create a recurring event with children and tags.
+     * 
+     * @param Request $request The HTTP request object containing the data to be validated and processed.
+     *
+     * @return JsonResponse A JSON response containing the success or error message, and additional details
+     *                      about the event creation process. This may include event data, error messages, or
+     *                      status codes indicating the result of the operations.
+     *
+     * @throws \Exception If an error occurs during any part of the event creation process.
+     */
     public function createEvent(Request $request): JsonResponse
     {
         $response = $this->validatorService->validateJson($request);

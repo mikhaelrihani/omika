@@ -2,6 +2,7 @@
 
 namespace App\Controller\Event;
 
+use App\Entity\Event\Event;
 use App\Repository\Event\EventRecurringRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use App\Repository\Event\EventRepository;
@@ -174,7 +175,7 @@ class EventController extends AbstractController
 
 
     /**
-     * Create a new event.
+     * Create a new event or a new event_Recurring
      *
      * This method creates a new event in the database based on the request payload.
      * The event is created and the tags are handled.
@@ -278,143 +279,82 @@ class EventController extends AbstractController
         return $this->eventService->getEventsByCriteria($criteria);
     }
 
-    //! --------------------------------------------------------------------------------------------
-    #[Route("/getOneEventRecurring/{id}", name: "getOneEventRecurring", methods: ["GET"])]
-    public function getOneEventRecurring(int $id): JsonResponse
-    {
-        $eventRecurring = $this->eventRecurringRepository->find($id);
 
-        if (!$eventRecurring) {
-            $response = ApiResponse::error("There is no event recurring with this id", null, Response::HTTP_NOT_FOUND);
-            return $this->json($response, $response->getStatusCode());
-        }
-
-        $response = ApiResponse::success("Event recurring retrieved successfully", ['eventRecurring' => $eventRecurring], Response::HTTP_OK);
-        return $this->json($response->getData(), $response->getStatusCode(), [], ['groups' => 'eventRecurring']);
-    }
 
 
     //! --------------------------------------------------------------------------------------------
+
     /**
-     * Retrieves all recurring events from the database.
+     * Toggles the "important" status of a specific event.
      *
-     * This method handles the retrieval of all recurring events using the
-     * EventRecurringRepository. If no recurring events are found, an error 
-     * response with a 404 status is returned. Otherwise, a success response 
-     * containing the list of recurring events is returned.
+     * This method retrieves an event by its ID and toggles its "important" property.
+     * If the event is not found, a 404 error response is returned. Otherwise, the "important" property is updated,
+     * and the changes are persisted to the database.
      *
-     * @Route("/getAllEventsRecurring", name="getAllEventsRecurring", methods={"GET"})
+     * @param int $id The ID of the event to toggle the "important" status.
      *
-     * @return JsonResponse The response containing either the recurring events
-     *                      or an error message.
+     * @return JsonResponse A JSON response indicating the success or failure of the operation.
+     *                      On success, a success message is returned. On failure, an error message is returned.
+     *
+     * @throws \Doctrine\ORM\EntityNotFoundException If the event is not found in the database.
      */
-    #[Route("/getAllEventsRecurring", name: "getAllEventsRecurring", methods: ["GET"])]
-    public function getAllEventsRecurring(): JsonResponse
+    #[Route('/toggleImportant/{id}', name: 'toggleImportant', methods: ['post'])]
+    public function toggleImportant(int $id): JsonResponse
     {
-        $eventsRecurring = $this->eventRecurringRepository->findAll();
-        if (!$eventsRecurring) {
-            $response = ApiResponse::error("There is no event recurring", null, Response::HTTP_NOT_FOUND);
+        $event = $this->eventRepository->find($id);
+        if (!$event) {
+            $response = ApiResponse::error("There is no event with this id {$id}", null, Response::HTTP_NOT_FOUND);
             return $this->json($response, $response->getStatusCode());
         }
-        $response = ApiResponse::success("Events recurring retrieved successfully", ['eventRecurring' => $eventsRecurring], Response::HTTP_OK);
-        return $this->json($eventsRecurring, $response->getStatusCode(), [], ['groups' => 'eventRecurring']);
-    }
+        $event->setIsImportant(!$event->IsImportant());
+        $this->em->flush();
 
-    //! --------------------------------------------------------------------------------------------
-    /**
-     * Deletes an EventRecurring by its ID.
-     * it will delete the parent and all its children with the tags.
-     * This method attempts to find an `EventRecurring` by its ID, and if it exists, it removes it from the database.
-     * If the `EventRecurring` is not found, a `404 Not Found` response is returned.
-     * 
-     * @Route("/deleteEventRecurring/{id}", name="deleteEventRecurring", methods={"DELETE"})
-     * 
-     * @param int $id The ID of the EventRecurring entity to delete.
-     * 
-     * @return JsonResponse The response indicating whether the deletion was successful or not.
-     */
-    #[Route("/deleteEventRecurring/{id}", name: "deleteEventRecurring", methods: ["DELETE"])]
-    public function deleteEventRecurring(int $id): JsonResponse
-    {
-        $eventRecurring = $this->eventRecurringRepository->find($id);
-        if (!$eventRecurring) {
-            $response = ApiResponse::error("There is no event recurring with this id", null, Response::HTTP_NOT_FOUND);
-            return $this->json($response, $response->getStatusCode());
-        }
-
-        $response = $this->eventRecurringService->deleteRecurringEvent($eventRecurring);
-
+        $response = ApiResponse::success("Event property important updated successfully", null, Response::HTTP_OK);
         return $this->json($response, $response->getStatusCode());
     }
 
     //! --------------------------------------------------------------------------------------------
 
-    #[Route("/updateEventRecurring/{id}", name: "updateEventRecurring", methods: ["PUT"])]
-    public function updateEventRecurring(int $id, Request $request): JsonResponse
+
+    /**
+     * Toggles the "favorite" status of an event for the current user.
+     *
+     * This method allows the current user to either add or remove the "favorite" status for a specific event.
+     * If the event is not found, a 404 error response is returned. If the event is found, the user's favorite
+     * status is toggled, and the changes are saved in the database.
+     *
+     * @param int $id The ID of the event whose favorite status is to be toggled.
+     *
+     * @return JsonResponse A JSON response indicating the success or failure of the operation.
+     *                      On success, a success message is returned. On failure, an error message is returned.
+     *
+     * @throws \Doctrine\ORM\EntityNotFoundException If the event is not found in the database.
+     */
+    #[Route('/toggleFavorite/{id}', name: 'toggleFavorite', methods: ['post'])]
+    public function toggleFavorite(int $id): JsonResponse
     {
-        $eventRecurring = $this->eventRecurringRepository->find($id);
 
-        if (!$eventRecurring) {
-            $response = ApiResponse::error(
-                "There is no event recurring with this ID",
-                null,
-                Response::HTTP_NOT_FOUND
-            );
+        $event = $this->eventRepository->find($id);
+
+        if (!$event) {
+            $response = ApiResponse::error("There is no event with this id {$id}", null, Response::HTTP_NOT_FOUND);
             return $this->json($response, $response->getStatusCode());
         }
 
-        $this->em->beginTransaction();
-
-        try {
-            // Étape 1 : Pré-traitement 
-            $response = $this->eventRecurringService->handlePreDeleteRecurringEventParent($eventRecurring);
-            if (!$response->isSuccess()) {
-                $this->em->rollback();
-                return $this->json($response, $response->getStatusCode());
-            }
-
-            // Étape 2 : Création de l'événement
-            $response = $this->createEvent($request);
-
-            if ($response->getStatusCode() !== 201) {
-                $this->em->rollback();
-                return $response;
-            }
-
-            // Validation de la transaction
-            $this->em->commit();
-
-        } catch (Exception $e) {
-            // Annulation et retour d'erreur
-            $this->em->rollback();
-            $response = ApiResponse::error(
-                "An error occurred while updating the event recurring: " . $e->getMessage(),
-                null,
-                Response::HTTP_INTERNAL_SERVER_ERROR
-            );
-            return $this->json($response, $response->getStatusCode());
+        $user = $this->currentUser->getCurrentUser();
+        // Check if the event is already favorited by the user
+        if ($event->getFavoritedBy()->contains($user)) {
+            $event->removeFavoritedBy($user);
+        } else {
+            $event->addFavoritedBy($user);
         }
 
-        // Succès
-        return $response;
+        $this->em->flush();
+
+        $response = ApiResponse::success("Event property favorite updated successfully", null, Response::HTTP_OK);
+        return $this->json($response, $response->getStatusCode());
     }
 
-
-    //! --------------------------------------------------------------------------------------------
-
-    // #[Route('/toggleImportant/{id}', name: 'toggleImportant', methods: ['post'])]
-    // public function toggleImportant(Event $event): JsonResponse
-    // {
-
-    // }
-
-    //! --------------------------------------------------------------------------------------------
-
-    // #[Route('/toggleFavorite/{id}', name: 'toggleFavorite', methods: ['post'])]
-    // public function toggleFavorite(Event $event): JsonResponse
-    // {
-
-    // }
 
     //! --------------------------------------------------------------------------------------------
 
