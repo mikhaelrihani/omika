@@ -188,28 +188,7 @@ class EventController extends AbstractController
     #[Route("/createEvent", name: "createEvent", methods: ["POST"])]
     public function createEvent(Request $request): JsonResponse
     {
-        $response = $this->validatorService->validateJson($request);
-
-        if (!$response->isSuccess()) {
-
-            return $this->json(
-                ApiResponse::error($response->getMessage(), null, $response->getStatusCode()),
-                $response->getStatusCode()
-            );
-        }
-        $dueDate = $response->getData()[ "dueDate" ] ?? null;
-
-        if ($dueDate !== null) {
-
-            $response = $this->eventService->createOneEvent($response->getData());
-            if (!$response->isSuccess()) {
-                return $this->json($response, $response->getStatusCode());
-            }
-            return $this->eventService->handleTags($response);
-        } else {
-
-            return $this->eventRecurringService->createOneEventRecurringParentWithChildrenAndTags($response);
-        }
+        return $this->eventService->createEvent($request);
     }
 
 
@@ -396,7 +375,7 @@ class EventController extends AbstractController
 
             // Étape 2 : Création de l'événement
             $response = $this->createEvent($request);
-         
+
             if ($response->getStatusCode() !== 201) {
                 $this->em->rollback();
                 return $response;

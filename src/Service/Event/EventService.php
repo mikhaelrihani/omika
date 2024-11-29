@@ -67,7 +67,8 @@ class EventService
         protected ValidatorService $validatorService,
         protected SectionRepository $sectionRepository,
         protected SerializerInterface $serializer,
-        protected JsonResponseBuilder $jsonResponseBuilder
+        protected JsonResponseBuilder $jsonResponseBuilder,
+        protected EventRecurringService $eventRecurringService
     ) {
         $this->now = new DateTimeImmutable('today');
         $this->activeDayStart = $this->parameterBag->get('activeDayStart');
@@ -424,7 +425,7 @@ class EventService
     {
         try {
             $response = $this->tagService->decrementSharedUsersTagCountByOne($event);
-          
+
             if (!$response->isSuccess()) {
                 return $response;
             }
@@ -758,6 +759,32 @@ class EventService
             return $this->jsonResponseBuilder->createJsonResponse(["{$response->getMessage()} and {$responseTag->getMessage()}"], $response->getStatusCode());
         } else {
             return $this->jsonResponseBuilder->createJsonResponse([$response->getMessage()], $response->getStatusCode());
+        }
+    }
+
+    public function createEvent(Request $request): JsonResponse
+    {
+        $response = $this->validatorService->validateJson($request);
+
+        if (!$response->isSuccess()) {
+
+            return $this->jsonResponseBuilder->createJsonResponse(
+                ApiResponse::error($response->getMessage(), null, $response->getStatusCode()),
+                $response->getStatusCode()
+            );
+        }
+        $dueDate = $response->getData()[ "dueDate" ] ?? null;
+
+        if ($dueDate !== null) {
+
+            $response = $this->createOneEvent($response->getData());
+            if (!$response->isSuccess()) {
+                return $this->jsonResponseBuilder->createJsonResponse($response, $response->getStatusCode());
+            }
+            return $this->handleTags($response);
+        } else {
+
+            return $this->eventRecurringService->createOneEventRecurringParentWithChildrenAndTags($response);
         }
     }
 
