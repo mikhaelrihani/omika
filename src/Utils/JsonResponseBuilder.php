@@ -43,8 +43,20 @@ class JsonResponseBuilder
     public function createJsonResponse(mixed $data, int $status = 200, array $groups = []): JsonResponse
     {
         $context = $groups ? ['groups' => $groups] : [];
-        $jsonData = $this->serializer->serialize($data, 'json', $context);
+        $isJson = is_string($data) && $this->isJson($data); // Vérifier si $data est déjà du JSON
 
+        if ($isJson) {
+            return new JsonResponse($data, $status, [], true); // Passer les données JSON telles quelles
+        }
+
+        $jsonData = $this->serializer->serialize($data, 'json', $context);
         return new JsonResponse($jsonData, $status, [], true);
     }
+
+    private function isJson(string $data): bool
+    {
+        json_decode($data);
+        return json_last_error() === JSON_ERROR_NONE;
+    }
+
 }

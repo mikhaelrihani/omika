@@ -645,7 +645,9 @@ class EventRecurringService
                 ['eventRecurring' => $eventRecurringParent, "events" => $events],
                 Response::HTTP_CREATED
             );
-            return $this->jsonResponseBuilder->createJsonResponse(["{$response->getMessage()}"], $response->getStatusCode());
+            return $this->jsonResponseBuilder->createJsonResponse([$response->getMessage()], $response->getStatusCode());
+        
+
         } else {
             return $this->jsonResponseBuilder->createJsonResponse([$response->getMessage()], $response->getStatusCode());
         }

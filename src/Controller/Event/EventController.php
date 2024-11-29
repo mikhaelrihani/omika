@@ -87,18 +87,18 @@ class EventController extends AbstractController
 
         if (!$event) {
             $response = ApiResponse::error("There is no event with this id", null, Response::HTTP_NOT_FOUND);
-            return $this->json($response);
+            return $this->json($response, $response->getStatusCode());
         }
 
         // Vérification de la visibilité de l'événement pour l'utilisateur courant
         $isVisible = $this->eventService->isVisibleForCurrentUser($event);
         if (!$isVisible) {
             $response = ApiResponse::error("You are not allowed to see this event", null, Response::HTTP_FORBIDDEN);
-            return $this->json($response);
+            return $this->json($response, $response->getStatusCode());
         }
 
-        $response = ApiResponse::success("Event retrieved successfully", ['event' => $event]);
-        return $this->json($response->getData(), 200, [], ['groups' => 'event']);
+        $response = ApiResponse::success("Event retrieved successfully", ['event' => $event], Response::HTTP_OK);
+        return $this->json($response->getData(), $response->getStatusCode(), [], ['groups' => 'event']);
     }
 
     //! --------------------------------------------------------------------------------------------
@@ -191,25 +191,24 @@ class EventController extends AbstractController
         $response = $this->validatorService->validateJson($request);
 
         if (!$response->isSuccess()) {
-     
+
             return $this->json(
                 ApiResponse::error($response->getMessage(), null, $response->getStatusCode()),
                 $response->getStatusCode()
             );
         }
-
         $dueDate = $response->getData()[ "dueDate" ] ?? null;
 
         if ($dueDate !== null) {
+
             $response = $this->eventService->createOneEvent($response->getData());
             if (!$response->isSuccess()) {
                 return $this->json($response, $response->getStatusCode());
             }
-
             return $this->eventService->handleTags($response);
         } else {
-            $response = $this->eventRecurringService->createOneEventRecurringParentWithChildrenAndTags($response);
-            return $this->json($response, $response->getStatusCode());
+
+            return $this->eventRecurringService->createOneEventRecurringParentWithChildrenAndTags($response);
         }
     }
 
@@ -397,11 +396,10 @@ class EventController extends AbstractController
 
             // Étape 2 : Création de l'événement
             $response = $this->createEvent($request);
-
-            // Vérification du succès de la création
-            if (!$response instanceof JsonResponse || $response->getStatusCode() !== Response::HTTP_CREATED) {
+         
+            if ($response->getStatusCode() !== 201) {
                 $this->em->rollback();
-                return $response instanceof JsonResponse ? $response : $this->json($response, Response::HTTP_BAD_REQUEST);
+                return $response;
             }
 
             // Validation de la transaction
@@ -419,7 +417,7 @@ class EventController extends AbstractController
         }
 
         // Succès
-        return $this->json($response, Response::HTTP_OK);
+        return $response;
     }
 
 
