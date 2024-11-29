@@ -4,7 +4,6 @@ namespace App\Controller\Event;
 
 use App\Repository\Event\EventRecurringRepository;
 use Doctrine\Common\Collections\ArrayCollection;
-
 use App\Repository\Event\EventRepository;
 use App\Repository\Event\SectionRepository;
 use App\Repository\User\UserRepository;
@@ -22,7 +21,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-use function PHPUnit\Framework\isEmpty;
 
 /**
  * Contrôleur API pour gérer les événements.
@@ -168,7 +166,7 @@ class EventController extends AbstractController
         }
 
         $response = $this->eventService->removeEventAndUpdateTagCounters($event);
-       
+
         return $this->json($response->getMessage(), $response->getStatusCode());
     }
 
@@ -190,21 +188,31 @@ class EventController extends AbstractController
     #[Route("/createEvent", name: "createEvent", methods: ["POST"])]
     public function createEvent(Request $request): JsonResponse
     {
-
         $response = $this->validatorService->validateJson($request);
+
         if (!$response->isSuccess()) {
-            return $this->json($response->getMessage(), $response->getStatusCode());
+     
+            return $this->json(
+                ApiResponse::error($response->getMessage(), null, $response->getStatusCode()),
+                $response->getStatusCode()
+            );
         }
+
         $dueDate = $response->getData()[ "dueDate" ] ?? null;
 
         if ($dueDate !== null) {
             $response = $this->eventService->createOneEvent($response->getData());
+            if (!$response->isSuccess()) {
+                return $this->json($response, $response->getStatusCode());
+            }
+
             return $this->eventService->handleTags($response);
         } else {
-            return $this->eventRecurringService->createOneEventRecurringParentWithChildrenAndTags($response);
+            $response = $this->eventRecurringService->createOneEventRecurringParentWithChildrenAndTags($response);
+            return $this->json($response, $response->getStatusCode());
         }
-
     }
+
 
     //! --------------------------------------------------------------------------------------------
 
@@ -360,6 +368,60 @@ class EventController extends AbstractController
 
         return $this->json($response, $response->getStatusCode());
     }
+
+    //! --------------------------------------------------------------------------------------------
+
+    #[Route("/updateEventRecurring/{id}", name: "updateEventRecurring", methods: ["PUT"])]
+    public function updateEventRecurring(int $id, Request $request): JsonResponse
+    {
+        $eventRecurring = $this->eventRecurringRepository->find($id);
+
+        if (!$eventRecurring) {
+            $response = ApiResponse::error(
+                "There is no event recurring with this ID",
+                null,
+                Response::HTTP_NOT_FOUND
+            );
+            return $this->json($response, $response->getStatusCode());
+        }
+
+        $this->em->beginTransaction();
+
+        try {
+            // Étape 1 : Pré-traitement 
+            $response = $this->eventRecurringService->handlePreDeleteRecurringEventParent($eventRecurring);
+            if (!$response->isSuccess()) {
+                $this->em->rollback();
+                return $this->json($response, $response->getStatusCode());
+            }
+
+            // Étape 2 : Création de l'événement
+            $response = $this->createEvent($request);
+
+            // Vérification du succès de la création
+            if (!$response instanceof JsonResponse || $response->getStatusCode() !== Response::HTTP_CREATED) {
+                $this->em->rollback();
+                return $response instanceof JsonResponse ? $response : $this->json($response, Response::HTTP_BAD_REQUEST);
+            }
+
+            // Validation de la transaction
+            $this->em->commit();
+
+        } catch (Exception $e) {
+            // Annulation et retour d'erreur
+            $this->em->rollback();
+            $response = ApiResponse::error(
+                "An error occurred while updating the event recurring: " . $e->getMessage(),
+                null,
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+            return $this->json($response, $response->getStatusCode());
+        }
+
+        // Succès
+        return $this->json($response, Response::HTTP_OK);
+    }
+
 
     //! --------------------------------------------------------------------------------------------
 

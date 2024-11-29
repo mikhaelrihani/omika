@@ -148,7 +148,7 @@ class EventRecurringService
             if (!$validator->isSuccess()) {
                 return $validator;
             }
-           
+
             $alreadyExist = $this->doesEventRecurringAlreadyExist($eventRecurring);
             if ($alreadyExist) {
                 return ApiResponse::error('EventRecurring already exists', null, Response::HTTP_CONFLICT);
@@ -238,62 +238,75 @@ class EventRecurringService
 
     //! --------------------------------------------------------------------------------------------
 
-    /**
-     * Handles the update of the children events of a recurring event.
-     *
-     * This method processes the children events of the given recurring event to ensure that:
-     * - All tasks with a "todo" status are removed along with their tag counters.
-     * - Any task with a status other than "todo" is updated to "warning".
-     * - All infos are removed along with their tag counters.
-     * - Tasks or infos with user interactions are flagged as "obsolete" and require user action;
-     *   User update them by deleting it or keeping it and manage the event status as he wants. 
-     * After processing the children, the method creates new child events
-     * based on the updated recurring event.
-     *
-     * @param EventRecurring $eventRecurring The recurring event whose child events are to be updated.
-     * 
-     * @return ApiResponse Response object indicating success or error.
-     */
-    public function UpdateRecurringEventParent(EventRecurring $eventRecurring): ApiResponse
+    public function handlePreDeleteRecurringEventParent(EventRecurring $eventRecurring): ApiResponse
     {
+        $this->em->beginTransaction(); // Démarrage d'une transaction explicite
+
         try {
             $childrens = $eventRecurring->getEvents();
+
             foreach ($childrens as $child) {
-                // Process only future events
-                if ($child->getDueDate() >= $this->now) {
-                    if ($child->getType() === 'task') {
-                        if ($child->getTask()->getTaskStatus() === "todo") {
-                            $users = $child->getTask()->getSharedWith();
-                            $this->eventService->removeEventAndUpdateTagCounters($child);
-                        } else {
-                            $child->getTask()->setTaskStatus("warning");
-                        }
-                    } elseif ($child->getType() === 'info') {
-                        $shareWith = $child->getInfo()->getSharedWith();
-                        $users = new ArrayCollection();
+                // Ignorer les événements passés
+                if ($child->getDueDate() < $this->now) {
+                    continue;
+                }
 
-                        foreach ($shareWith as $userInfo) {
-                            $users->add($userInfo->getUser());
-                        }
-                        $this->eventService->removeEventAndUpdateTagCounters($child);
+                if ($child->getType() === 'task') {
+                    $task = $child->getTask();
+                    if ($task->getTaskStatus() === "todo") {
+                        $users = $task->getSharedWith();
+                        $response = $this->eventService->removeEventAndUpdateTagCounters($child);
 
+                        if (!$response->isSuccess()) {
+                            $this->em->rollback();
+                            return $response;
+                        }
                     } else {
-                        continue;// Skip events of unknown type
+                        $task->setTaskStatus("warning");
+                    }
+                } elseif ($child->getType() === 'info') {
+                    $shareWith = $child->getInfo()->getSharedWith();
+                    $users = new ArrayCollection();
+
+                    foreach ($shareWith as $userInfo) {
+                        $users->add($userInfo->getUser());
+                    }
+
+                    $response = $this->eventService->removeEventAndUpdateTagCounters($child);
+
+                    if (!$response->isSuccess()) {
+                        $this->em->rollback();
+                        return $response;
                     }
                 } else {
-                    continue; // Skip past events
+                    // Ignorer les événements de type inconnu
+                    continue;
                 }
             }
+
             $this->em->flush();
-            $this->createChildrenWithTag($eventRecurring);
-            return ApiResponse::success('Recurring event children updated successfully.');
+            $this->em->commit(); // Valider la transaction
+
+            return ApiResponse::success(
+                'On pre delete, Recurring event children processed successfully',
+                null,
+                Response::HTTP_OK
+            );
+
         } catch (Exception $e) {
-            // Handle any unexpected errors
+            // Effectuer un rollback uniquement si une transaction est active
+            if ($this->em->getConnection()->isTransactionActive()) {
+                $this->em->rollback();
+            }
+
             return ApiResponse::error(
-                'An error occurred while updating recurring event children: ' . $e->getMessage()
+                'An error occurred while processing recurring event children: ' . $e->getMessage(),
+                null,
+                Response::HTTP_INTERNAL_SERVER_ERROR
             );
         }
     }
+
     //! --------------------------------------------------------------------------------------------
 
     /**
@@ -666,10 +679,10 @@ class EventRecurringService
         );
 
         $query->setParameters([
-            'title'     => $eventRecurring->getTitle(),
+            'title'          => $eventRecurring->getTitle(),
             'recurrenceType' => $eventRecurring->getRecurrenceType(),
-            'section'   => $eventRecurring->getSection(),
-            'type'      => $eventRecurring->getType(),
+            'section'        => $eventRecurring->getSection(),
+            'type'           => $eventRecurring->getType(),
         ]);
 
         return (bool) $query->getSingleScalarResult();

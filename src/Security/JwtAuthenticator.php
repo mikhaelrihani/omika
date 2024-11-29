@@ -21,11 +21,7 @@ use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPasspor
  */
 class JwtAuthenticator extends AbstractAuthenticator
 {
-    private JWTManager $jwtManager;
-    private UserProviderInterface $userProvider;
-    private JwtTokenService $JwtTokenService;
-
-
+ 
     /**
      * JwtAuthenticator constructor.
      *
@@ -33,11 +29,7 @@ class JwtAuthenticator extends AbstractAuthenticator
      * @param UserProviderInterface $userProvider
      * @param JwtTokenService $JwtTokenService
      */
-    public function __construct(JWTManager $jwtManager, UserProviderInterface $userProvider, JwtTokenService $JwtTokenService)
-    {
-        $this->jwtManager = $jwtManager;
-        $this->userProvider = $userProvider;
-        $this->JwtTokenService = $JwtTokenService;
+    public function __construct(private JWTManager $jwtManager,private  UserProviderInterface $userProvider, private JwtTokenService $JwtTokenService){  
     }
 
     /**
