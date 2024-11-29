@@ -42,10 +42,11 @@ class TagFixtures extends BaseFixtures implements DependentFixtureInterface
                 $day = $event->getDueDate();
                 $side = $event->getSide();
                 $section = $event->getSection()->getName();
+                $type = $event->getType();
                 $createdAt = $updatedAt = $event->getCreatedAt();
 
                 // Vérifie si le tag pour cet événement existe déjà.
-                $tag = $this->em->getRepository(Tag::class)->findOneByDaySideSection($day, $side, $section);
+                $tag = $this->em->getRepository(Tag::class)->findOneByDaySideSection($day, $side, $section,$type);
                 if (!$tag) {
                     // Si aucun tag n'est trouvé, un nouveau tag est créé.
                     $tag = new Tag();

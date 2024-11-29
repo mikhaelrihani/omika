@@ -30,7 +30,7 @@ class TagInfo extends BaseEntity
     
 
     #[ORM\Column(nullable: true)]
-    private ?int $unreadInfoCount = null;
+    private ?int $unreadInfoCount = 0;
 
  
     public function getId(): ?int

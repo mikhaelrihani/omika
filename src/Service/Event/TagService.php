@@ -66,7 +66,8 @@ class TagService
         $day = $event->getDueDate();
         $side = $event->getSide();
         $section = $event->getSection()->getName();
-        $tag = $this->em->getRepository(Tag::class)->findOneByDaySideSection($day, $side, $section);
+        $type = $event->getType();
+        $tag = $this->em->getRepository(Tag::class)->findOneByDaySideSection($day, $side, $section, $type);
         if (!$tag) {
             $tag = (new Tag())
                 ->setSection($section)
@@ -116,8 +117,11 @@ class TagService
         $day = $event->getDueDate();
         $side = $event->getSide();
         $section = $event->getSection()->getName();
+        $type = $event->getType();
+
         // Trouver le tag pour l'événement en fonction de la date, du côté et de la section.
-        $tag = $this->em->getRepository(Tag::class)->findOneByDaySideSection($day, $side, $section);
+        $tag = $this->em->getRepository(Tag::class)->findOneByDaySideSection($day, $side, $section, $type);
+
         if (!$tag) {
             return ApiResponse::error('Tag not found for the specified event.', null, Response::HTTP_NOT_FOUND);
         }
@@ -207,7 +211,7 @@ class TagService
             if ($tag instanceof ApiResponse) {
                 return $tag;
             }
-            $tagInfo = $this->em->getRepository(TagInfo::class)->findOneByUserAndTag($user, $tag);
+            $tagInfo = $this->em->getRepository(TagInfo::class)->findOneByUserAndTag_info($user, $tag) ?? null;
             if ($tagInfo) {
                 $count = $tagInfo->getUnreadInfoCount();
                 $tagInfo->setUnreadInfoCount($count + 1);
@@ -359,9 +363,14 @@ class TagService
                 $tagTask->setUpdatedAt($this->now);
             } elseif ($type === "info") {
                 // Gérer TagInfo si le type n'est pas "task".
+
                 $tagInfo = $this->em->getRepository(TagInfo::class)->findOneByUserAndTag_info($user, $tag);
+                if (!$tagInfo) {
+                    throw new \RuntimeException('TagInfo not found for the given user and tag.');
+                }
 
                 // Décrémenter le compteur d'info non lue (en s'assurant qu'il ne descende pas en dessous de zéro).
+                // Call to a member function setUnreadInfoCount() on null
                 $tagInfo->setUnreadInfoCount(max(0, $tagInfo->getUnreadInfoCount() - 1));
                 $tagInfo->setUpdatedAt($this->now);
             }
@@ -392,6 +401,7 @@ class TagService
         $users = $this->eventService->getUsers($event);
 
         foreach ($users as $user) {
+
             $reponse = $this->decrementOneUserTagCountByOne($event, $user, false);
             if (!$reponse->isSuccess()) {
                 return $reponse;
