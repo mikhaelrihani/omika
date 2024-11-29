@@ -13,21 +13,22 @@ use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: EventRepository::class)]
-#[ORM\Index(name: "Event_dateStatus_activeDay_idx", columns: ["date_status", "active_day"])]
 #[ORM\Index(name: "Event_dateStatus_dueDate_idx", columns: ["date_status", "due_date"])]
+#[ORM\Index(name: "idx_section_date_status_active_day_type", columns: ["section_id", "date_status", "active_day", "type"])]
 class Event extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
-    #[Groups(['event','eventRecurring'])]
+    #[Groups(['event', 'eventRecurring',"eventIds"])]
     private ?int $id = null;
 
 
     #[ORM\Column(type: 'boolean', nullable: false)]
     private ?bool $isRecurring = false;
 
-    #[ORM\ManyToOne(inversedBy: 'events')]
+    #[ORM\ManyToOne(inversedBy: 'events', cascade:["remove"])]
+    #[ORM\JoinColumn(nullable: true)]
     private ?EventRecurring $eventRecurring = null;
 
     #[ORM\OneToOne(targetEntity: EventTask::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
@@ -39,6 +40,7 @@ class Event extends BaseEntity
     private ?EventInfo $info = null;
 
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: false)]
+    #[Assert\NotBlank(message: "Due date is required.")]
     #[Groups(['event'])]
     private ?\DateTimeImmutable $dueDate = null;
 
@@ -58,7 +60,8 @@ class Event extends BaseEntity
     private ?string $side = null;
 
     #[ORM\Column(length: 255, nullable: false)]
-    #[Assert\NotBlank(message: "Type should not be blank.")]
+    #[Assert\NotBlank(message: "Type is required.")]
+    #[Assert\Choice(choices: ['info', 'task'], message: "Invalid type. Allowed values: 'info', 'task'.")]
     #[Groups(['event'])]
     private ?string $type = null;
 
@@ -84,14 +87,14 @@ class Event extends BaseEntity
     #[Groups(['event'])]
     private ?string $createdBy = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\Column(length: 255, nullable: false)]
     #[Groups(['event'])]
     private ?string $updatedBy = null;
 
     #[ORM\Column(type: 'boolean', nullable: false)]
     #[Assert\NotNull]
     #[Groups(['event'])]
-    private ?bool $isImportant = null;
+    private ?bool $isImportant = false;
 
     /**
      * @var Collection<int, User>
@@ -104,6 +107,17 @@ class Event extends BaseEntity
     #[ORM\Column]
     #[Groups(['event'])]
     private ?\DateTimeImmutable $firstDueDate = null;
+
+    #[ORM\Column]// use for cron job to avoid repeating the same yesterday event if we do multiple cron jobs per day
+    private ?bool $isProcessed = false;
+
+    #[ORM\Column]
+    #[Groups(['event'])]
+    private ?bool $isPublished = true;
+
+    #[ORM\Column]
+    #[Groups(['event'])]
+    private ?bool $isPending = false;
 
 
     public function __construct()
@@ -314,6 +328,42 @@ class Event extends BaseEntity
     public function setFirstDueDate(\DateTimeImmutable $firstDueDate): static
     {
         $this->firstDueDate = $firstDueDate;
+
+        return $this;
+    }
+
+    public function isProcessed(): ?bool
+    {
+        return $this->isProcessed;
+    }
+
+    public function setIsProcessed(bool $isProcessed): static
+    {
+        $this->isProcessed = $isProcessed;
+
+        return $this;
+    }
+
+    public function isPublished(): ?bool
+    {
+        return $this->isPublished;
+    }
+
+    public function setPublished(bool $isPublished): static
+    {
+        $this->isPublished = $isPublished;
+
+        return $this;
+    }
+
+    public function isPending(): ?bool
+    {
+        return $this->isPending;
+    }
+
+    public function setPending(bool $isPending): static
+    {
+        $this->isPending = $isPending;
 
         return $this;
     }

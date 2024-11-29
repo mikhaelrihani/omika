@@ -40,6 +40,7 @@ class UserController extends BaseController
         }
         return $this->json($user, Response::HTTP_OK, [],["groups" => 'user']);
     }
+//! method list enable/disableuser
 
 
 }

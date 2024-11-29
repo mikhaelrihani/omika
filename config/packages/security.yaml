@@ -13,6 +13,7 @@ security:
 
     firewalls:
         # Firewall pour la connexion JSON
+        # Ce firewall est dédié à l'entrée des utilisateurs dans le système en générant un token JWT.
         login:
             pattern: ^/api/login
             stateless: true
@@ -22,6 +23,7 @@ security:
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
 
         # Firewall pour les API sécurisées avec JWT
+        # Ce firewall protège l'accès aux ressources de l'API et vérifie que les requêtes contiennent un JWT valide dans leur en-tête Authorization.
         api:
             pattern: ^/api
             custom_authenticators: 
@@ -39,14 +41,6 @@ security:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
 
-        # Firewall principal avec authentification JSON
-        main:
-            lazy: true
-            provider: app_user_provider
-            json_login:
-                check_path: /api/login
-                success_handler: lexik_jwt_authentication.handler.authentication_success
-                failure_handler: lexik_jwt_authentication.handler.authentication_failure
 
     # Hiérarchie des rôles
     role_hierarchy:

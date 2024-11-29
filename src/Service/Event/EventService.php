@@ -5,21 +5,51 @@ namespace App\Service\Event;
 use App\Entity\Event\Event;
 use App\Entity\Event\EventInfo;
 use App\Entity\Event\EventTask;
+use App\Entity\Event\Section;
 use App\Entity\Event\UserInfo;
 use App\Entity\User\User;
 use App\Repository\Event\EventRepository;
 use App\Repository\Event\EventTaskRepository;
+use App\Repository\Event\SectionRepository;
 use App\Repository\Event\UserInfoRepository;
 use App\Service\Event\TagService;
+use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
+use App\Utils\CurrentUser;
+use App\Utils\JsonResponseBuilder;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
+use Doctrine\ORM\PersistentCollection;
 use Exception;
+use InvalidArgumentException;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Validator\Constraints as Assert;
 
+
+/**
+ * Service class for handling event-related operations.
+ * 
+ * Methods:
+ * - createOneEvent: Creates a new event in the database.
+ * - updateEvent: Updates an existing event in the database.
+ * - deleteEvent: Deletes an event from the database.
+ * - getEventById: Retrieves an event by its ID.
+ * - getEventsBySection: Retrieves events by section ID, type, and due date.
+ * - getUserPendingEvents: Retrieves pending events created by the current user.
+ * - getEventsCreatedByUser: Retrieves all events created by the current user.
+ * - setTimestamps: Sets the timestamps for an event.
+ * - setRelations: Sets the relations for an event.
+ * - isVisibleForCurrentUser: Checks if an event is visible for the current user.
+ * - getValidatedDataEventBySection: Validates and retrieves data for events by section.
+ * - getEventsByCriteria: Retrieves events based on specified criteria.
+ */
 class EventService
 {
     protected $now;
@@ -32,66 +62,179 @@ class EventService
         protected ParameterBagInterface $parameterBag,
         protected TagService $tagService,
         protected UserInfoRepository $userInfoRepository,
-        protected EventTaskRepository $eventTaskRepository
-
+        protected EventTaskRepository $eventTaskRepository,
+        protected CurrentUser $currentUser,
+        protected ValidatorService $validatorService,
+        protected SectionRepository $sectionRepository,
+        protected SerializerInterface $serializer,
+        protected JsonResponseBuilder $jsonResponseBuilder,
+        protected EventRecurringService $eventRecurringService
     ) {
-        $this->now = (new DateTimeImmutable('today'));
+        $this->now = new DateTimeImmutable('today');
         $this->activeDayStart = $this->parameterBag->get('activeDayStart');
         $this->activeDayEnd = $this->parameterBag->get('activeDayEnd');
     }
+    //! --------------------------------------------------------------------------------------------
 
     /**
-     * Crée un événement en utilisant les données spécifiées.
+     * Crée un nouvel événement dans la base de données.
      *
-     * @param array $data Les données de l'événement.
+     * @param array $data Les données de l'événement à créer.
      * @return ApiResponse L'objet de réponse de succès ou d'erreur.
      */
     public function createOneEvent(array $data): ApiResponse
     {
-        try {
-            $event = $this->setEventBase($data);
-            if ($event === null) {
-                return ApiResponse::error('Error creating event: Invalid event data');
-            }
+        $currentUser = $this->currentUser->getCurrentUser();
 
-            $this->setTimestamps($event);
-            $this->setRelations($event, $data[ "users" ]);
-            $this->em->flush();
-            return ApiResponse::success('Event created successfully', ['event' => $event]);
-
-        } catch (Exception $e) {
-            return ApiResponse::error('Error creating event: ' . $e->getMessage());
+        $event = $this->setEventBase($data, $currentUser);
+        if ($event === null) {
+            return ApiResponse::error('Error creating event: Invalid event data');
         }
+
+        $this->setTimestamps($event);
+
+        $users = $this->getEventUsers($currentUser, $data);
+        // Si getEventUsers retourne une ApiResponse (erreur), on renvoie cette réponse
+        if ($users instanceof ApiResponse) {
+            return $users;
+        }
+
+        $this->setRelations($event, $users);
+
+        $validator = $this->validatorService->validateEntity($event);
+        if (!$validator->isSuccess()) {
+            return $validator;
+        }
+
+        return $this->flushEvent($event);
     }
+    //! --------------------------------------------------------------------------------------------
 
     /**
-     * Définit les propriétés de base de l'événement.
+     * Vérifie si un événement existe déjà dans la base de données.
      *
-     * @param array $data Les données pour initialiser l'événement.
-     * @return Event|null L'événement nouvellement créé ou null si une erreur se produit.
+     * @param Event $event L'événement à vérifier.
+     * @return bool True si l'événement existe déjà, sinon false.
      */
-    public function setEventBase(array $data): Event|ApiResponse
+    private function doesEventAlreadyExist(Event $event): bool
+    {
+        $query = $this->em->createQuery(
+            'SELECT COUNT(e.id)
+             FROM App\Entity\Event\Event e
+             WHERE e.title = :title
+               AND e.dueDate = :dueDate
+               AND e.section = :section
+               AND e.type = :type
+               AND e.side = :side
+               AND e.isRecurring = :isRecurring'
+        );
+
+        $query->setParameters([
+            'title'       => $event->getTitle(),
+            'dueDate'     => $event->getDueDate()->format('Y-m-d'),
+            'section'     => $event->getSection(),
+            'type'        => $event->getType(),
+            'side'        => $event->getSide(),
+            'isRecurring' => $event->isRecurring(),
+        ]);
+
+        return (bool) $query->getSingleScalarResult();
+
+    }
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Enregistre un événement dans la base de données.
+     *
+     * @param Event $event L'événement à enregistrer.
+     * @return ApiResponse L'objet de réponse de succès ou d'erreur.
+     */
+    private function flushEvent(Event $event): ApiResponse
     {
         try {
-            $event = new Event();
-            $event
-                ->setDescription($data[ "description" ])
-                ->setIsImportant($data[ "isImportant" ])
-                ->setSide($data[ "side" ])
-                ->setTitle($data[ "title" ])
-                ->setCreatedBy($data[ "createdBy" ])
-                ->setUpdatedBy($data[ "updatedBy" ])
-                ->setType($data[ "type" ])
-                ->setSection($data[ "section" ])
-                ->setDueDate($data[ "dueDate" ])
-                ->setFirstDueDate($data[ "dueDate" ]);
-
-            return $event;
+            if ($this->doesEventAlreadyExist($event)) {
+                return ApiResponse::error("Error creating event: Event already exists", null, Response::HTTP_CONFLICT);
+            }
+            try {
+                $this->em->flush();
+                return ApiResponse::success("Event created successfully", ["event" => $event], Response::HTTP_OK);
+            } catch (ORMException $e) {
+                return ApiResponse::error('Error saving event: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
         } catch (Exception $e) {
-            // Retourne une erreur avec un message précis
-            return ApiResponse::error('Error setting event base properties: ' . $e->getMessage());
+            return ApiResponse::error('Unexpected error: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Récupère les utilisateurs associés à un événement.
+     *
+     * @param User $currentUser L'utilisateur connecté.
+     * @param array $data Les données de l'événement.
+     * @return ApiResponse|ArrayCollection La collection d'utilisateurs associés à l'événement.
+     */
+    private function getEventUsers(User $currentUser, array $data): ApiResponse|ArrayCollection
+    {
+        $users = [];
+        $usersId = $data[ "usersId" ] ?? [];
+        // Ajoute le current user uniquement s'il n'est pas déjà dans la liste
+        if (!in_array($currentUser->getId(), $usersId)) {
+            $usersId[] = $currentUser->getId();
+        }
+        foreach ($usersId as $userId) {
+
+            $user = $this->em->getRepository(User::class)->find($userId);
+            if (!$user) {
+                return ApiResponse::error("Error creating event: User with id {$userId} not found", null, Response::HTTP_NOT_FOUND);
+            }
+            $users[] = $user;
+        }
+
+        return new ArrayCollection($users);
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Met à jour un événement existant avec les données spécifiées.
+     *
+     * @param Event $event L'événement à mettre à jour.
+     * @param array $data Les données de l'événement.
+     * @return Event $event
+     */
+    private function setEventBase(array $data, User $user): Event
+    {
+        $section = $this->em->getRepository(Section::class)->findOneBy(["name" => $data[ "section" ]]);
+
+        $dueDate = new DateTimeImmutable($data[ "dueDate" ]);
+        $event = new Event();
+        $event
+            ->setDescription($data[ "description" ])
+            ->setIsImportant($data[ "isImportant" ])
+            ->setSide($data[ "side" ])
+            ->setTitle($data[ "title" ])
+            ->setCreatedBy($user->getFullName())
+            ->setUpdatedBy($user->getFullName())
+            ->setType($data[ "type" ])
+            ->setSection($section)
+            ->setDueDate($dueDate)
+            ->setFirstDueDate($dueDate)
+            ->setPublished($data[ "isPublished" ] ?? true)
+            ->setPending($data[ "isPending" ] ?? false)
+            ->setIsProcessed($data[ "isProcessed" ] ?? false);
+
+        // on verifie si l'event est published, sinon on passe isPending a true
+        if (!$event->isPublished()) {
+            $event->setPending(true);
+        }
+
+        $this->em->persist($event);
+        return $event;
+
+    }
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Retrieves the collection of users associated with a specific event.
@@ -116,8 +259,16 @@ class EventService
         } else {
             $users = $event->getTask()->getSharedWith();
         }
-        return $users;
+        if ($users instanceof PersistentCollection && !$users->isInitialized()) {
+            $users->initialize();
+        }
+        if (!$users) {
+            throw new InvalidArgumentException('Users not found');
+        }
+        return $users ?? new ArrayCollection();
     }
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Définit les timestamps (date de statut et jour actif) pour un événement.
@@ -144,6 +295,8 @@ class EventService
             ->setDateStatus($dateStatus);
     }
 
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Définit les relations pour un événement, en fonction du type (task ou info).
      *
@@ -158,6 +311,8 @@ class EventService
             $this->setInfo($event, $users);
     }
 
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Définit la tâche associée à un événement.
      *
@@ -168,17 +323,24 @@ class EventService
      */
     public function setTask(Event $event, string $taskStatus, Collection $users): void
     {
+        // on verifie que l'event est published, sinon on passe le status a pending
+        if (!$event->isPublished()) {
+            $taskStatus = "pending";
+        }
         $task = (new EventTask())
             ->setTaskStatus($taskStatus)
-            ->setSharedWithCount($users->count())
-            ->setPending($taskStatus === "pending");
+            ->setSharedWithCount($users->count());
         foreach ($users as $user) {
             $task->addSharedWith($user);
         }
         $task->setEvent($event);
         $this->em->persist($task);
+
         $event->setTask($task);
+        $event->setPending($taskStatus === "pending");
     }
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Définit les informations associées à un événement.
@@ -202,6 +364,8 @@ class EventService
         return $info;
     }
 
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Définit les informations partagées avec les utilisateurs.
      *
@@ -220,6 +384,8 @@ class EventService
             $info->addSharedWith($sharedInfo);
         }
     }
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Marks an info event as read for a specific user.
@@ -242,6 +408,7 @@ class EventService
         $event->getInfo()->syncCounts();
     }
 
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Removes an event and updates the tag counters for associated users.
@@ -257,17 +424,20 @@ class EventService
     public function removeEventAndUpdateTagCounters(Event $event): ApiResponse
     {
         try {
-            $this->em->remove($event);
             $response = $this->tagService->decrementSharedUsersTagCountByOne($event);
+
+            if (!$response->isSuccess()) {
+                return $response;
+            }
+            $this->em->remove($event);
             $this->em->flush();
-            return ApiResponse::success('Event deleted successfully and ' . $response->getMessage());
-        } catch (ORMException $e) {
-            return ApiResponse::error('An error occurred while deleting the event: ' . $e->getMessage());
+            return ApiResponse::success('Event deleted successfully and ' . $response->getMessage(), null, Response::HTTP_OK);
         } catch (Exception $e) {
-            return ApiResponse::error('An unexpected error occurred: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while deleting the event: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Removes the user from all EventInfos they are associated with.
@@ -310,6 +480,9 @@ class EventService
         }
     }
 
+
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Removes the user from all EventTasks they are associated with.
      * 
@@ -350,6 +523,8 @@ class EventService
         }
     }
 
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Removes the user from all EventInfos and EventTasks they are associated with.
      * 
@@ -372,6 +547,7 @@ class EventService
         }
     }
 
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Filters events from the database based on one or more criteria: dueDate, side, section, or status.
@@ -425,9 +601,209 @@ class EventService
     }
 
     //! --------------------------------------------------------------------------------------------
-    // late , late pending+2days..., pending late
-    // if past unrealised..
-    // see list of status
-    //! dans le set status penser a mettre en memoire une variable pour le status precedent(undo)
+
+    /**
+     * Vérifie si l'événement est partagé avec l'utilisateur connecté.
+     *
+     * Cette méthode vérifie si l'événement est associé à l'utilisateur courant. 
+     *
+     * @param Event $event L'événement pour lequel on vérifie les utilisateurs associés.
+     *
+     * @return bool True si l'événement est partagé avec l'utilisateur courant, sinon false.
+     */
+    protected function isSharedWithUser(Event $event): bool
+    {
+        $user = $this->currentUser->getCurrentUser();
+        return $this->getUsers($event)->contains($user);
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Vérifie si l'événement est visible pour l'utilisateur connecté.
+     *
+     * Cette méthode vérifie si l'événement est partagé avec l'utilisateur connecté et si l'événement n'est pas encore publié, que l'auteur est l'utilisateur courant.
+     *
+     * @param Event $event L'événement à vérifier.
+     *
+     * @return bool True si l'événement est visible pour l'utilisateur courant, sinon false.
+     */
+    public function isVisibleForCurrentUser(Event $event): bool
+    {
+        // verify that the event is shared with the user and if the event is not yet published that the author is the current user
+        $isPublishedByCurrentUser =
+            !$event->isPublished() && $event->getCreatedBy() !== $this->currentUser->getCurrentUser()->getFullName();
+
+        return $this->isSharedWithUser($event) && $isPublishedByCurrentUser;
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Récupère une liste d'événements en fonction de critères donnés.
+     *
+     * @param array $criteria Tableau associatif de critères pour filtrer les événements.
+     *                        - Les clés correspondent aux champs de l'entité `Event`.
+     *                        - Les valeurs peuvent être des valeurs simples (égalité) ou des tableaux (inclusion dans une liste).
+     *
+     * @return JsonResponse Réponse JSON contenant les événements correspondant aux critères ou un message d'erreur.
+     *
+     * @throws \Exception Peut lever une exception en cas d'erreur avec la requête ou la sérialisation des données.
+     *
+     * Exemple d'utilisation :
+     * ```php
+     * $criteria = ['createdBy' => 'John Doe', 'isPending' => true];
+     * $response = $this->getEventsByCriteria($criteria);
+     * ```
+     */
+    public function getEventsByCriteria(array $criteria): JsonResponse
+    {
+        $qb = $this->em->createQueryBuilder();
+        $qb->select('e')
+            ->from(Event::class, 'e');
+
+        foreach ($criteria as $field => $value) {
+            if (is_array($value)) {
+                $qb->andWhere($qb->expr()->in("e.$field", ":$field"))
+                    ->setParameter($field, $value);
+            } else {
+                $qb->andWhere("e.$field = :$field")
+                    ->setParameter($field, $value);
+            }
+        }
+
+        $events = $qb->getQuery()->getResult();
+
+        $response = ApiResponse::success("Events retrieved successfully", ['events' => $events], Response::HTTP_OK);
+        if ($response->isSuccess()) {
+            return $this->jsonResponseBuilder->createJsonResponse([$response->getMessage(), $response->getData()], $response->getStatusCode(), $response->isSuccess() ? ["eventIds"] : []);
+        } else {
+            return $this->jsonResponseBuilder->createJsonResponse($response->getMessage(), $response->getStatusCode());
+        }
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Validate and extract data for event retrieval by section.
+     *
+     * @param int $sectionId The ID of the section.
+     * @param Request $request The incoming HTTP request.
+     *
+     * @return array|JsonResponse An array with type, dueDate, and userId if validation succeeds, 
+     *                            or a JsonResponse with an error message if validation fails.
+     */
+    public function getValidatedDataEventBySection(int $sectionId, Request $request): array|JsonResponse
+    {
+        // Vérification de l'existence de la section
+        $section = $this->sectionRepository->find($sectionId);
+        if (!$section) {
+            return new JsonResponse(ApiResponse::error("Section not found", null, Response::HTTP_NOT_FOUND));
+        }
+
+        // Définition des contraintes pour la requête JSON
+        $constraints = new Assert\Collection([
+            'type'    => [
+                new Assert\NotBlank(message: "Type is required."),
+                new Assert\Choice(choices: ['info', 'task'], message: "Invalid type. Allowed values: 'info', 'task'.")
+            ],
+            'dueDate' => [
+                new Assert\NotBlank(message: "Due date is required."),
+                new Assert\Date(message: "Invalid date format. Expected format: 'Y-m-d'")
+            ]
+        ]);
+
+        // Validation des données
+        $response = $this->validatorService->validateJson($request, $constraints);
+        if (!$response->isSuccess()) {
+            return new JsonResponse($response, $response->getStatusCode());
+        }
+
+        // Extraction des données validées
+        $type = $response->getData()[ 'type' ];
+        $dueDate = new DateTimeImmutable($response->getData()[ 'dueDate' ]);
+        $userId = $this->currentUser->getCurrentUser()->getId();
+
+        return [$type, $dueDate, $userId];
+    }
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Handles the creation of tags for an event and returns a JsonResponse.
+     *
+     * This method takes an ApiResponse object containing event data, attempts to create tags 
+     * for the event, and returns a JSON response indicating the success or failure of the operation.
+     * 
+     * @param ApiResponse $response The response object containing event data.
+     *
+     * @return JsonResponse A JSON response with a success or error message and the corresponding HTTP status code.
+     * 
+     * - If the response contains event data:
+     *     - It attempts to create tags for the event using the `TagService`.
+     *     - If tag creation fails, an error JSON response is returned with the tag-related message and status code.
+     *     - If tag creation succeeds, a success message combining the initial response message and the tag message is returned.
+     * - If the response does not contain event data:
+     *     - A JSON response is returned with the initial response message and status code.
+     *
+     * @throws \InvalidArgumentException If the response data is improperly formatted or invalid.
+     */
+    public function handleTags(ApiResponse $response): JsonResponse
+    {
+        if ($response->getData() !== null) {
+            $event = $response->getData()[ "event" ];
+            $responseTag = $this->tagService->createTag($event);
+            if (!$responseTag->isSuccess()) {
+                return $this->jsonResponseBuilder->createJsonResponse([$responseTag->getMessage()], $responseTag->getStatusCode());
+            }
+            return $this->jsonResponseBuilder->createJsonResponse(["{$response->getMessage()} and {$responseTag->getMessage()}"], $response->getStatusCode());
+        } else {
+            return $this->jsonResponseBuilder->createJsonResponse([$response->getMessage()], $response->getStatusCode());
+        }
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Handles the creation of an event, including validation, creation of event children, and handling of tags.
+     *
+     * This method validates the incoming request data, processes the event creation based on the presence of
+     * a `dueDate`, and returns an appropriate JSON response based on the success or failure of the operations.
+     *
+     * If the `dueDate` is provided in the request, it proceeds to create a single event. If the `dueDate` is
+     * not provided, the method will attempt to create a recurring event with children and tags.
+     * 
+     * @param Request $request The HTTP request object containing the data to be validated and processed.
+     *
+     * @return JsonResponse A JSON response containing the success or error message, and additional details
+     *                      about the event creation process. This may include event data, error messages, or
+     *                      status codes indicating the result of the operations.
+     *
+     * @throws \Exception If an error occurs during any part of the event creation process.
+     */
+    public function createEvent(Request $request): JsonResponse
+    {
+        $response = $this->validatorService->validateJson($request);
+
+        if (!$response->isSuccess()) {
+
+            return $this->jsonResponseBuilder->createJsonResponse(
+                ApiResponse::error($response->getMessage(), null, $response->getStatusCode()),
+                $response->getStatusCode()
+            );
+        }
+        $dueDate = $response->getData()[ "dueDate" ] ?? null;
+
+        if ($dueDate !== null) {
+
+            $response = $this->createOneEvent($response->getData());
+            if (!$response->isSuccess()) {
+                return $this->jsonResponseBuilder->createJsonResponse($response, $response->getStatusCode());
+            }
+            return $this->handleTags($response);
+        } else {
+
+            return $this->eventRecurringService->createOneEventRecurringParentWithChildrenAndTags($response);
+        }
+    }
 
 }

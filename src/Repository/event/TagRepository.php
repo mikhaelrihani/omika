@@ -5,6 +5,7 @@ namespace App\Repository\Event;
 use App\Entity\Event\Tag;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use InvalidArgumentException;
 
 /**
  * @extends ServiceEntityRepository<Tag>
@@ -17,19 +18,28 @@ class TagRepository extends ServiceEntityRepository
     }
 
 
-    public function findOneByDaySideSection($day, $side, $section): ?Tag
+    public function findOneByDaySideSection($day, $side, $section, $type): ?Tag
     {
-        return $this->createQueryBuilder('t')
+
+        if (!in_array($type, ['info', 'task'])) {
+            throw new InvalidArgumentException('Invalid type provided. Expected "info" or "task".');
+        }
+        // Transforme la première lettre de $type en majuscule
+        $type = ucfirst($type)."s";
+     
+        // Construire la requête avec un LEFT JOIN dynamique
+        $query = $this->createQueryBuilder('t')
+            ->leftJoin("t.tag$type", 'related') // Effectue le LEFT JOIN dynamique
             ->where('t.day = :day')
             ->andWhere('t.side = :side')
             ->andWhere('t.section = :section')
             ->setParameter('day', $day)
             ->setParameter('side', $side)
-            ->setParameter('section', $section)
-            ->getQuery()
-            ->getOneOrNullResult();
+            ->setParameter('section', $section);
+
+        return $query->getQuery()->getOneOrNullResult();
     }
-   
+
 
     //    /**
     //     * @return Tag[] Returns an array of Tag objects

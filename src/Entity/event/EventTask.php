@@ -13,6 +13,10 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: EventTaskRepository::class)]
 #[ORM\HasLifecycleCallbacks]
+/**
+ * @ORM\Entity(repositoryClass="App\Repository\Event\EventTaskRepository")
+ * @ORM\Index(name="idx_user_task", columns={"task_id", "user_id"})  // Index sur les colonnes task_id et user_id dans la table de jonction
+ */
 class EventTask extends BaseEntity
 {
     #[ORM\Id]
@@ -30,7 +34,15 @@ class EventTask extends BaseEntity
     private ?string $taskStatus = null;
 
     /**
-     * @var Collection<int, User>
+     * @ORM\ManyToMany(targetEntity="App\Entity\User\User", mappedBy="tasks")
+     * @ORM\JoinTable(
+     *     name="user_task",  // Nom de la table de jonction
+     *     joinColumns={@ORM\JoinColumn(name="task_id", referencedColumnName="id")},
+     *     inverseJoinColumns={@ORM\JoinColumn(name="user_id", referencedColumnName="id")},
+     *     indexes={  // Définir les index ici
+     *         @ORM\Index(name="idx_task_user", columns={"task_id", "user_id"})
+     *     }
+     * )
      */
     #[ORM\ManyToMany(targetEntity: User::class)]
     #[ORM\JoinTable(name: 'user_task')]
@@ -48,11 +60,7 @@ class EventTask extends BaseEntity
     #[Groups(['event'])]
     private ?int $sharedWithCount = null;
 
-    #[ORM\Column]
-    #[Groups(['event'])]
-    private ?bool $isPending = null;
-
-
+  
 
     public function __construct()
     {
@@ -158,17 +166,7 @@ class EventTask extends BaseEntity
         $this->sharedWithCount = $this->sharedWith->count();
     }
 
-    public function isPending(): ?bool
-    {
-        return $this->isPending;
-    }
-
-    public function setPending(bool $isPending): static
-    {
-        $this->isPending = $isPending;
-
-        return $this;
-    }
+  
 
 
 }

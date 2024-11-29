@@ -3,6 +3,7 @@
 namespace App\Service\Event;
 
 use App\Entity\Event\Event;
+use App\Entity\Event\Tag;
 use App\Repository\Event\EventRecurringRepository;
 use App\Repository\Event\EventRepository;
 use App\Service\Event\TagService;
@@ -12,15 +13,19 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
-use phpDocumentor\Reflection\Types\Void_;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class CronService
 {
-    /**
-     * @var DateTimeImmutable The current date.
-     */
-    protected $now;
+
+    protected DateTimeImmutable $now;
+    protected int $todayEventsCreated;
+    protected int $oldEventsDeleted;
+    protected int $eventsActivated;
+    protected int $recurringChildrenCreated;
+
     public function __construct(
         protected EventRecurringRepository $eventRecurringRepository,
         protected EventRepository $eventRepository,
@@ -32,140 +37,136 @@ class CronService
 
     ) {
         $this->now = new DateTimeImmutable('today');
+        $this->todayEventsCreated = 0;
+        $this->oldEventsDeleted = 0;
+        $this->eventsActivated = 0;
+        $this->recurringChildrenCreated = 0;
     }
 
     /**
-     * Initializes and processes events for the current day by duplicating and updating events from yesterday.
-     * 
-     * This method orchestrates several operations, each handled by a dedicated method:
-     * 
-     * - **handleYesterdayEvents**: 
-     *     Duplicates events from yesterday for today's date. Tasks that were not completed yesterday are marked 
-     *     as "unrealised" and recreated with a "pending" status for today. Information that was not read by users 
-     *     yesterday is duplicated for today, with the "isOld" flag set to true for tracking purposes.
-     * 
-     * - **tagService->createTag**: 
-     *     Generates tags for today's events to facilitate categorization and searching.
-     * 
-     * - **tagService->deletePastTag**: 
-     *     Removes outdated tags from the system to maintain data relevance and avoid clutter.
-     * 
-     * - **updateAllEventsTimeStamps**: 
-     *     Updates the timestamps of all events to ensure they reflect the latest changes or activity.
-     * 
-     * - **deleteOldEvents**: 
-     *     Permanently removes events that are no longer relevant (e.g., those past a certain date).
-     * 
-     * If any of these operations fail, an appropriate error response is returned, ensuring that the process 
-     * is interrupted gracefully and the issue is logged with a specific error code.
+     * Exécute une série de tâches en tant que processus planifié pour gérer les événements.
      *
-     * @return ApiResponse A success response if all operations are completed, or an error response if any step fails.
+     * Cette méthode exécute les étapes suivantes dans l'ordre :
+     * 1. Gère les événements d'hier et crée les événements pour aujourd'hui.
+     * 2. Crée des tags pour les événements d'aujourd'hui.
+     * 3. Supprime les tags obsolètes.
+     * 4. Met à jour les horodatages de tous les événements.
+     * 5. Supprime les anciens événements.
+     *
+     * Si une des étapes échoue, elle retourne une réponse d'erreur immédiatement avec les détails.
+     *
+     * @return JsonResponse
+     * - En cas de succès : retourne un message contenant les actions effectuées.
+     * - En cas d'échec : retourne un message d'erreur spécifique à l'étape ayant échoué.
      */
-    public function load(): ApiResponse
+
+    public function load(): JsonResponse
     {
-        $todayEvents = null;
 
-        // Step 1: Handle yesterday's events by duplicating tasks or information for today
-        try {
-            $todayEvents = $this->handleYesterdayEvents()->getData()[ 'todayEvents' ];
-        } catch (Exception $e) {
-            return ApiResponse::error('Failed to handle yesterday\'s events: ' . $e->getMessage(), null, 'EVENTS_HANDLING_FAILED');
-        }
+        // Définir les étapes à exécuter
+        $steps = [
+            'handleYesterdayEvents'           => function () use (&$todayEvents): void {
+                $todayEvents = $this->handleYesterdayEvents() ?? new ArrayCollection();
+            },
+            'createTagsForToday'              => function () use (&$todayEvents): void {
+                foreach ($todayEvents as $todayEvent) {
+                    $this->tagService->createTag($todayEvent);
+                }
+            },
+            'deletePastTags'                  => fn(): null => $this->deletePastTag(),
+            'updateAllEventsTimeStamps'       => fn(): Collection => $this->updateAllEventsTimeStamps(),
+            'deleteOldEvents'                 => fn(): null => $this->deleteOldEvents(),
+            'createRecurringChildrenWithTag'        => function () use (&$createdChildren): void {
+                $createdChildren = $this->createRecurringChildrenWithTag() ?? new ArrayCollection();
+            },
+        ];
 
-        // Step 2: Create tags for today's events
-        try {
-            foreach ($todayEvents as $todayEvent) {
-                $this->tagService->createTag($todayEvent);
+        // Exécuter chaque étape et capturer les exceptions
+        foreach ($steps as $stepName => $step) {
+            try {
+                $step();
+            } catch (Exception $e) {
+
+                $response = ApiResponse::error(
+                    "Step -{$stepName}- failed :" . $e->getMessage(),
+                    null,
+                    Response::HTTP_INTERNAL_SERVER_ERROR
+                );
+                return new JsonResponse($response->getMessage(), $response->getStatusCode());
             }
-        } catch (Exception $e) {
-            return ApiResponse::error('Failed to create tags: ' . $e->getMessage(), null, 'TAGS_CREATION_FAILED');
         }
 
-        // Step 3: Delete old tags
-        try {
-            $this->tagService->deletePastTag();
-        } catch (Exception $e) {
-            return ApiResponse::error('Failed to delete old tags: ' . $e->getMessage(), null, 'DELETE_TAGS_FAILED');
-        }
+        // Toutes les étapes réussies
+        $response = ApiResponse::success(
+            "Cron job completed successfully. Today Events Created: {$this->todayEventsCreated}, Old Events Deleted: {$this->oldEventsDeleted}, Events Activated: {$this->eventsActivated}, RecurringChildrensCreated:{$this->recurringChildrenCreated}.",
+            null,
+            Response::HTTP_OK
+        );
 
-        // Step 4: Update timestamps for all events
-        try {
-            $this->updateAllEventsTimeStamps();
-        } catch (Exception $e) {
-            return ApiResponse::error('Failed to update timestamps: ' . $e->getMessage(), null, 'TIMESTAMPS_UPDATE_FAILED');
-        }
+        return new JsonResponse($response->getMessage(), $response->getStatusCode());
 
-        // Step 5: Delete old events
-        try {
-            $this->deleteOldEvents();
-        } catch (Exception $e) {
-            return ApiResponse::error('Failed to delete old events: ' . $e->getMessage(), null, 'DELETE_EVENTS_FAILED');
-        }
-
-        // Final response: Success
-        return ApiResponse::success('Cron job is done');
     }
-
-
-
 
 
 
     //! Step 1: Handle yesterday's events by duplicating tasks or information for today --------------------------------------------
 
-    /**
-     * Processes yesterday's events to handle overdue tasks or unread information.
-     * - Creates today's events based on yesterday's data.
-     * - Updates task statuses as necessary.
-     * 
-     * @return ApiResponse Contains the list of today's events and status of the operation.
-     */
-    public function handleYesterdayEvents(): ApiResponse
-    {
-        try {
-            $yesterdayEvents = $this->findYesterdayEvents();
-
-            $todayEvents = new ArrayCollection();
-
-            foreach ($yesterdayEvents as $yesterdayEvent) {
-                $users = $this->eventService->getUsers($yesterdayEvent);
-
-                // Gestion des tâches
-                if ($yesterdayEvent->getTask()) {
-                    $this->processTaskEvent($yesterdayEvent, $users, $todayEvents);
-                    continue;
-                }
-
-                // Gestion des informations
-                if ($yesterdayEvent->getInfo()) {
-                    $this->processInfoEvent($yesterdayEvent, $todayEvents);
-                    continue;
-                }
-            }
-
-            return ApiResponse::success('Events handled successfully', ['todayEvents' => $todayEvents]);
-        } catch (Exception $e) {
-            return ApiResponse::error(
-                'Events handling failed: ' . $e->getMessage(),
-                null,
-                'EVENTS_HANDLING_FAILED'
-            );
-        }
-    }
 
     /**
-     * Finds events that were due yesterday.
+     * Finds events from yesterday that have not been processed yet.
      * 
-     * @return array List of events due yesterday.
+     * @return Collection The list of yesterday's events that have not been processed.
      */
-    public function findYesterdayEvents(): array
+    private function findYesterdayEvents(): Collection
     {
         $dueDate = $this->now->modify('-1 day')->format('Y-m-d');
 
-        $query = $this->em->createQuery('SELECT e FROM App\Entity\Event\Event e WHERE e.dueDate = :dueDate');
-        $yesterdayEvents = $query->setParameter('dueDate', $dueDate)->getResult();
-        return $yesterdayEvents;
+        $yesterdayEvents = $this->em->createQueryBuilder()
+            ->select('e')
+            ->from(Event::class, 'e')
+            ->where('e.dueDate = :dueDate')
+            ->andWhere('e.isProcessed = false') // Exclure les événements déjà traités
+            ->setParameter('dueDate', $dueDate)
+            ->getQuery()
+            ->getResult();
+
+        return new ArrayCollection($yesterdayEvents);
     }
+    /**
+     * Handles yesterday's events by duplicating tasks or information for today.
+     *
+     * @return Collection The list of today's events that were created.
+     */
+    private function handleYesterdayEvents(): Collection
+    {
+        $yesterdayEvents = $this->findYesterdayEvents();
+
+        $todayEvents = new ArrayCollection();
+        if ($yesterdayEvents->isEmpty()) {
+            return $todayEvents;
+        }
+
+        foreach ($yesterdayEvents as $yesterdayEvent) {
+            $users = $this->eventService->getUsers($yesterdayEvent);
+            $yesterdayEvent->setIsProcessed(true);
+
+            if ($yesterdayEvent->getTask()) {
+                $this->processTaskEvent($yesterdayEvent, $users, $todayEvents);
+                continue;
+            }
+
+            if ($yesterdayEvent->getInfo()) {
+                $this->processInfoEvent($yesterdayEvent, $todayEvents);
+                continue;
+            }
+
+            $this->em->flush();
+        }
+        $this->todayEventsCreated = count($todayEvents);
+        return $todayEvents;
+    }
+
+
 
     /**
      * Process a task-based event.
@@ -186,7 +187,7 @@ class CronService
         $yesterdayEvent->getTask()->setTaskStatus('unrealised');
 
         // Create today's event
-        $todayEvent = $this->createTodayEvent($yesterdayEvent, $users, $taskStatus);
+        $todayEvent = $this->createTodayEvent($yesterdayEvent, $users);
 
         if ($todayEvent) {
             $todayEvents->add($todayEvent);
@@ -221,7 +222,7 @@ class CronService
     }
 
     /**
-     * Get users who have not read the information from yesterday's event.
+     * Retrieves the users who have not read the information.
      *
      * @param Event $yesterdayEvent
      * @return Collection
@@ -244,16 +245,16 @@ class CronService
      *
      * @param Event $yesterdayEvent The event to duplicate.
      * @param Collection $users The users associated with the event.
-     * @param string|null $taskStatus The status of the task associated with the event.
      * @return Event|null The new event for today, or null if the event is recurring and has a brother event for today.
      */
-    public function createTodayEvent(Event $yesterdayEvent, Collection $users, ?string $taskStatus = null): ?Event
+    public function createTodayEvent(Event $yesterdayEvent, Collection $users): ?Event
     {
         if ($yesterdayEvent && $yesterdayEvent->isRecurring() && $this->hasBrotherToday($yesterdayEvent)) {
             return null;
         }
 
-        $todayEvent = $this->prepareEventForToday($yesterdayEvent, $users, $taskStatus);
+        $todayEvent = $this->prepareEventForToday($yesterdayEvent, $users);
+
         $this->em->persist($todayEvent);
         $this->em->flush();
 
@@ -261,44 +262,30 @@ class CronService
     }
 
     /**
-     * Prepares a duplicated event for today based on yesterday's event data.
+     * Prepares an event for today based on yesterday's event data.
      *
-     * @param Event $yesterdayEvent
-     * @param Collection $users
-     * @param string|null $taskStatus
-     * @return Event
+     * @param Event $yesterdayEvent The event to duplicate.
+     * @param Collection $users The users associated with the event.
+     * @return Event The new event for today.
      */
-    private function prepareEventForToday(Event $yesterdayEvent, Collection $users, ?string $taskStatus = null): Event
+    private function prepareEventForToday(Event $yesterdayEvent, Collection $users): Event
     {
         $todayEvent = $this->duplicateEventBase($yesterdayEvent);
+
         $this->eventService->setRelations($todayEvent, $users, "late");
 
-        $this->updateTaskOrInfoStatus($yesterdayEvent, $todayEvent, $taskStatus);
+        $todayEvent->setPending($yesterdayEvent->isPending());
+        if ($todayEvent->getInfo()) {
+            $todayEvent->getInfo()->setOld(true);
+        }
+
         $this->handleRecurringStatus($yesterdayEvent, $todayEvent);
+
         $this->updateEventDates($yesterdayEvent, $todayEvent);
 
         return $todayEvent;
     }
 
-    /**
-     * Updates the task status or marks the info as old.
-     *
-     * @param Event $yesterdayEvent
-     * @param Event $todayEvent
-     * @param string|null $taskStatus
-     */
-    private function updateTaskOrInfoStatus(Event $yesterdayEvent, Event $todayEvent, ?string $taskStatus): void
-    {
-        $todayEventTask = $todayEvent->getTask();
-
-        if ($todayEventTask) {
-            $isPending = $taskStatus === 'pending' || $yesterdayEvent->getTask()?->isPending();
-            $yesterdayEvent->getTask()?->setPending($isPending);
-            $todayEventTask->setPending($isPending);
-        } else {
-            $todayEvent->getInfo()->setOld(true);
-        }
-    }
 
     /**
      * Updates the due dates for the new event.
@@ -308,7 +295,8 @@ class CronService
      */
     private function updateEventDates(Event $yesterdayEvent, Event $todayEvent): void
     {
-        $todayEvent->setDueDate($this->now);
+        $dueDate = $yesterdayEvent->getDueDate()->modify("+1 day");//! si on utilise $this->now et que l'on passe le cronJob alors on a une boucle infini de creatio d objet a la date de yesterday
+        $todayEvent->setDueDate($dueDate);
         $todayEvent->setFirstDueDate($yesterdayEvent->getFirstDueDate());
         $this->eventService->setTimestamps($todayEvent);
     }
@@ -325,7 +313,7 @@ class CronService
      * 
      * @return void
      */
-    public function handleRecurringStatus(Event $yesterdayEvent, Event $todayEvent): void
+    private function handleRecurringStatus(Event $yesterdayEvent, Event $todayEvent): void
     {
         if (!$yesterdayEvent || !$yesterdayEvent->isRecurring()) {
             return; // Rien à faire si l'événement d'hier n'existe pas ou n'est pas récurrent
@@ -345,7 +333,7 @@ class CronService
      * @param Event $yesterdayEvent The event to check.
      * @return bool True if the event has a brother for today, false otherwise.
      */
-    public function hasBrotherToday(Event $yesterdayEvent): bool|null
+    private function hasBrotherToday(Event $yesterdayEvent): bool|null
     {
 
         $parentId = $yesterdayEvent->getEventRecurring()->getId();
@@ -370,7 +358,7 @@ class CronService
      * @param Event $originalEvent The event to duplicate.
      * @return Event A new event with duplicated base data.
      */
-    public function duplicateEventBase(Event $originalEvent): Event
+    private function duplicateEventBase(Event $originalEvent): Event
     {
         $event = (new Event())
             ->setSide($originalEvent->getSide())
@@ -380,7 +368,9 @@ class CronService
             ->setCreatedBy($originalEvent->getCreatedBy())
             ->setUpdatedBy($originalEvent->getUpdatedBy())
             ->setIsImportant($originalEvent->isImportant())
-            ->setSection($originalEvent->getSection());
+            ->setSection($originalEvent->getSection())
+            ->setPublished($originalEvent->isPublished())
+            ->setIsProcessed(false);
         return $event;
     }
 
@@ -388,93 +378,159 @@ class CronService
 
 
     //! Step 4: Update timestamps for all events -----------------------------------------------------------------------------------
+
     /**
-     * Updates timestamps for events based on their date status or due date.
+     * Updates the timestamps for all events in the database.
      * 
-     * - Fetches events with the `datestatus` set to "activeDayRange".
-     * - Fetches events whose due date matches a calculated date (4 days from now).
-     * - Merges the results and updates timestamps for all fetched events.
+     * - Fetches events with the 'activeDayRange' datestatus.
+     * - Calculates the due date for the additional events (7 days from now).
+     * - Fetches events with a matching due date.
+     * - Combines both sets of events.
+     * - Updates timestamps for each event.
      * 
-     * @return ApiResponse Contains the status of the operation and the updated events.
+     * @return Collection The list of events that were processed.
      */
-    public function updateAllEventsTimeStamps(): ApiResponse
+    private function updateAllEventsTimeStamps(): Collection
     {
-        try {
+        $datestatus = "activeDayRange";
 
-            $datestatus = "activeDayRange";
+        // Fetch events with the 'activeDayRange' datestatus.
+        $activeDayRangeEvents = $this->em->createQueryBuilder()
+            ->select('e')
+            ->from(Event::class, 'e')
+            ->where('e.date_status = :date_status')
+            ->setParameter('date_status', $datestatus)
+            ->getQuery()
+            ->getResult();
 
-            // Fetch events with the 'activeDayRange' datestatus.
-            $activeDayRangeEvents = $this->em->createQueryBuilder()
-                ->select('e')
-                ->from(Event::class, 'e')
-                ->where('e.date_status = :date_status')
-                ->setParameter('date_status', $datestatus)
-                ->getQuery()
-                ->getResult();
+        // Calculate the due date for the additional events (7 days from now).
+        $dueDate = $this->now->modify('+7 days')->format('Y-m-d');
 
-            // Calculate the due date for the additional events (4 days from now).
-            $dueDate = $this->now->modify('+7 days')->format('Y-m-d');
+        // Fetch events with a matching due date.
+        $newActiveDayRangeEvents = $this->em->createQueryBuilder()
+            ->select('e')
+            ->from(Event::class, 'e')
+            ->where('e.dueDate = :dueDate')
+            ->setParameter('dueDate', $dueDate)
+            ->getQuery()
+            ->getResult();
 
-            // Fetch events with a matching due date.
-            $newActiveDayRangeEvents = $this->em->createQueryBuilder()
-                ->select('e')
-                ->from(Event::class, 'e')
-                ->where('e.dueDate = :dueDate')
-                ->setParameter('dueDate', $dueDate)
-                ->getQuery()
-                ->getResult();
+        // Combine both sets of events.
+        $events = array_merge($activeDayRangeEvents, $newActiveDayRangeEvents);
 
-            // Combine both sets of events.
-            $events = array_merge($activeDayRangeEvents, $newActiveDayRangeEvents);
+        // Count the number of activated events for the final cronJob response.
+        $eventsActivated = array_filter(
+            $newActiveDayRangeEvents,
+            fn($newActiveDayRangeEvent): bool => $newActiveDayRangeEvent->getDateStatus() !== "activeDayRange"
+        );
+        $this->eventsActivated = count($eventsActivated);
 
-            // Update timestamps for each event.
-            foreach ($events as $event) {
-                $this->eventService->setTimestamps($event);
-            }
-            $this->em->flush();
-
-            return ApiResponse::success('Events timestamps updated successfully', ['events' => $events]);
-        } catch (Exception $e) {
-            return ApiResponse::error('Event timestamp update failed: ' . $e->getMessage(), null, 'EVENT_TIMESTAMP_UPDATE_FAILED');
+        // Update timestamps for each event.
+        foreach ($events as $event) {
+            $this->eventService->setTimestamps($event);
         }
+        $this->em->flush();
+
+        return new ArrayCollection($events); // Retourne les événements traités
     }
 
 
 
     //! Step 5: Delete old events ---------------------------------------------------------------------------------------------------
+
     /**
-     * Deletes events older than 30 days from the database.
+     * Deletes events that are older than 30 days.
      * 
-     * - Calculates the latest acceptable date (`now - 30 days`).
-     * - Fetches all events with a due date earlier than the calculated date.
-     * - Removes these events from the database.
+     * - Fetches all events with a due date earlier than the cutoff date.
+     * - Removes each fetched event from the database.
      * 
-     * @return ApiResponse Contains the status of the operation and the deleted events.
+     * @return null
      */
-    public function deleteOldEvents()
+    private function deleteOldEvents(): null
     {
-        try {
-            // Calculate the cutoff date (30 days ago).
-            $latestDate = $this->now->modify('-30 days')->format('Y-m-d');
+        // Calculate the cutoff date (30 days ago).
+        $latestDate = $this->now->modify('-30 days')->format('Y-m-d');
 
-            // Fetch all events with a due date earlier than the cutoff date.
-            $oldEvents = $this->em->createQueryBuilder()
-                ->select('e')
-                ->from(Event::class, 'e')
-                ->where('e.dueDate < :latestDate')
-                ->setParameter('latestDate', $latestDate)
-                ->getQuery()
-                ->getResult();
+        // Fetch all events with a due date earlier than the cutoff date.
+        $oldEvents = $this->em->createQueryBuilder()
+            ->select('e')
+            ->from(Event::class, 'e')
+            ->where('e.dueDate < :latestDate')
+            ->setParameter('latestDate', $latestDate)
+            ->getQuery()
+            ->getResult();
 
-            // Remove each fetched event from the database.
-            foreach ($oldEvents as $oldEvent) {
-                $this->em->remove($oldEvent);
-            }
-            $this->em->flush();
-            return ApiResponse::success('Old events deleted successfully', ['oldEvents' => $oldEvents]);
-        } catch (Exception $e) {
-            return ApiResponse::error('Old events deletion failed: ' . $e->getMessage(), null, 'OLD_EVENTS_DELETION_FAILED');
+        // count the number of old events to display in the final cronJob response.
+        $this->oldEventsDeleted = count($oldEvents);
+
+        // Remove each fetched event from the database.
+        foreach ($oldEvents as $oldEvent) {
+            $this->em->remove($oldEvent);
         }
+        $this->em->flush();
+        return null;
     }
 
+
+    //! step 6 Create new event from eventRecurringParents ----------------------------------------------------------------
+
+    /**
+     * Creates recurring children events with tags.
+     * 
+     * - Fetches all eventRecurring parents.
+     * - Creates children events for each parent.
+     * - Creates tags for each child event.
+     * 
+     * @return Collection The list of created recurring children events.
+     */
+    private function createRecurringChildrenWithTag(): Collection
+    {
+        $eventRecurrings = $this->eventRecurringRepository->findAll();
+
+        $createdChildren = new ArrayCollection();
+        if (empty($eventRecurrings)) {
+            return $createdChildren;
+        }
+
+        foreach ($eventRecurrings as $eventRecurring) {
+            $response = $this->eventRecurringService-> createChildrenWithTag($eventRecurring, true);
+            if (!$response->isEmpty()) {
+                foreach ($response as $createdChild) {
+                    $createdChildren->add($createdChild);
+                }
+            }
+        }
+
+        $this->recurringChildrenCreated = count($createdChildren);
+        return $createdChildren;
+
+    }
+
+    /**
+     * Deletes tags that are older than yesterday.
+     * we delete past tags because they are no longer relevant , tags are made to inform about the current day events or future events only.
+     * This method identifies tags that have a `day` field corresponding to either
+     * yesterday or the day before yesterday and deletes them from the database.
+     * The operation directly interacts with the database using Doctrine's QueryBuilder
+     * for optimal performance.
+     *
+     * @return null
+     */
+    private function deletePastTag(): null
+    {
+        $today = (new DateTimeImmutable("today"))->format('Y-m-d');
+
+        $tags = $this->em->createQueryBuilder()
+            ->select('t')
+            ->from(Tag::class, 't')
+            ->where('t.day < :today')
+            ->setParameter('today', $today)
+            ->getQuery()
+            ->getResult();
+        foreach ($tags as $tag) {
+            $this->em->remove($tag);
+        }
+        $this->em->flush();
+        return null;
+    }
 }
