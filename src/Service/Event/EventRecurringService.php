@@ -148,6 +148,7 @@ class EventRecurringService
             if (!$validator->isSuccess()) {
                 return $validator;
             }
+           
             $alreadyExist = $this->doesEventRecurringAlreadyExist($eventRecurring);
             if ($alreadyExist) {
                 return ApiResponse::error('EventRecurring already exists', null, Response::HTTP_CONFLICT);
@@ -311,8 +312,8 @@ class EventRecurringService
     public function deleteRecurringEvent(EventRecurring $eventRecurring): ApiResponse
     {
         try {
-            $childrens = $eventRecurring->getEvents();
-            foreach ($childrens as $child) {
+            $children = $eventRecurring->getEvents();
+            foreach ($children as $child) {
                 $this->eventService->removeEventAndUpdateTagCounters($child);
             }
             $this->em->remove($eventRecurring);
@@ -659,14 +660,14 @@ class EventRecurringService
             'SELECT COUNT(e.id)
              FROM App\Entity\Event\EventRecurring e
              WHERE e.title = :title
-               AND e.createdAt = :createdAt
+               AND e.recurrenceType = :recurrenceType
                AND e.section = :section
                AND e.type = :type'
         );
 
         $query->setParameters([
             'title'     => $eventRecurring->getTitle(),
-            'createdAt' => $eventRecurring->getCreatedAt()->format('Y-m-d'),
+            'recurrenceType' => $eventRecurring->getRecurrenceType(),
             'section'   => $eventRecurring->getSection(),
             'type'      => $eventRecurring->getType(),
         ]);

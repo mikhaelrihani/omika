@@ -495,8 +495,8 @@ class CronService
         foreach ($eventRecurrings as $eventRecurring) {
             $response = $this->eventRecurringService-> createChildrenWithTag($eventRecurring, true);
             if (!$response->isEmpty()) {
-                foreach ($response as $createdChildren) {
-                    $createdChildren->add($createdChildren);
+                foreach ($response as $createdChild) {
+                    $createdChildren->add($createdChild);
                 }
             }
         }

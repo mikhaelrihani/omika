@@ -95,8 +95,8 @@ class TagService
     {
         $type = $event->getType();
         $type === "task" ?
-            $tag = $this->incrementSharedUsersTagTaskCount($event) :
-            $tag = $this->incrementSharedUsersTagInfoCount($event);
+            $this->incrementSharedUsersTagTaskCount($event) :
+            $this->incrementSharedUsersTagInfoCount($event);
     }
 
     /**
@@ -119,7 +119,7 @@ class TagService
         // Trouver le tag pour l'événement en fonction de la date, du côté et de la section.
         $tag = $this->em->getRepository(Tag::class)->findOneByDaySideSection($day, $side, $section);
         if (!$tag) {
-            return ApiResponse::error('Tag not found for the specified event.');
+            return ApiResponse::error('Tag not found for the specified event.', null, Response::HTTP_NOT_FOUND);
         }
         return $tag;
     }
@@ -157,9 +157,9 @@ class TagService
                 // if the user opened the event info page
                 $this->decrementOneUserTagCountByOne($event, $user);
             }
-            return ApiResponse::success('Tag count updated successfully.');
+            return ApiResponse::success('Tag count updated successfully.', null, Response::HTTP_OK);
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while updating the tag count: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while updating the tag count: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -198,15 +198,15 @@ class TagService
      * 
      * @param Event $event The event containing the shared information.
      * @param User $user The user for whom the tag info count is updated.
-     * 
-     * @return ApiResponse Returns a success response if the operation is successful, or an error response if an exception occurs.
-     * 
-     * @throws \Exception If any error occurs during the process, it is caught and returned in the error response.
+     * @return ApiResponse
      */
     public function incrementOneUserTagInfoCount(Event $event, user $user): ApiResponse
     {
         try {
             $tag = $this->findTag($event);
+            if ($tag instanceof ApiResponse) {
+                return $tag;
+            }
             $tagInfo = $this->em->getRepository(TagInfo::class)->findOneByUserAndTag($user, $tag);
             if ($tagInfo) {
                 $count = $tagInfo->getUnreadInfoCount();
@@ -216,11 +216,10 @@ class TagService
             } else {
                 $this->createTagInfo($tag, $user);
             }
-
-            return ApiResponse::success('Tag info count updated successfully.');
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while setting info tag count: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while incrementing the tag info count: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+        return ApiResponse::success('Tag info count incremented successfully.', ["tag" => $tag], Response::HTTP_OK);
     }
 
     /**
@@ -230,30 +229,24 @@ class TagService
      * ensuring the unread info count is incremented.
      * 
      * @param Event $event The event containing the shared information.
-     * 
-     * @return ApiResponse Returns a success response if the operation is successful, or an error response if an exception occurs.
-     * 
-     * @throws \Exception If any error occurs during the process, it is caught and returned in the error response.
+     * @return ApiResponse
      */
     public function incrementSharedUsersTagInfoCount(Event $event): ApiResponse
     {
-        try {
-            // Récupère les utilisateurs avec lesquels l'info a été partagée.
-            $sharedWith = $event->getInfo()->getSharedWith();
-            $users = [];
-            foreach ($sharedWith as $userInfo) {
-                $users[] = $userInfo->getUser();
-            }
-
-            // Pour chaque utilisateur, associer un tag info en vérifiant s'il existe déjà.
-            foreach ($users as $user) {
-                $this->incrementOneUserTagInfoCount($event, $user);
-            }
-
-            return ApiResponse::success('Tag info count updated successfully.');
-        } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while setting info tag count: ' . $e->getMessage());
+        // Récupère les utilisateurs avec lesquels l'info a été partagée.
+        $sharedWith = $event->getInfo()->getSharedWith();
+        $users = [];
+        foreach ($sharedWith as $userInfo) {
+            $users[] = $userInfo->getUser();
         }
+        // Pour chaque utilisateur, associer un tag info en vérifiant s'il existe déjà.
+        foreach ($users as $user) {
+            $response = $this->incrementOneUserTagInfoCount($event, $user);
+            if (!$response->isSuccess()) {
+                return $response;
+            }
+        }
+        return ApiResponse::success('Tag info count incremented successfully for all users.', null, Response::HTTP_OK);
     }
 
     //! --------------------------------------------------------------------------------------------
@@ -289,14 +282,14 @@ class TagService
      * @param Event $event The event containing the task information.
      * @param User $user The user for whom the tag task count is updated.
      * 
-     * @return ApiResponse Returns a success response if the operation is successful, or an error response if an exception occurs.
-     * 
-     * @throws \Exception If any error occurs during the process, it is caught and returned in the error response.
      */
     public function incrementOneUserTagTaskCount(Event $event, User $user): ApiResponse
     {
         try {
             $tag = $this->findTag($event);
+            if ($tag instanceof ApiResponse) {
+                return $tag;
+            }
             // Recherche une association existante entre le tag et l'utilisateur.
             $tagTask = $this->em->getRepository(TagTask::class)->findOneByUserAndTag_task($user, $tag);
 
@@ -309,39 +302,33 @@ class TagService
                 // Création d'une nouvelle entité si aucune association n'existe.
                 $this->createTagTask($tag, $user);
             }
-
-            return ApiResponse::success('Tag task count updated successfully.');
+            return ApiResponse::success('Tag task count incremented successfully.', ["tag" => $tag], Response::HTTP_OK);
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while setting task tag count: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while incrementing the tag task count: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
-
     /**
      * Increments the task count for all users associated with the event's shared task.
      * 
      * For each user, the method updates or creates a `TagTask` record linked to the tag and user,
      * ensuring the task count is incremented.
      * 
+     * @return ApiResponse
      * @param Event $event The event containing the shared task information.
      * 
-     * @return ApiResponse Returns a success response if the operation is successful, or an error response if an exception occurs.
-     * 
-     * @throws \Exception If any error occurs during the process, it is caught and returned in the error response.
      */
     public function incrementSharedUsersTagTaskCount(Event $event): ApiResponse
     {
-        try {
-            // Récupère les utilisateurs associés à la tâche.
-            $users = $this->eventService->getUsers($event);
-
-            // Met à jour ou crée un TagTask pour chaque utilisateur.
-            foreach ($users as $user) {
-                $this->incrementOneUserTagTaskCount($event, $user);
+        // Récupère les utilisateurs associés à la tâche.
+        $users = $this->eventService->getUsers($event);
+        // Met à jour ou crée un TagTask pour chaque utilisateur.
+        foreach ($users as $user) {
+            $response = $this->incrementOneUserTagTaskCount($event, $user);
+            if (!$response->isSuccess()) {
+                return $response;
             }
-            return ApiResponse::success('Tag task count updated successfully.');
-        } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while setting task tag count: ' . $e->getMessage());
         }
+        return ApiResponse::success('Tag task count incremented successfully for all users.', null, Response::HTTP_OK);
     }
 
     //! --------------------------------------------------------------------------------------------
@@ -358,14 +345,14 @@ class TagService
     {
         try {
             $tag = $this->findTag($event);
+            if ($tag instanceof ApiResponse) {
+                return $tag;
+            }
             $type = $event->getType();
 
             if ($type === "task") {
                 // Trouver le TagTask associé à l'utilisateur et au tag.
                 $tagTask = $this->em->getRepository(TagTask::class)->findOneByUserAndTag_task($user, $tag);
-                if (!$tagTask) {
-                    return ApiResponse::error('TagTask not found for the specified user and tag.');
-                }
 
                 // Décrémenter le compteur de tags (en s'assurant qu'il ne descende pas en dessous de zéro).
                 $tagTask->setTagCount(max(0, $tagTask->getTagCount() - 1));
@@ -373,9 +360,6 @@ class TagService
             } elseif ($type === "info") {
                 // Gérer TagInfo si le type n'est pas "task".
                 $tagInfo = $this->em->getRepository(TagInfo::class)->findOneByUserAndTag_info($user, $tag);
-                if (!$tagInfo) {
-                    return ApiResponse::error('TagInfo not found for the specified user and tag.');
-                }
 
                 // Décrémenter le compteur d'info non lue (en s'assurant qu'il ne descende pas en dessous de zéro).
                 $tagInfo->setUnreadInfoCount(max(0, $tagInfo->getUnreadInfoCount() - 1));
@@ -386,9 +370,9 @@ class TagService
                 $this->em->flush(); // Flush si explicitement demandé
             }
 
-            return ApiResponse::success('Tag count decremented successfully.');
+            return ApiResponse::success('Tag count decremented successfully.', ["tag" => $tag], Response::HTTP_OK);
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while decrementing the tag counter: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while decrementing the tag counter: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -406,15 +390,15 @@ class TagService
     public function decrementSharedUsersTagCountByOne(Event $event): ApiResponse
     {
         $users = $this->eventService->getUsers($event);
-        try {
-            foreach ($users as $user) {
-                $this->decrementOneUserTagCountByOne($event, $user, false);
+
+        foreach ($users as $user) {
+            $reponse = $this->decrementOneUserTagCountByOne($event, $user, false);
+            if (!$reponse->isSuccess()) {
+                return $reponse;
             }
-            $this->em->flush(); // Flush une seule fois après avoir décrémenté pour tous les utilisateurs.
-            return ApiResponse::success('Tag count decremented successfully for multiple users.');
-        } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while decrementing the tag counter for multiple users: ' . $e->getMessage());
         }
+        $this->em->flush(); // Flush une seule fois après avoir décrémenté pour tous les utilisateurs.
+        return ApiResponse::success('Tag count decremented successfully for all users.', null, Response::HTTP_OK);
 
     }
 

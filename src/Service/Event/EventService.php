@@ -423,14 +423,16 @@ class EventService
     public function removeEventAndUpdateTagCounters(Event $event): ApiResponse
     {
         try {
-            $this->em->remove($event);
             $response = $this->tagService->decrementSharedUsersTagCountByOne($event);
+          
+            if (!$response->isSuccess()) {
+                return $response;
+            }
+            $this->em->remove($event);
             $this->em->flush();
-            return ApiResponse::success('Event deleted successfully and ' . $response->getMessage());
-        } catch (ORMException $e) {
-            return ApiResponse::error('An error occurred while deleting the event: ' . $e->getMessage());
+            return ApiResponse::success('Event deleted successfully and ' . $response->getMessage(), null, Response::HTTP_OK);
         } catch (Exception $e) {
-            return ApiResponse::error('An unexpected error occurred: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while deleting the event: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 

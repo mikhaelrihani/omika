@@ -167,15 +167,8 @@ class EventController extends AbstractController
             return $this->json($response->getMessage(), $response->getStatusCode());
         }
 
-        $response = $this->tagService->decrementSharedUsersTagCountByOne($event);
-        if (!$response->isSuccess()) {
-            return $this->json($response->getMessage(), $response->getStatusCode());
-        }
-
-        $this->em->remove($event);
-        $this->em->flush();
-
-        $response = ApiResponse::success("Event with id = {$id} has been deleted successfully", null, Response::HTTP_OK);
+        $response = $this->eventService->removeEventAndUpdateTagCounters($event);
+       
         return $this->json($response->getMessage(), $response->getStatusCode());
     }
 
@@ -344,7 +337,7 @@ class EventController extends AbstractController
     //! --------------------------------------------------------------------------------------------
     /**
      * Deletes an EventRecurring by its ID.
-     * 
+     * it will delete the parent and all its children with the tags.
      * This method attempts to find an `EventRecurring` by its ID, and if it exists, it removes it from the database.
      * If the `EventRecurring` is not found, a `404 Not Found` response is returned.
      * 
@@ -363,10 +356,8 @@ class EventController extends AbstractController
             return $this->json($response, $response->getStatusCode());
         }
 
-        $this->em->remove($eventRecurring);
-        $this->em->flush();
+        $response = $this->eventRecurringService->deleteRecurringEvent($eventRecurring);
 
-        $response = ApiResponse::success("Event recurring with id = {$id} has been deleted successfully", null, Response::HTTP_OK);
         return $this->json($response, $response->getStatusCode());
     }
 
