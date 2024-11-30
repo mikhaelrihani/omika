@@ -13,7 +13,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: UserLoginRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
-class UserLogin extends BaseEntity implements UserInterface, PasswordAuthenticatedUserInterface 
+class UserLogin extends BaseEntity implements UserInterface, PasswordAuthenticatedUserInterface
 {
     protected UserPasswordHasherInterface $userPasswordHasher;
     public function __construct(UserPasswordHasherInterface $userPasswordHasher)
@@ -24,7 +24,7 @@ class UserLogin extends BaseEntity implements UserInterface, PasswordAuthenticat
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(["user",'userLogin'])]
+    #[Groups(["user", 'userLogin'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 180)]
@@ -53,10 +53,10 @@ class UserLogin extends BaseEntity implements UserInterface, PasswordAuthenticat
 
     #[ORM\Column(type: 'boolean')]
     #[Groups(['userLogin'])]
-    private bool $isEnabled;
-    
+    private bool $isEnabled = true;
 
-   
+
+
 
     // Getters and Setters...
 

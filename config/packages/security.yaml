@@ -60,6 +60,12 @@ security:
         - { path: ^/api/cron, roles: PUBLIC_ACCESS }
         
         - { path: ^/api/admin, roles: ROLE_ADMIN }
+       
+
+        # autoriser le nouvel user à s'inscrire sans authentification
+        #- { path: ^/api/user/register, roles: PUBLIC_ACCESS }
+
+        # authentification obligatoire
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
