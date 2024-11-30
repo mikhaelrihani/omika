@@ -357,14 +357,46 @@ class EventController extends AbstractController
 
 
     //! --------------------------------------------------------------------------------------------
+    /**
+     * Toggles the status of a task associated with an event.
+     *
+     * This method retrieves an event by its ID, checks if the event exists, and updates the status of its associated task.
+     * If the task has no previous status, it sets the status to "done" and stores the current status as the previous status.
+     * If there is a previous status, it restores the previous status and removes the previous status.
+     *
+     * @param int $id The ID of the event whose task status will be toggled.
+     * 
+     * @return JsonResponse A JSON response indicating the success or failure of the status update operation.
+     * 
+     * @throws \Symfony\Component\HttpFoundation\Exception\BadRequestException If the event with the given ID is not found.
+     *
+     * @Route("/toggleStatus/{id}", name="toggleStatus", methods={"POST"})
+     */
+    #[Route('/toggleStatus/{id}', name: 'toggleStatus', methods: ['post'])]
+    public function toggleStatus(int $id): JsonResponse
+    {
+        $event = $this->eventRepository->find($id);
 
-    // #[Route('/toggleStatus/{id}', name: 'toggleStatus', methods: ['post'])]
-    // public function toggleStatus(Event $event): JsonResponse
-    // {
+        if (!$event) {
+            $response = ApiResponse::error("There is no event with this id {$id}", null, Response::HTTP_NOT_FOUND);
+            return $this->json($response, $response->getStatusCode());
+        }
 
-    // }
+        $status = $event->getTask()->getTaskStatus();
+        $previousStatus = $event->getTask()->getPreviousStatus();
+        if ($previousStatus === null) {
+            $event->getTask()->setPreviousStatus($status);
+            $event->getTask()->setTaskStatus("done");
+        } else {
+            $event->getTask()->setTaskStatus($previousStatus);
+            $event->getTask()->setPreviousStatus(null);
+        }
 
-    //! --------------------------------------------------------------------------------------------
+        $this->em->flush();
 
-    //removeUserFromAllEvents
+        $response = ApiResponse::success("Event task status updated successfully", null, Response::HTTP_OK);
+        return $this->json($response, $response->getStatusCode());
+    }
+
+   
 }
