@@ -42,5 +42,8 @@ class UserController extends BaseController
     }
 //! method list enable/disableuser
 
+//! --------------------------------------------------------------------------------------------
+
+    //removeUserFromAllEvents
 
 }

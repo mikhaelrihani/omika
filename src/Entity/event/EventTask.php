@@ -60,6 +60,9 @@ class EventTask extends BaseEntity
     #[Groups(['event'])]
     private ?int $sharedWithCount = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $previousStatus = null;
+
   
 
     public function __construct()
@@ -164,6 +167,18 @@ class EventTask extends BaseEntity
     public function syncCounts(): void
     {
         $this->sharedWithCount = $this->sharedWith->count();
+    }
+
+    public function getPreviousStatus(): ?string
+    {
+        return $this->previousStatus;
+    }
+
+    public function setPreviousStatus(?string $previousStatus): static
+    {
+        $this->previousStatus = $previousStatus;
+
+        return $this;
     }
 
   

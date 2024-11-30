@@ -274,7 +274,6 @@ class CronService
 
         $this->eventService->setRelations($todayEvent, $users, "late");
 
-        $todayEvent->setPending($yesterdayEvent->isPending());
         if ($todayEvent->getInfo()) {
             $todayEvent->getInfo()->setOld(true);
         }
