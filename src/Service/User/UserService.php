@@ -2,19 +2,23 @@
 
 namespace App\Service\User;
 
-use App\Entity\Media\Picture;
+
 use App\Entity\User\Business;
 use App\Entity\User\User;
 use App\Entity\User\UserLogin;
+use App\Service\Media\PictureService;
 use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
 use App\Utils\JsonResponseBuilder;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\String\Slugger\SluggerInterface;
 use Symfony\Component\Uid\Uuid;
 
 class UserService
@@ -24,7 +28,10 @@ class UserService
         private JsonResponseBuilder $jsonResponseBuilder,
         private UserPasswordHasherInterface $userPasswordHasher,
         private ValidatorService $validateService,
-        private SerializerInterface $serializer
+        private SerializerInterface $serializer,
+        private SluggerInterface $slugger,
+        private ParameterBagInterface $params,
+        private PictureService $pictureService
     ) {
     }
 
@@ -287,7 +294,7 @@ class UserService
 
     //! --------------------------------------------------------------------------------------------
 
-    public function updateAvatar($avatar, int $userId): ApiResponse
+    public function updateAvatar(Request $request, int $userId): ApiResponse
     {
         try {
             $user = $this->findUser($userId);
@@ -295,35 +302,21 @@ class UserService
                 return $user;
             }
             $user = $user->getData()[ 'user' ];
-            $avatar = $this->createAvatar($avatar, $user);
-            if (!$avatar) {
+            $avatar = $this->pictureService->createPicture($request);
+            if (!$avatar->isSuccess()) {
                 return $avatar;
             }
-            $this->em->flush();
-            return ApiResponse::success("Password updated successfully", [], Response::HTTP_OK);
-        } catch (Exception $exception) {
-            return ApiResponse::error("error while updating password :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-
-    //! --------------------------------------------------------------------------------------------
-
-    private function createAvatar($picture, User $user): ApiResponse
-    {
-        try {
-            $avatar = (new Picture())
-                ->setMime($picture->getMime())
-                ->setSlug($picture->getSlug())
-                ->setName($picture->getName())
-                ->setPath($picture->getPath());
+            $avatar = $avatar->getData()[ 'picture' ];
+            // Associer l'avatar à l'utilisateur
             $user->setAvatar($avatar);
+
+            $this->em->flush();
             return ApiResponse::success("Avatar updated successfully", [], Response::HTTP_OK);
         } catch (Exception $exception) {
-            return ApiResponse::error("error while updating avatar :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+            return ApiResponse::error("error while updating Avatar :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
     }
+
 
     //! --------------------------------------------------------------------------------------------
 

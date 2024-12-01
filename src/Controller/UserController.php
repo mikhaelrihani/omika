@@ -233,18 +233,9 @@ class UserController extends BaseController
      * @Route("/updatePassword/{id}", name="updatePassword", methods="PUT")
      * 
      * @param Request $request The HTTP request containing the JSON payload.
-     *                          Expected structure:
-     *                          {
-     *                              "currentPassword": "string",
-     *                              "newPassword": "string",
-     *                              "newPasswordConfirmation": "string"
-     *                          }
      * @param int $id The ID of the user whose password is being updated.
      * 
      * @return JsonResponse A JSON response indicating the success or failure of the operation.
-     *                      - On success: HTTP 200 with success message.
-     *                      - On failure: HTTP error codes with error message and details.
-     * 
      * @throws Exception If there is an error during password update.
      */
 
@@ -268,25 +259,54 @@ class UserController extends BaseController
 
     //! --------------------------------------------------------------------------------------------
 
-    #[Route('/updateAvatar/{id}', name: 'updateAvatar', methods: 'put')]
+    /**
+     * Updates the avatar of a user.
+     *
+     * This method processes a request to update the avatar for a specific user by delegating 
+     * the task to the UserService. It handles errors and returns appropriate JSON responses.
+     *
+     * @Route("/updateAvatar/{id}", name="updateAvatar", methods="POST")
+     *
+     * @param Request $request The HTTP request containing the uploaded avatar file.
+     * @param int $id The ID of the user whose avatar is being updated.
+     *
+     * @return JsonResponse A JSON response indicating the status of the operation.
+     *
+     * @throws Exception If an error occurs during the avatar update process.
+     *
+     */
+
+    #[Route('/updateAvatar/{id}', name: 'updateAvatar', methods: 'post')]
     public function updateAvatar(Request $request, int $id): JsonResponse
     {
         try {
-            $response = $this->validateService->validateJson($request);
-            if (!$response->isSuccess()) {
-                return $this->json($response->getMessage(), $response->getStatusCode());
-            }
-            $response = $this->userService->updateAvatar($id, $request->getContent());
+            $response = $this->userService->updateAvatar($request, $id);
             if (!$response->isSuccess()) {
                 return $this->json([$response->getMessage(), $response->getData()], $response->getStatusCode());
             }
             return $this->json($response->getMessage(), Response::HTTP_OK);
         } catch (Exception $e) {
-            return $this->json($response->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->json($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Updates the password of a user.
+     *
+     * This method validates the incoming JSON request, retrieves the current and new passwords, 
+     * and delegates the update logic to the UserService. It also handles errors and returns 
+     * appropriate JSON responses.
+     *
+     * @Route("/updatePassword/{id}", name="updatePassword", methods="PUT")
+     *
+     * @param Request $request The HTTP request containing the JSON data.
+     * @param int $id The ID of the user whose password is being updated.
+     *
+     * @return JsonResponse A JSON response containing the status of the operation.
+   
+     */
 
     #[Route('/updatePassword/{id}', name: 'updatePassword', methods: 'put')]
     public function updatePassword(Request $request, int $id): JsonResponse

@@ -117,6 +117,8 @@ class AppProvider extends Base
     /** @var array List of MIME types. */
     private $mimes = [
         "jpeg",
+        "jiff",
+        "jpg",
         "png",
         "gif",
         "bmp",
