@@ -67,7 +67,7 @@ class UserService
     public function findUserLogin(int $id): apiResponse
     {
         $userLogin = $this->em->getRepository(UserLogin::class)->find($id);
-       
+
         if ($userLogin === null) {
             return ApiResponse::error("There is no userLogin with this id", null, Response::HTTP_BAD_REQUEST);
         }
@@ -99,7 +99,7 @@ class UserService
             $this->em->persist($userLogin);
 
             $response = $this->validateService->validateEntity($userLogin);
-          
+
             if (!$response->isSuccess()) {
                 return $response;
             }
@@ -132,9 +132,9 @@ class UserService
      */
     public function createUser(array $data): ApiResponse
     {
-        #$this->em->beginTransaction();
+        $this->em->beginTransaction();
         try {
-          
+
             $user = (new User())
                 ->setFirstname($data[ 'firstname' ])
                 ->setSurname($data[ 'surname' ])
@@ -153,25 +153,25 @@ class UserService
             $user->setBusiness($business);
 
             $userLogin = $this->createUserLogin($data);
-           
+
             if (!$userLogin->isSuccess()) {
                 return $userLogin;
             }
             $user->setUserLogin($userLogin->getData()[ 'userLogin' ]);
 
             $this->em->persist($user);
- 
+
             $response = $this->validateService->validateEntity($user);
             if (!$response->isSuccess()) {
                 return $response;
             }
-          
-            #$this->em->commit(); 
+
+            $this->em->commit();
             $this->em->flush();
             return ApiResponse::success("User created successfully", ["user" => $user], Response::HTTP_CREATED);
 
         } catch (Exception $exception) {
-      
+            $this->em->rollback();
             return ApiResponse::error("error while creating user :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

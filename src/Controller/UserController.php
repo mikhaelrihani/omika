@@ -35,7 +35,7 @@ class UserController extends BaseController
     public function getUserLogin(int $id): JsonResponse
     {
         $response = $this->userService->findUserLogin($id);
-    
+
         return $this->json(["message" => $response->getMessage(), "user" => $response->getData()[ "userLogin" ]], $response->getStatusCode(), [], ['groups' => 'userLogin']);
 
     }
@@ -102,13 +102,13 @@ class UserController extends BaseController
                 return $this->json($response->getMessage(), $response->getStatusCode());
             }
             $response = $this->userService->createUser($response->getData());
-            
+
             if (!$response->isSuccess()) {
-                return $this->json($response->getMessage(), $response->getStatusCode());
+                return $this->json([$response->getMessage(), $response->getData()], $response->getStatusCode());
             }
             return $this->json("Succesfully registered {$response->getData()[ 'user' ]->getfullname()}", Response::HTTP_OK);
         } catch (Exception $e) {
-            return $this->json("Failed to register user : ".$e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->json("Failed to register user : " . $e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
