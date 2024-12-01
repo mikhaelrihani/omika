@@ -59,7 +59,8 @@ security:
          # autoriser le Cron Job à s'exécuter sans authentification
         - { path: ^/api/cron, roles: PUBLIC_ACCESS }
         
-        - { path: ^/api/admin, roles: ROLE_ADMIN }
+         # autoriser les admin a changer le role
+        - { path: ^/api/user/updateUserRole, roles: ROLE_ADMIN }
        
 
         # autoriser le nouvel user à s'inscrire sans authentification

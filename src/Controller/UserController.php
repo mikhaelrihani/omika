@@ -171,14 +171,56 @@ class UserController extends BaseController
             return $this->json("User deleted successfully", Response::HTTP_OK);
 
         } catch (Exception $e) {
-            #$this->em->rollback();
+            $this->em->rollback();
             return $this->json("Failed to delete user : {$e->getMessage()} ", Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
 
     //! --------------------------------------------------------------------------------------------
-    // admin update user role, enable...
+
+    /**
+     * Updates the role of a user's login account.
+     * Only admins and administrators can update the role of a user.
+     * This method retrieves the user login entity by their ID, validates the request payload,
+     * and updates the user's role in the system. The updated role is saved in the database.
+     *
+     * @param Request $request The HTTP request containing the new role data in JSON format.
+     * @param int $id The unique identifier of the user whose role is being updated.
+     *
+     * @return JsonResponse A JSON response indicating the success or failure of the operation:
+     *     - Success (HTTP 200): Role updated successfully.
+     *     - Error (HTTP 400): If the user is not found, the role is invalid, or the JSON payload is incorrect.
+     *     - Error (HTTP 500): If an unexpected error occurs during the update.
+     *
+     * @throws Exception If there is an error during the retrieval or persistence of user data.
+     */
+
+    #[Route('/updateUserRole/{id}', name: 'updateUserRole', methods: 'put')]
+    public function updateUserRole(Request $request, int $id): JsonResponse
+    {
+        try {
+            $response = $this->validateService->validateJson($request);
+            if (!$response->isSuccess()) {
+                return $this->json($response->getMessage(), $response->getStatusCode());
+            }
+
+            $userLoginResponse = $this->userService->findUserLogin($id);
+            if (!$userLoginResponse->isSuccess()) {
+                return $this->json($userLoginResponse->getMessage(), $userLoginResponse->getStatusCode());
+            }
+            $userLogin = $userLoginResponse->getData()[ 'userLogin' ];
+
+            $response = $this->userService->updateUserRole($userLogin, $response->getData()[ 'role' ]);
+            if (!$response->isSuccess()) {
+                return $this->json([$response->getMessage(), $response->getData()], $response->getStatusCode());
+            }
+
+            return $this->json($response->getMessage(), Response::HTTP_OK);
+        } catch (Exception $e) {
+            return $this->json("Failed to update user role : " . $e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
 
     //! --------------------------------------------------------------------------------------------
 
@@ -227,7 +269,22 @@ class UserController extends BaseController
     //! --------------------------------------------------------------------------------------------
 
     #[Route('/updateAvatar/{id}', name: 'updateAvatar', methods: 'put')]
-
+    public function updateAvatar(Request $request, int $id): JsonResponse
+    {
+        try {
+            $response = $this->validateService->validateJson($request);
+            if (!$response->isSuccess()) {
+                return $this->json($response->getMessage(), $response->getStatusCode());
+            }
+            $response = $this->userService->updateAvatar($id, $request->getContent());
+            if (!$response->isSuccess()) {
+                return $this->json([$response->getMessage(), $response->getData()], $response->getStatusCode());
+            }
+            return $this->json($response->getMessage(), Response::HTTP_OK);
+        } catch (Exception $e) {
+            return $this->json($response->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
 
     //! --------------------------------------------------------------------------------------------
 
@@ -251,8 +308,10 @@ class UserController extends BaseController
 
             return $this->json($response->getMessage(), Response::HTTP_OK);
         } catch (Exception $e) {
-            return $this->json("Failed to update new password : " . $e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->json($response->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+    //! --------------------------------------------------------------------------------------------
 
 }

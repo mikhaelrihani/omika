@@ -2,6 +2,7 @@
 
 namespace App\Service\User;
 
+use App\Entity\Media\Picture;
 use App\Entity\User\Business;
 use App\Entity\User\User;
 use App\Entity\User\UserLogin;
@@ -283,5 +284,83 @@ class UserService
         }
     }
 
+
+    //! --------------------------------------------------------------------------------------------
+
+    public function updateAvatar($avatar, int $userId): ApiResponse
+    {
+        try {
+            $user = $this->findUser($userId);
+            if (!$user->isSuccess()) {
+                return $user;
+            }
+            $user = $user->getData()[ 'user' ];
+            $avatar = $this->createAvatar($avatar, $user);
+            if (!$avatar) {
+                return $avatar;
+            }
+            $this->em->flush();
+            return ApiResponse::success("Password updated successfully", [], Response::HTTP_OK);
+        } catch (Exception $exception) {
+            return ApiResponse::error("error while updating password :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
+    //! --------------------------------------------------------------------------------------------
+
+    private function createAvatar($picture, User $user): ApiResponse
+    {
+        try {
+            $avatar = (new Picture())
+                ->setMime($picture->getMime())
+                ->setSlug($picture->getSlug())
+                ->setName($picture->getName())
+                ->setPath($picture->getPath());
+            $user->setAvatar($avatar);
+            return ApiResponse::success("Avatar updated successfully", [], Response::HTTP_OK);
+        } catch (Exception $exception) {
+            return ApiResponse::error("error while updating avatar :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Updates the roles assigned to a user's login account.
+     *
+     * This method checks if the provided roles are valid based on a predefined list
+     * of allowed roles. If the roles are valid, they are assigned to the user and
+     * the changes are saved in the database.
+     *
+     * @param UserLogin $userLogin The user login entity whose roles are being updated.
+     * @param array $roles An array of roles to assign to the user (e.g., ['ROLE_ADMIN', 'ROLE_USER']).
+     *
+     * @return ApiResponse A response object indicating the result of the operation:
+     *     - Success (HTTP 200): If the roles were updated successfully.
+     *     - Error (HTTP 400): If one or more roles are invalid.
+     *     - Error (HTTP 500): If an exception occurs during the update process.
+     */
+    public function updateUserRole(UserLogin $userLogin, array $roles): ApiResponse
+    {
+        try {
+
+            $allowedRoles = ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_SUPER_ADMIN', 'ROLE_BUSINESS_OWNER'];
+            foreach ($roles as $role) {
+                if (!in_array($role, $allowedRoles)) {
+                    return ApiResponse::error("Invalid role: $role", null, Response::HTTP_BAD_REQUEST);
+                }
+            }
+
+            $userLogin->setRoles($roles);
+            $this->em->flush();
+            return ApiResponse::success("User roles updated successfully", [], Response::HTTP_OK);
+        } catch (Exception $exception) {
+            return ApiResponse::error("error while updating user roles :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    //! --------------------------------------------------------------------------------------------
 
 }
