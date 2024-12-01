@@ -8,18 +8,12 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Serializer\Annotation\Groups;
+use App\Validator\UniqueEmail;
 
 #[ORM\Entity(repositoryClass: UserLoginRepository::class)]
-#[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
 class UserLogin extends BaseEntity implements UserInterface, PasswordAuthenticatedUserInterface
 {
-    protected UserPasswordHasherInterface $userPasswordHasher;
-    public function __construct(UserPasswordHasherInterface $userPasswordHasher)
-    {
-        $this->userPasswordHasher = $userPasswordHasher;
-    }
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -29,6 +23,7 @@ class UserLogin extends BaseEntity implements UserInterface, PasswordAuthenticat
 
     #[ORM\Column(length: 180)]
     #[Assert\NotBlank(message: "Email should not be blank.")]
+    #[UniqueEmail]
     #[Assert\Email(message: "The email '{{ value }}' is not a valid email.")]
     #[Groups(['userLogin'])]
     private ?string $email = null;

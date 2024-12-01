@@ -35,7 +35,9 @@ class UserController extends BaseController
     public function getUserLogin(int $id): JsonResponse
     {
         $response = $this->userService->findUserLogin($id);
-        return $this->json($response->getMessage(), $response->getStatusCode());
+    
+        return $this->json(["message" => $response->getMessage(), "user" => $response->getData()[ "userLogin" ]], $response->getStatusCode(), [], ['groups' => 'userLogin']);
+
     }
     //! --------------------------------------------------------------------------------------------
 
@@ -44,7 +46,7 @@ class UserController extends BaseController
     public function getOneUser(int $id): JsonResponse
     {
         $response = $this->userService->findUser($id);
-        return $this->json($response->getMessage(), $response->getStatusCode());
+        return $this->json(["message" => $response->getMessage(), "user" => $response->getData()[ "user" ]], $response->getStatusCode(), [], ['groups' => 'user']);
     }
 
 
@@ -95,20 +97,18 @@ class UserController extends BaseController
     public function register(Request $request): JsonResponse
     {
         try {
-            $this->em->beginTransaction();
             $response = $this->validateService->validateJson($request);
             if (!$response->isSuccess()) {
                 return $this->json($response->getMessage(), $response->getStatusCode());
             }
             $response = $this->userService->createUser($response->getData());
+            
             if (!$response->isSuccess()) {
                 return $this->json($response->getMessage(), $response->getStatusCode());
             }
-            $this->em->commit();
             return $this->json("Succesfully registered {$response->getData()[ 'user' ]->getfullname()}", Response::HTTP_OK);
         } catch (Exception $e) {
-            $this->em->rollback();
-            return $this->json("Failed to register user", Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->json("Failed to register user : ".$e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -156,7 +156,7 @@ class UserController extends BaseController
             // Remove the user from all events
             $user = $user->getData()[ "user" ];
             $this->eventService->removeUserFromAllEvents($user);
-            
+
             try {
                 $this->em->remove($user);
             } catch (Exception $e) {

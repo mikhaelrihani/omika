@@ -90,7 +90,7 @@ class UserService
     public function createUserLogin(array $data): ApiResponse
     {
         try {
-            $userLogin = new UserLogin($this->userPasswordHasher);
+            $userLogin = new UserLogin();
             $userLogin
                 ->setEmail($data[ 'email' ])
                 ->setPassword($this->userPasswordHasher->hashPassword($userLogin, $data[ 'password' ]))
@@ -99,14 +99,14 @@ class UserService
             $this->em->persist($userLogin);
 
             $response = $this->validateService->validateEntity($userLogin);
+          
             if (!$response->isSuccess()) {
                 return $response;
             }
-            $this->em->flush();
 
-            return ApiResponse::success("User login created successfully", ["userLogin" => $userLogin], Response::HTTP_CREATED);
+            return ApiResponse::success("User login persisted successfully", ["userLogin" => $userLogin], Response::HTTP_CREATED);
         } catch (Exception $exception) {
-            return ApiResponse::error("error while creating user login : " . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+            return ApiResponse::error("error while persisting user login : " . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -132,7 +132,7 @@ class UserService
      */
     public function createUser(array $data): ApiResponse
     {
-        $this->em->beginTransaction();
+        #$this->em->beginTransaction();
         try {
           
             $user = (new User())
@@ -153,23 +153,25 @@ class UserService
             $user->setBusiness($business);
 
             $userLogin = $this->createUserLogin($data);
+           
             if (!$userLogin->isSuccess()) {
                 return $userLogin;
             }
             $user->setUserLogin($userLogin->getData()[ 'userLogin' ]);
 
             $this->em->persist($user);
-
-            $response = $this->validateService->validateEntity($userLogin);
+ 
+            $response = $this->validateService->validateEntity($user);
             if (!$response->isSuccess()) {
                 return $response;
             }
-            $this->em->commit();
+          
+            #$this->em->commit(); 
             $this->em->flush();
             return ApiResponse::success("User created successfully", ["user" => $user], Response::HTTP_CREATED);
 
         } catch (Exception $exception) {
-            $this->em->rollback();
+      
             return ApiResponse::error("error while creating user :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
