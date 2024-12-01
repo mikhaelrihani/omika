@@ -12,6 +12,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
 
 class UserService
@@ -20,7 +22,8 @@ class UserService
         private EntityManagerInterface $em,
         private JsonResponseBuilder $jsonResponseBuilder,
         private UserPasswordHasherInterface $userPasswordHasher,
-        private ValidatorService $validateService
+        private ValidatorService $validateService,
+        private SerializerInterface $serializer
     ) {
     }
 
@@ -191,5 +194,94 @@ class UserService
     {
         return $this->userPasswordHasher->isPasswordValid($userLogin, $password);
     }
+
+
+    //! --------------------------------------------------------------------------------------------
+    /**
+     * Updates the password of a user.
+     * 
+     * This method validates the provided current password, checks if the new password 
+     * matches its confirmation, hashes the new password, and persists the changes in the database.
+     * 
+     * @param int $userId The ID of the user whose password is to be updated.
+     * @param string $currentPassword The user's current password (not validated in this method).
+     * @param string $newPassword The new password the user wants to set.
+     * @param string $newPasswordConfirmation The confirmation of the new password.
+     * 
+     * @return ApiResponse An API response indicating the outcome of the password update.
+     *                      - On success: HTTP 200 with success message.
+     *                      - On failure:
+     *                        - HTTP 400 if the passwords do not match or the user is not found.
+     *                        - HTTP 500 if an internal error occurs.
+     * 
+     * @throws Exception If there is an error while hashing or persisting the password.
+     */
+
+    public function updateUser(int $userId, string $data): ApiResponse
+    {
+        try {
+            $user = $this->findUser($userId);
+            if (!$user->isSuccess()) {
+                return $user;
+            }
+            $user = $user->getData()[ 'user' ];
+            // Mettre à jour l'objet User avec object_to_populate
+            $this->serializer->deserialize($data, USER::class, 'json', [
+                AbstractNormalizer::OBJECT_TO_POPULATE => $user,
+            ]);
+            $response = $this->validateService->validateEntity($user);
+            if (!$response->isSuccess()) {
+                return $response;
+            }
+            $this->em->flush();
+            return ApiResponse::success("User updated successfully", ["user" => $user], Response::HTTP_OK);
+        } catch (Exception $exception) {
+            return ApiResponse::error("error while updating user :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Updates the password of a user's login account.
+     *
+     * This method retrieves the user's login details, verifies if the new password matches
+     * the confirmation, hashes the new password, and saves the change to the database.
+     *
+     * @param int $userId The unique identifier of the user whose password is being updated.
+     * @param string $currentPassword The current password of the user (not validated in this implementation).
+     * @param string $newPassword The new password the user wants to set.
+     * @param string $newPasswordConfirmation The confirmation of the new password to ensure they match.
+     *
+     * @return ApiResponse Returns an ApiResponse object with the following outcomes:
+     *     - Success (HTTP 200): Password updated successfully.
+     *     - Error (HTTP 400): If the user is not found or the passwords do not match.
+     *     - Error (HTTP 500): If an unexpected error occurs during the update.
+     *
+     * @throws Exception If there is an error hashing the password or during the database flush operation.
+     */
+
+    public function updatePassword(int $userId, string $currentPassword, string $newPassword, string $newPasswordConfirmation): ApiResponse
+    {
+        try {
+            $userLogin = $this->findUserLogin($userId);
+            if (!$userLogin->isSuccess()) {
+                return $userLogin;
+            }
+            $userLogin = $userLogin->getData()[ "userLogin" ];
+
+            if ($newPassword !== $newPasswordConfirmation) {
+                return ApiResponse::error("Passwords do not match", null, Response::HTTP_BAD_REQUEST);
+            }
+
+            $userLogin->setPassword($this->userPasswordHasher->hashPassword($userLogin, $newPassword));
+
+            $this->em->flush();
+            return ApiResponse::success("Password updated successfully", [], Response::HTTP_OK);
+        } catch (Exception $exception) {
+            return ApiResponse::error("error while updating password :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
 
 }

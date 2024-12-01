@@ -31,21 +31,26 @@ class UserController extends BaseController
     //! --------------------------------------------------------------------------------------------
 
 
-    #[Route('/userLogin/{id}', name: 'getUserLogin', methods: 'post')]
+    #[Route('/userLogin/{id}', name: 'getUserLogin', methods: 'get')]
     public function getUserLogin(int $id): JsonResponse
     {
         $response = $this->userService->findUserLogin($id);
-
+        if (!$response->isSuccess()) {
+            return $this->json($response->getMessage(), $response->getStatusCode());
+        }
         return $this->json(["message" => $response->getMessage(), "user" => $response->getData()[ "userLogin" ]], $response->getStatusCode(), [], ['groups' => 'userLogin']);
 
     }
     //! --------------------------------------------------------------------------------------------
 
 
-    #[Route('/getOneUser/{id}', name: 'getOneUser', methods: 'post')]
+    #[Route('/getOneUser/{id}', name: 'getOneUser', methods: 'get')]
     public function getOneUser(int $id): JsonResponse
     {
         $response = $this->userService->findUser($id);
+        if (!$response->isSuccess()) {
+            return $this->json($response->getMessage(), $response->getStatusCode());
+        }
         return $this->json(["message" => $response->getMessage(), "user" => $response->getData()[ "user" ]], $response->getStatusCode(), [], ['groups' => 'user']);
     }
 
@@ -174,6 +179,80 @@ class UserController extends BaseController
 
     //! --------------------------------------------------------------------------------------------
     // admin update user role, enable...
-    // update my profile for avatar, new password..
-    //removeUserFromAllEvents
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Updates the password of a user.
+     * 
+     * This method validates the incoming JSON payload, checks the current password, 
+     * and updates it to a new password after confirmation.
+     * 
+     * @Route("/updatePassword/{id}", name="updatePassword", methods="PUT")
+     * 
+     * @param Request $request The HTTP request containing the JSON payload.
+     *                          Expected structure:
+     *                          {
+     *                              "currentPassword": "string",
+     *                              "newPassword": "string",
+     *                              "newPasswordConfirmation": "string"
+     *                          }
+     * @param int $id The ID of the user whose password is being updated.
+     * 
+     * @return JsonResponse A JSON response indicating the success or failure of the operation.
+     *                      - On success: HTTP 200 with success message.
+     *                      - On failure: HTTP error codes with error message and details.
+     * 
+     * @throws Exception If there is an error during password update.
+     */
+
+    #[Route('/update/{id}', name: 'update', methods: 'put')]
+    public function update(Request $request, int $id): JsonResponse
+    {
+        try {
+            $response = $this->validateService->validateJson($request);
+            if (!$response->isSuccess()) {
+                return $this->json($response->getMessage(), $response->getStatusCode());
+            }
+            $response = $this->userService->updateUser($id, $request->getContent());
+            if (!$response->isSuccess()) {
+                return $this->json([$response->getMessage(), $response->getData()], $response->getStatusCode());
+            }
+            return $this->json("{$response->getMessage()} : {$response->getData()[ 'user' ]->getfullname()}", Response::HTTP_OK);
+        } catch (Exception $e) {
+            return $this->json("Failed to update user : " . $e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    #[Route('/updateAvatar/{id}', name: 'updateAvatar', methods: 'put')]
+
+
+    //! --------------------------------------------------------------------------------------------
+
+    #[Route('/updatePassword/{id}', name: 'updatePassword', methods: 'put')]
+    public function updatePassword(Request $request, int $id): JsonResponse
+    {
+        try {
+            $response = $this->validateService->validateJson($request);
+            if (!$response->isSuccess()) {
+                return $this->json($response->getMessage(), $response->getStatusCode());
+            }
+
+            $currentPassword = $response->getData()[ 'currentPassword' ];
+            $newPassword = $response->getData()[ 'newPassword' ];
+            $newPasswordConfirmation = $response->getData()[ 'newPasswordConfirmation' ];
+
+            $response = $this->userService->updatePassword($id, $currentPassword, $newPassword, $newPasswordConfirmation);
+            if (!$response->isSuccess()) {
+                return $this->json([$response->getMessage(), $response->getData()], $response->getStatusCode());
+            }
+
+            return $this->json($response->getMessage(), Response::HTTP_OK);
+        } catch (Exception $e) {
+            return $this->json("Failed to update new password : " . $e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
 }
