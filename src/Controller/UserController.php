@@ -129,13 +129,12 @@ class UserController extends BaseController
     #[Route('/delete/{id}', name: 'delete', methods: 'delete')]
     public function delete(int $id, Request $request): JsonResponse
     {
-        # $this->em->beginTransaction();
+        $this->em->beginTransaction();
         try {
 
             $userLoginResponse = $this->userService->findUserLogin($id);
 
             if (!$userLoginResponse->isSuccess()) {
-                #$this->em->rollback();
                 return $this->json($userLoginResponse->getMessage(), $userLoginResponse->getStatusCode());
             }
             $userLogin = $userLoginResponse->getData()[ 'userLogin' ];
@@ -144,12 +143,10 @@ class UserController extends BaseController
             $password = $this->validateService->validateJson($request)->getData()[ 'password' ];
 
             if (!$this->userService->isPasswordValid($userLogin, $password)) {
-                #$this->em->rollback();
                 return $this->json("Invalid password", Response::HTTP_BAD_REQUEST);
             }
             $user = $this->userService->findUser($id);
             if (!$user->isSuccess()) {
-                # $this->em->rollback();
                 return $this->json($user->getMessage(), $user->getStatusCode());
             }
 
@@ -160,7 +157,6 @@ class UserController extends BaseController
             try {
                 $this->em->remove($user);
             } catch (Exception $e) {
-
                 return $this->json($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
             }
 
@@ -169,9 +165,9 @@ class UserController extends BaseController
 
             return $this->json("User deleted successfully", Response::HTTP_OK);
 
-        } catch (Exception $exception) {
+        } catch (Exception $e) {
             #$this->em->rollback();
-            return $this->json("Failed to delete user", Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->json("Failed to delete user : {$e->getMessage()} ", Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
