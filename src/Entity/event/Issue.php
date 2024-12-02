@@ -17,30 +17,32 @@ class Issue extends BaseEntity
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(nullable:false)]
+    #[ORM\Column(nullable: false)]
     #[Assert\NotBlank]
     private ?int $countNumber = null;
 
-    #[ORM\Column(length: 255, nullable:false)]
+    #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank]
     private ?string $status = null;
 
-    #[ORM\Column(length: 255, nullable:false)]
+    #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank]
     private ?string $author = null;
 
     #[ORM\ManyToOne(targetEntity: Contact::class)]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true, onDelete: "SET NULL")]
     private ?Contact $technicianContacted = null;
 
+
     #[ORM\ManyToOne(targetEntity: Contact::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: "SET NULL")]
     private ?Contact $technicianComing = null;
 
-    #[ORM\Column(length: 50, nullable:false)]
+    #[ORM\Column(length: 50, nullable: false)]
     #[Assert\NotBlank]
     private ?string $summary = null;
 
-    #[ORM\Column(length: 1000, nullable:false)]
+    #[ORM\Column(length: 1000, nullable: false)]
     #[Assert\NotBlank]
     private ?string $description = null;
 
@@ -53,7 +55,7 @@ class Issue extends BaseEntity
     #[ORM\Column(nullable: true)]
     private ?int $followUp = null;
 
-    #[ORM\Column(length: 1000, nullable:true)]
+    #[ORM\Column(length: 1000, nullable: true)]
     private ?string $solution = null;
 
     public function getId(): ?int
@@ -193,5 +195,5 @@ class Issue extends BaseEntity
         return $this;
     }
 
-  
+
 }

@@ -291,33 +291,7 @@ class UserService
         }
     }
 
-
-    //! --------------------------------------------------------------------------------------------
-
-    public function updateAvatar(Request $request, int $userId): ApiResponse
-    {
-        try {
-            $user = $this->findUser($userId);
-            if (!$user->isSuccess()) {
-                return $user;
-            }
-            $user = $user->getData()[ 'user' ];
-            $avatar = $this->pictureService->createPicture($request);
-            if (!$avatar->isSuccess()) {
-                return $avatar;
-            }
-            $avatar = $avatar->getData()[ 'picture' ];
-            // Associer l'avatar à l'utilisateur
-            $user->setAvatar($avatar);
-
-            $this->em->flush();
-            return ApiResponse::success("Avatar updated successfully", [], Response::HTTP_OK);
-        } catch (Exception $exception) {
-            return ApiResponse::error("error while updating Avatar :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-
+    
     //! --------------------------------------------------------------------------------------------
 
     /**

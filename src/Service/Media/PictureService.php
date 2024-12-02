@@ -23,6 +23,7 @@ class PictureService
         private ValidatorService $validateService,
         private SluggerInterface $slugger,
         private ParameterBagInterface $params,
+
     ) {
     }
 
@@ -123,6 +124,51 @@ class PictureService
         return $this->slugger->slug($cleanedFilename)->lower();
     }
 
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Updates the avatar of a specified entity.
+     *
+     * @param Request $request The HTTP request containing the file upload.
+     * @param int $Id The unique identifier of the entity to update.
+     * @param string $entityName The name of the entity type (e.g., 'User', 'Contact', etc.).
+     * @param object $service The service handling the operations for the specified entity type.
+     *
+     * @return ApiResponse
+     * 
+     * - Returns a success response if the avatar is updated successfully.
+     * - Returns an error response if:
+     *   - The entity is not found.
+     *   - The uploaded picture is invalid.
+     *   - Any exception occurs during processing.
+     *
+     * @throws Exception If an error occurs while updating the avatar.
+     */
+    public function updateAvatar(Request $request, int $Id, string $entityName, object $service): ApiResponse
+    {
+        try {
+            $methodName = 'find' . ucfirst($entityName);
+            $serviceName = "{$entityName}Service";
+            $entity = $service->$serviceName->$methodName($Id);
+            if (!$entity->isSuccess()) {
+                return $entity;
+            }
+            $entity = $entity->getData()[$entityName];
+            $avatar = $this->createPicture($request);
+            if (!$avatar->isSuccess()) {
+                return $avatar;
+            }
+            $avatar = $avatar->getData()[ 'picture' ];
+            // Associer l'avatar à l'utilisateur
+            $entity->setAvatar($avatar);
+
+            $this->em->flush();
+            return ApiResponse::success("Avatar updated successfully", [], Response::HTTP_OK);
+        } catch (Exception $exception) {
+            return ApiResponse::error("error while updating Avatar :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
 
 
 

@@ -89,7 +89,7 @@ class User extends BaseEntity implements RecipientInterface
     #[Groups(['user'])]
     private ?UserLogin $userLogin = null;
 
-    #[ORM\OneToOne(cascade: ['persist'])]
+    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
     #[Groups(['user'])]
     private ?picture $avatar = null;
 
