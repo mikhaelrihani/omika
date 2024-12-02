@@ -4,7 +4,6 @@ namespace App\Entity\User;
 
 use App\Entity\BaseEntity;
 use App\Entity\Event\Event;
-use App\Entity\Event\EventInfo;
 use App\Repository\User\UserRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -13,10 +12,9 @@ use Doctrine\ORM\Mapping as ORM;
 use App\Entity\Media\Picture;
 use App\Interface\entity\RecipientInterface;
 use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Serializer\Annotation\Groups;
 
-#[UniqueEntity(fields: ['avatar'], message: 'This picture is already used as an avatar by another user.')]
+//#[UniqueEntity(fields: ['avatar'], message: 'This picture is already used as an avatar by another user.')]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 class User extends BaseEntity implements RecipientInterface
 {
@@ -91,7 +89,7 @@ class User extends BaseEntity implements RecipientInterface
     #[Groups(['user'])]
     private ?UserLogin $userLogin = null;
 
-    #[ORM\OneToOne(cascade: ['persist'])]
+    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
     #[Groups(['user'])]
     private ?picture $avatar = null;
 
@@ -103,7 +101,7 @@ class User extends BaseEntity implements RecipientInterface
     /**
      * @var Collection<int, Absence>
      */
-    #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'user')]
+    #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'user', cascade: [ 'remove'])]
     #[Groups(['user'])]
     private Collection $absence;
 
@@ -115,7 +113,7 @@ class User extends BaseEntity implements RecipientInterface
     /**
      * @var Collection<int, Event>
      */
-    #[ORM\ManyToMany(targetEntity: EventInfo::class, mappedBy: 'favoritedBy')]
+    #[ORM\ManyToMany(targetEntity: Event::class, mappedBy: 'favoritedBy', cascade: [ 'remove'])]
     private Collection $favoriteEvents;
 
     public function __construct()

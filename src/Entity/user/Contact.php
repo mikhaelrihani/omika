@@ -3,6 +3,7 @@
 namespace App\Entity\User;
 
 use App\Entity\BaseEntity;
+use App\Entity\Media\Picture;
 use App\Interface\entity\RecipientInterface;
 use App\Repository\User\ContactRepository;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -90,9 +91,12 @@ class Contact extends BaseEntity implements RecipientInterface
     /**
      * @var Collection<int, Absence>
      */
-    #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'contact')]
+    #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'contact',cascade: [ 'remove'])]
     #[Groups(['contact'])]
     private Collection $absence;
+
+    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    private ?Picture $avatar = null;
 
     public function __construct()
     {
@@ -246,6 +250,18 @@ class Contact extends BaseEntity implements RecipientInterface
                 $absence->setContact(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getAvatar(): ?Picture
+    {
+        return $this->avatar;
+    }
+
+    public function setAvatar(?Picture $avatar): static
+    {
+        $this->avatar = $avatar;
 
         return $this;
     }

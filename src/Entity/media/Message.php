@@ -29,7 +29,7 @@ class Message extends BaseEntity
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?User $writer = null;
 
     #[ORM\Column(type: 'integer', nullable: false)]

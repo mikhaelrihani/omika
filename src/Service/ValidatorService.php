@@ -6,6 +6,7 @@ use App\Utils\ApiResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\ConstraintViolationListInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
@@ -28,23 +29,33 @@ class ValidatorService
     {
         $errors = $this->validator->validate($entity);
         if (count($errors) > 0) {
-            $errorMessages = [];
-            foreach ($errors as $error) {
-                $errorMessages[] = [
-                    'field'   => $error->getPropertyPath(),
-                    'message' => $error->getMessage(),
-                ];
-            }
-
+            $errorMessages = $this->formatErrors($errors);
             return ApiResponse::error(
-                "Validation failed",
-                ['errors' => $errorMessages],
-                Response::HTTP_BAD_REQUEST
+                message: "Validation failed",
+                data: ['errors' => $errorMessages],
+                statusCode: Response::HTTP_BAD_REQUEST
             );
         }
 
         return ApiResponse::success("Validation successful", [], Response::HTTP_OK);
     }
+
+    //! --------------------------------------------------------------------------------------------
+
+    private function formatErrors(ConstraintViolationListInterface $errors): array
+    {
+        $errorMessages = [];
+        foreach ($errors as $error) {
+            $errorMessages[] = [
+                'field'   => $error->getPropertyPath(),
+                'message' => $error->getMessage()
+            ];
+        }
+
+        return $errorMessages;
+    }
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Validates JSON payloads against custom constraints.
