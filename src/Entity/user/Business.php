@@ -16,12 +16,12 @@ class Business extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['user', 'contact'])]
+    #[Groups(['user', 'contact', 'business'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 100, nullable: false)]
     #[Assert\NotBlank(message: "The business name should not be blank.")]
-    #[Groups(['contact'])]
+    #[Groups(['user', 'contact', 'business'])]
     private ?string $name = null;
 
     /**
@@ -29,7 +29,7 @@ class Business extends BaseEntity
      */
     #[ORM\OneToMany(mappedBy: 'business', targetEntity: Contact::class, cascade: ['remove'], orphanRemoval: true)]
     private Collection $contacts;
-    
+
     /**
      * @var Collection<int, User>
      */
@@ -97,4 +97,26 @@ class Business extends BaseEntity
         return $this;
     }
 
+
+    public function addContact(Contact $contact): static
+    {
+        if (!$this->contacts->contains($contact)) {
+            $this->contacts->add($contact);
+            $contact->setBusiness($this);
+        }
+
+        return $this;
+    }
+
+    public function removeContact(Contact $contact): static
+    {
+        if ($this->contacts->removeElement($contact)) {
+            // set the owning side to null (unless already changed)
+            if ($contact->getBusiness() === $this) {
+                $contact->setBusiness(null);
+            }
+        }
+
+        return $this;
+    }
 }

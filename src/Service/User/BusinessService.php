@@ -5,6 +5,7 @@ namespace App\Service\User;
 use App\Entity\User\Business;
 use App\Entity\User\User;
 use App\Repository\User\BusinessRepository;
+use App\Repository\User\ContactRepository;
 use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
 use App\Utils\CurrentUser;
@@ -22,7 +23,8 @@ class BusinessService
         private BusinessRepository $businessRepository,
         private SerializerInterface $serializer,
         private ValidatorService $validatorService,
-        private CurrentUser $currentUser
+        private CurrentUser $currentUser,
+        private ContactRepository $contactRepository
     ) {
     }
 
@@ -41,11 +43,11 @@ class BusinessService
 
     public function getBusinesses(): ApiResponse
     {
-        $business = $this->businessRepository->findAll();
-        if (!$business) {
+        $businesses = $this->businessRepository->findAll();
+        if (!$businesses) {
             return ApiResponse::error("No business found", null, Response::HTTP_NOT_FOUND);
         }
-        return ApiResponse::success("Businesses retrieved successfully", ["business" => $business], Response::HTTP_OK);
+        return ApiResponse::success("Businesses retrieved successfully", ["businesses" => $businesses], Response::HTTP_OK);
     }
     //! --------------------------------------------------------------------------------------------
 
@@ -57,14 +59,29 @@ class BusinessService
             if (!$data->isSuccess()) {
                 return ApiResponse::error($data->getMessage(), null, Response::HTTP_BAD_REQUEST);
             }
+
+            $exist = $this->isBusinessAlreadyExist($data);
+            if (!$exist->isSuccess()) {
+                return $exist;
+            }
             $business = (new Business())
                 ->setName($data->getData()[ 'name' ]);
-            $business->addUser($data->getData()[ 'contact' ]);
+
+            $contact = $this->contactRepository->find($data->getData()[ 'contact' ]);
+            if (!$contact) {
+                return ApiResponse::error("There is no contact with this id", null, Response::HTTP_BAD_REQUEST);
+            }
+            $business->addContact($contact);
+
+            $response = $this->validatorService->validateEntity($business);
+            if (!$response->isSuccess()) {
+                return $response;
+            }
 
             $this->em->persist($business);
             $this->em->flush();
 
-            return ApiResponse::success("Business created successfully", ["businessId" => $business->getId()], Response::HTTP_CREATED);
+            return ApiResponse::success("Business created successfully", ["business" => $business], Response::HTTP_CREATED);
         } catch (Exception $e) {
             return ApiResponse::error($e->getMessage(), null, Response::HTTP_BAD_REQUEST);
         }
@@ -78,10 +95,21 @@ class BusinessService
             if (!$business) {
                 return ApiResponse::error("There is no business with this id", null, Response::HTTP_BAD_REQUEST);
             }
+
+            $data = $this->validatorService->validateJson($request);
+            if (!$data->isSuccess()) {
+                return ApiResponse::error($data->getMessage(), null, Response::HTTP_BAD_REQUEST);
+            }
+
+            $exist = $this->isBusinessAlreadyExist($data);
+            if (!$exist->isSuccess()) {
+                return $exist;
+            }
+            
             $business = $this->serializer->deserialize($request->getContent(), Business::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $business]);
             $this->em->flush();
 
-            return ApiResponse::success("Succesfully updated {$business->getName()}", ["businessId" => $business->getId()], Response::HTTP_OK);
+            return ApiResponse::success("Succesfully updated {$business->getName()}", ["business" => $business], Response::HTTP_OK);
         } catch (Exception $exception) {
             return ApiResponse::error($exception->getMessage(), null, Response::HTTP_BAD_REQUEST);
         }
@@ -113,4 +141,14 @@ class BusinessService
         }
     }
 
+    private function isBusinessAlreadyExist(object $data): ApiResponse
+    {
+        $businesses = $this->businessRepository->findAll();
+        $businessNameAlreadyExist = array_filter($businesses, fn($business) => $business->getName() == $data->getData()[ 'name' ]);
+        if ($businessNameAlreadyExist) {
+            return ApiResponse::error("This business name already exist", null, Response::HTTP_BAD_REQUEST);
+        } else {
+            return ApiResponse::success("Business name is unique", null, Response::HTTP_OK);
+        }
+    }
 }
