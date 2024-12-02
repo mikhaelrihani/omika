@@ -35,7 +35,18 @@ class ContactService
 
     //! --------------------------------------------------------------------------------------------
 
-   
+    /**
+     * Retrieves a contact by its ID.
+     *
+     * This method fetches a contact entity from the database using the provided ID. 
+     * If no contact is found with the given ID, it returns an error response. 
+     * Otherwise, it returns a success response with the retrieved contact data.
+     *
+     * @param int $id The ID of the contact to retrieve.
+     *
+     * @return ApiResponse Returns an error response if no contact is found,
+     *                     or a success response with the contact data if found.
+     */
     public function findContact(int $id): apiResponse
     {
         $contact = $this->em->getRepository(Contact::class)->find($id);
@@ -47,9 +58,28 @@ class ContactService
 
     //! --------------------------------------------------------------------------------------------
 
+    /**
+     * Creates a new contact and associates it with a business.
+     *
+     * This method takes an array of contact data, validates it, and persists a new 
+     * contact entity in the database. If the associated business ID is invalid, 
+     * or if the contact data is invalid, an error response is returned.
+     *
+     * @param array $data An associative array containing the following keys:
+     *                    - 'firstname': string, the first name of the contact.
+     *                    - 'surname': string, the surname of the contact.
+     *                    - 'email': string, the email of the contact.
+     *                    - 'phone': string, the phone number of the contact.
+     *                    - 'whatsapp': string, the WhatsApp number of the contact.
+     *                    - 'job': string, the job title of the contact.
+     *                    - 'businessId': int, the ID of the business to associate with the contact.
+     *
+     * @return ApiResponse Returns a success response with the created contact 
+     *                     if successful, or an error response if something fails.
+     */
     public function createContact(array $data): ApiResponse
     {
-      
+
         try {
 
             $contact = (new Contact())
@@ -75,17 +105,32 @@ class ContactService
                 return $response;
             }
 
-        
+
             $this->em->flush();
             return ApiResponse::success("Contact created successfully", ["contact" => $contact], Response::HTTP_CREATED);
 
         } catch (Exception $exception) {
-    
+
             return ApiResponse::error("error while creating contact :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     //! --------------------------------------------------------------------------------------------
+
+
+    /**
+     * Updates an existing contact with new data.
+     *
+     * This method fetches an existing contact by its ID, updates its properties 
+     * using the provided JSON data, validates the updated entity, and saves the 
+     * changes to the database.
+     *
+     * @param int $contactId The ID of the contact to be updated.
+     * @param string $data A JSON string containing the updated contact data.
+     *
+     * @return ApiResponse Returns a success response with the updated contact 
+     *                     if successful, or an error response if something fails.
+     */
     public function updateContact(int $contactId, string $data): ApiResponse
     {
         try {
@@ -94,7 +139,7 @@ class ContactService
                 return $contact;
             }
             $contact = $contact->getData()[ 'user' ];
-           
+
             $this->serializer->deserialize($data, Contact::class, 'json', [
                 AbstractNormalizer::OBJECT_TO_POPULATE => $contact,
             ]);
@@ -109,6 +154,7 @@ class ContactService
         }
     }
 
+    //! --------------------------------------------------------------------------------------------
 
 
 }

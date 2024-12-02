@@ -7,6 +7,7 @@ use App\Repository\User\UserLoginRepository;
 use App\Repository\User\UserRepository;
 use App\Service\Event\EventService;
 use App\Service\Media\PictureService;
+use App\Service\User\BusinessService;
 use App\Service\User\UserService;
 use App\Service\ValidatorService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -27,11 +28,24 @@ class UserController extends BaseController
         private UserService $userService,
         private ValidatorService $validateService,
         private EventService $eventService,
-        private PictureService $pictureService
+        private PictureService $pictureService,
+        private BusinessService $businessService,
     ) {
     }
 
 
+    /**
+     * Retrieves all users from the system.
+     *
+     * This controller method fetches all users from the database via the `userRepository`.
+     * If users are found, they are returned in the response.
+     * If no users are found, an error message is returned.
+     *
+     * @Route("/getAllUsers", name="getAllUsers", methods={"GET"})
+     *
+     * @return JsonResponse A JSON response containing the list of users 
+     *                      if found, or an error message if no users are found.
+     */
     #[Route('/getAllUsers', name: 'getAllUsers', methods: 'get')]
     public function index(): JsonResponse
     {
@@ -41,14 +55,29 @@ class UserController extends BaseController
         }
         return $this->json(["message" => "Users retrieved successfully", "contacts" => $users], Response::HTTP_OK, [], ['groups' => 'user']);
     }
+
     //! --------------------------------------------------------------------------------------------
 
-
+    /**
+     * Retrieves a single user by their ID.
+     *
+     * This controller method fetches a user from the system using the provided ID.
+     * It delegates the user retrieval to the `userService`.
+     * If the user is found, it returns the user's details in the response.
+     * Otherwise, an error message is provided.
+     *
+     * @Route("/getOneUser/{id}", name="getOneUser", methods={"GET"})
+     *
+     * @param int $id The ID of the user to retrieve.
+     *
+     * @return JsonResponse A JSON response containing the user data 
+     *                      if found, or an error message if the user does not exist.
+     */
     #[Route('/getOneUser/{id}', name: 'getOneUser', methods: 'get')]
     public function getOneUser(int $id): JsonResponse
     {
         $response = $this->userService->findUser($id);
-        if (!$response->isSuccess()) {
+        if ($response === null || !$response->isSuccess()) {
             return $this->json($response->getMessage(), $response->getStatusCode());
         }
         return $this->json(["message" => $response->getMessage(), "user" => $response->getData()[ "user" ]], $response->getStatusCode(), [], ['groups' => 'user']);
@@ -73,6 +102,9 @@ class UserController extends BaseController
     {
         try {
             $response = $this->validateService->validateJson($request);
+            if (!$response) {
+                return $this->json("Invalid JSON data", Response::HTTP_BAD_REQUEST);
+            }
             if (!$response->isSuccess()) {
                 return $this->json($response->getMessage(), $response->getStatusCode());
             }
@@ -91,35 +123,25 @@ class UserController extends BaseController
     //! --------------------------------------------------------------------------------------------
 
     /**
-     * Deletes a user and their associated user login if the provided password is valid.
-     * Deletes the user from all events they are registered for.
+     * Deletes a user from the system.
      *
-     * @param int $id The ID of the user to be deleted.
-     * @param Request $request The HTTP request containing the user's password for verification.
+     * This controller method deletes a user from the system by their ID.
+     * It first retrieves the user using the `userService`, then removes the user from all events.
+     * If the user is successfully removed from all events, the user is deleted from the database.
+     * If any errors occur during the process, an error message is returned.
      *
-     * @return JsonResponse Returns a JSON response indicating the success or failure of the deletion process.
+     * @Route("/delete/{id}", name="delete", methods={"DELETE"})
      *
-     * @throws Exception If an error occurs during the deletion process, a failure response is returned and the transaction is rolled back.
+     * @param int $id The ID of the user to delete.
+     *
+     * @return JsonResponse A JSON response indicating the status of the operation.
      */
     #[Route('/delete/{id}', name: 'delete', methods: 'delete')]
-    public function delete(int $id, Request $request): JsonResponse
+    public function delete(int $id): JsonResponse
     {
         $this->em->beginTransaction();
         try {
 
-            $userLoginResponse = $this->userService->findUserLogin($id);
-
-            if (!$userLoginResponse->isSuccess()) {
-                return $this->json($userLoginResponse->getMessage(), $userLoginResponse->getStatusCode());
-            }
-            $userLogin = $userLoginResponse->getData()[ 'userLogin' ];
-
-            // Validate the provided password
-            $password = $this->validateService->validateJson($request)->getData()[ 'password' ];
-
-            if (!$this->userService->isPasswordValid($userLogin, $password)) {
-                return $this->json("Invalid password", Response::HTTP_BAD_REQUEST);
-            }
             $user = $this->userService->findUser($id);
             if (!$user->isSuccess()) {
                 return $this->json($user->getMessage(), $user->getStatusCode());
@@ -127,7 +149,10 @@ class UserController extends BaseController
 
             // Remove the user from all events
             $user = $user->getData()[ "user" ];
-            $this->eventService->removeUserFromAllEvents($user);
+            $response = $this->eventService->removeUserFromAllEvents($user);
+            if (!$response->isSuccess()) {
+                return $this->json($response->getMessage(), $response->getStatusCode());
+            }
 
             try {
                 $this->em->remove($user);
@@ -213,4 +238,6 @@ class UserController extends BaseController
 
     //! --------------------------------------------------------------------------------------------
 
+
+   
 }

@@ -11,6 +11,7 @@ use App\Repository\User\UserLoginRepository;
 use App\Repository\User\UserRepository;
 use App\Service\Event\EventService;
 use App\Service\Media\PictureService;
+use App\Service\User\BusinessService;
 use App\Service\User\ContactService;
 use App\Service\User\UserService;
 use App\Service\ValidatorService;
@@ -31,7 +32,8 @@ class ContactController extends BaseController
         private ValidatorService $validateService,
         private EventService $eventService,
         private PictureService $pictureService,
-        public ContactService $contactService
+        public ContactService $contactService,
+        private BusinessService $businessService
     ) {
     }
 
@@ -133,21 +135,32 @@ class ContactController extends BaseController
     #[Route('/delete/{id}', name: 'delete', methods: 'delete')]
     public function delete(int $id): JsonResponse
     {
+        $this->em->beginTransaction();
         try {
             $contact = $this->contactService->findContact($id);
             if (!$contact->isSuccess()) {
+                $this->em->rollback();
                 return $this->json($contact->getMessage(), $contact->getStatusCode());
+            }
+
+            // delete the business if the Contact is the last user in the business
+            $response = $this->businessService->delete($contact->getData()[ 'contact' ]);
+            if (!$response->isSuccess()) {
+                $this->em->rollback();
+                return $this->json($response->getMessage(), $response->getStatusCode());
             }
             try {
                 $this->em->remove($contact->getData()[ 'contact' ]);
             } catch (Exception $e) {
+                $this->em->rollback();
                 return $this->json($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
             }
-
+            $this->em->commit();
             $this->em->flush();
             return $this->json("Contact deleted successfully", Response::HTTP_OK);
 
         } catch (Exception $e) {
+            $this->em->rollback();
             return $this->json("Failed to delete contact : {$e->getMessage()} ", Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

@@ -3,6 +3,7 @@
 namespace App\Service\User;
 
 use App\Entity\User\Business;
+use App\Entity\User\Contact;
 use App\Entity\User\User;
 use App\Repository\User\BusinessRepository;
 use App\Repository\User\ContactRepository;
@@ -30,17 +31,34 @@ class BusinessService
 
     //! --------------------------------------------------------------------------------------------
 
-
-    public function isLastUser(User $user): bool
+    /**
+     * Checks if a contact is the last contact associated with a business.
+     *
+     * This method checks if a contact is the last contact associated with a business.
+     * If the contact is the last one, it returns true; otherwise, it returns false.
+     *
+     * @param Contact $contact The contact entity to check.
+     *
+     * @return bool Returns true if the contact is the last one associated with a business, false otherwise.
+     */
+    public function isLastContact(Contact $contact): bool
     {
-        $business = $user->getBusiness();
-        $users = $business->getUsers();
-        return (count($users) == 1) ? true : false;
+        $business = $contact->getBusiness();
+        $contacts = $business->getContacts();
+        return (count($contacts) == 1) ? true : false;
     }
 
     //! --------------------------------------------------------------------------------------------
 
-
+    /**
+     * Retrieves all businesses from the repository.
+     *
+     * This method fetches all business entities from the database using the
+     * business repository. If no businesses are found, an error response is returned.
+     * Otherwise, a success response is returned with the list of businesses.
+     *
+     * @return ApiResponse The API response containing the list of businesses or an error message.
+     */
     public function getBusinesses(): ApiResponse
     {
         $businesses = $this->businessRepository->findAll();
@@ -52,31 +70,51 @@ class BusinessService
     //! --------------------------------------------------------------------------------------------
 
 
+    /**
+     * Creates a new business entity and associates it with a contact.
+     *
+     * @param Request $request The HTTP request containing JSON data for creating the business.
+     *
+     * @return ApiResponse
+     *
+     * **Process**:
+     * - Validates the input JSON data.
+     * - Checks if a business with the same name already exists using `isBusinessAlreadyExist`.
+     * - Verifies the existence of the contact by ID.
+     * - Validates and persists the new business entity.
+     */
     public function createBusiness(Request $request): ApiResponse
     {
         try {
+            // Validate the JSON data in the request
             $data = $this->validatorService->validateJson($request);
             if (!$data->isSuccess()) {
                 return ApiResponse::error($data->getMessage(), null, Response::HTTP_BAD_REQUEST);
             }
 
+            // Check if the business name already exists
             $exist = $this->isBusinessAlreadyExist($data);
             if (!$exist->isSuccess()) {
                 return $exist;
             }
+
+            // Create a new business entity
             $business = (new Business())
                 ->setName($data->getData()[ 'name' ]);
 
+            // Find and associate the contact
             $contact = $this->contactRepository->find($data->getData()[ 'contact' ]);
             if (!$contact) {
-                return ApiResponse::error("There is no contact with this id", null, Response::HTTP_BAD_REQUEST);
+                return ApiResponse::error("There is no contact with this ID", null, Response::HTTP_BAD_REQUEST);
             }
             $business->addContact($contact);
 
+            // Validate the business entity
             $response = $this->validatorService->validateEntity($business);
             if (!$response->isSuccess()) {
                 return $response;
             }
+
 
             $this->em->persist($business);
             $this->em->flush();
@@ -87,7 +125,22 @@ class BusinessService
         }
     }
 
+
     //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Updates an existing business entity.
+     *
+     * This method retrieves a business by its ID and updates its details using the provided JSON data.
+     * The method ensures the business exists, validates the input data, and prevents duplicate business names.
+     * After successful validation and deserialization, the business entity is updated and persisted.
+     *
+     * @param int $id The ID of the business to update.
+     * @param Request $request The HTTP request containing the JSON payload with updated business details.
+     *
+     * @return ApiResponse Returns a success response with the updated business data, 
+     *                     or an error response if validation fails or the business does not exist.
+     */
     public function updateBusiness(int $id, Request $request): ApiResponse
     {
         try {
@@ -105,7 +158,7 @@ class BusinessService
             if (!$exist->isSuccess()) {
                 return $exist;
             }
-            
+
             $business = $this->serializer->deserialize($request->getContent(), Business::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $business]);
             $this->em->flush();
 
@@ -117,30 +170,48 @@ class BusinessService
     }
     //! --------------------------------------------------------------------------------------------
 
-
-    public function delete(Request $request)
+    /**
+     * Deletes a business entity.
+     *
+     * This method deletes a business entity from the database if the contact is the last user of the business.
+     * If the contact is the last user, the business is removed from the database.
+     * Otherwise, an error response is returned indicating that the business cannot be deleted.
+     *
+     * @param Contact $contact The contact entity associated with the business to delete.
+     *
+     * @return ApiResponse Returns a success response if the business is deleted successfully,
+     *                     or an error response if the business cannot be deleted.
+     */
+    public function delete(Contact $contact): ApiResponse
     {
         try {
-            $data = $this->validatorService->validateJson($request);
-            if (!$data->isSuccess()) {
-                return ApiResponse::error($data->getMessage(), null, Response::HTTP_BAD_REQUEST);
+            $business = $contact->getBusiness();
+            $isLastContact = $this->isLastContact($contact);
+            if ($isLastContact) {
+                $this->em->remove($business);
+                $this->em->flush();
             }
-            $business = $this->businessRepository->find($data->getData()[ 'businessId' ]);
-            if (!$business) {
-                return ApiResponse::error("There is no business with this id", null, Response::HTTP_BAD_REQUEST);
-            }
-            $isLastUser = $this->isLastUser($business);
-            if (!$isLastUser) {
-                return ApiResponse::error("You can't delete this business because it has more than one user", null, Response::HTTP_BAD_REQUEST);
-            }
-            $this->em->remove($business);
-            $this->em->flush();
-            return ApiResponse::success("Business deleted successfully", null, Response::HTTP_OK);
+            return ApiResponse::success("Business deleted successfully if the user was last user of the business", null, Response::HTTP_OK);
         } catch (Exception $e) {
             return ApiResponse::error($e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Checks if a business name already exists in the repository.
+     *
+     * This method retrieves all businesses from the repository and checks if any existing business
+     * has the same name as the one provided in the request data. If a match is found, it returns an error response.
+     * Otherwise, it confirms the uniqueness of the business name.
+     *
+     * @param object $data The validated request data containing the `name` field of the business to check.
+     *
+     * @return ApiResponse Returns an error response if a business with the same name exists,
+     *                     or a success response if the name is unique.
+     */
     private function isBusinessAlreadyExist(object $data): ApiResponse
     {
         $businesses = $this->businessRepository->findAll();
@@ -151,4 +222,7 @@ class BusinessService
             return ApiResponse::success("Business name is unique", null, Response::HTTP_OK);
         }
     }
+
+    //! --------------------------------------------------------------------------------------------
+
 }

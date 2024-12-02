@@ -5,6 +5,8 @@ namespace App\Controller;
 use App\Service\JwtTokenService;
 use App\Service\MailerService;
 use App\Service\SecurityService;
+use App\Service\User\UserService;
+use App\Service\ValidatorService;
 use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -20,20 +22,15 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/api/security', name: "app_security_")]
 class SecurityController extends AbstractController
 {
-    private SecurityService $securityService;
-    private MailerService $mailerService;
-
-    /**
-     * SecurityController constructor.
-     *
-     * @param SecurityService $securityService The service managing security-related logic.
-     * @param MailerService $mailerService Service responsible for sending emails.
-     */
-    public function __construct(SecurityService $securityService, MailerService $mailerService)
-    {
-        $this->securityService = $securityService;
-        $this->mailerService = $mailerService;
+    public function __construct(
+        private SecurityService $securityService,
+        private MailerService $mailerService,
+        private UserService $userService,
+        private ValidatorService $validateService
+    ) {
     }
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Logs out the user by revoking their JWT refresh token.
@@ -55,6 +52,9 @@ class SecurityController extends AbstractController
         // Respond with a successful logout message
         return new JsonResponse(['message' => 'Logged out successfully. Refresh token revoked'], Response::HTTP_OK);
     }
+
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Updates the user's password.
@@ -83,6 +83,9 @@ class SecurityController extends AbstractController
             return new JsonResponse(['message' => 'An error occurred while updating the password: ' . $th->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Sends a password reset link to the user.
@@ -130,6 +133,9 @@ class SecurityController extends AbstractController
         }
     }
 
+
+    //! --------------------------------------------------------------------------------------------
+
     /**
      * Verifies the validity of a password reset token.
      *
@@ -156,4 +162,44 @@ class SecurityController extends AbstractController
 
         return new JsonResponse(['message' => 'Token is valid. Proceed with fetching setNewPassword route'], Response::HTTP_OK);
     }
+
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Validates a user's password.
+     *
+     * This controller method verifies if the provided password matches the stored password
+     * hash for the specified user. If the user is not found or the request data is invalid,
+     * an appropriate error message is returned.
+     *
+     * @Route("/isPasswordValid/{userId}", name="isPasswordValid", methods={"POST"})
+     *
+     * @param int $userId The ID of the user whose password needs to be validated.
+     * @param Request $request The HTTP request containing the password to validate.
+     *
+     * @return bool|JsonResponse Returns `true` if the password is valid, `false` otherwise. 
+     *                           If an error occurs, returns a JSON response with an error message.
+     */
+    #[Route('/isPasswordValid/{userId}', name: 'isPasswordValid', methods: 'post')]
+    public function isPasswordValid(int $userId, Request $request): bool|JsonResponse
+    {
+        $userLogin = $this->userService->findUserLogin($userId);
+        if (!$userLogin->isSuccess()) {
+            return $this->json($userLogin->getMessage(), $userLogin->getStatusCode());
+        }
+
+        $userLogin = $userLogin->getData()[ "userLogin" ];
+        $password = $this->validateService->validateJson($request);
+        if (!$password->isSuccess()) {
+            return $this->json($password->getMessage(), $password->getStatusCode());
+        }
+
+        $isPasswordValid = password_verify($password->getData()[ "password" ], $userLogin->getPassword());
+
+        return $this->json($isPasswordValid, Response::HTTP_OK);
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
 }

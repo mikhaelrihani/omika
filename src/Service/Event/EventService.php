@@ -474,9 +474,9 @@ class EventService
             $this->em->flush();
             return ApiResponse::success('User removed from all EventInfos successfully');
         } catch (ORMException $e) {
-            return ApiResponse::error('An error occurred while removing the user from EventInfos: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while removing the user from EventInfos: ' . $e->getMessage(),null,Response::HTTP_INTERNAL_SERVER_ERROR);
         } catch (Exception $e) {
-            return ApiResponse::error('An unexpected error occurred while removing the user: ' . $e->getMessage());
+            return ApiResponse::error('An unexpected error occurred while removing the user: ' . $e->getMessage(),null,Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -515,35 +515,31 @@ class EventService
                 }
             }
             $this->em->flush();
-            return ApiResponse::success('User removed from all EventTasks successfully');
+            return ApiResponse::success('User removed from all EventTasks successfully',null,Response::HTTP_OK);
         } catch (ORMException $e) {
-            return ApiResponse::error('An error occurred while removing the user from EventTasks: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while removing the user from EventTasks: ' . $e->getMessage(),null,Response::HTTP_OK);
         } catch (Exception $e) {
-            return ApiResponse::error('An unexpected error occurred while removing the user: ' . $e->getMessage());
+            return ApiResponse::error('An unexpected error occurred while removing the user: ' . $e->getMessage(),null,Response::HTTP_OK);
         }
     }
 
     //! --------------------------------------------------------------------------------------------
 
     /**
-     * Removes the user from all EventInfos and EventTasks they are associated with.
+     * Removes the user from all events they are associated with.
      * 
-     * This method calls both `removeUserFromAllEventInfos()` and 
-     * `removeUserFromAllEventTasks()` to ensure that the user is removed from 
-     * all Event-related data.
-     *
-     * @param User $user The user to be removed from all Events.
-     * 
-     * @return void
+     * This method removes the user from all EventInfos and EventTasks they are associated with.
+     * @param User $user The user to be removed from all events.
+     * @return ApiResponse A structured response indicating success or failure.
      */
     public function removeUserFromAllEvents(User $user): ApiResponse
     {
         try {
             $this->removeUserFromAllEventInfos($user);
             $this->removeUserFromAllEventTasks($user);
-            return ApiResponse::success('User removed from all events successfully');
+            return ApiResponse::success('User removed from all events successfully',null, Response::HTTP_OK);
         } catch (Exception $e) {
-            return ApiResponse::error('An unexpected error occurred while removing the user from all events: ' . $e->getMessage());
+            return ApiResponse::error('An unexpected error occurred while removing the user from all events: ' . $e->getMessage(),null, Response::HTTP_OK);
         }
     }
 
@@ -594,9 +590,9 @@ class EventService
             // Execute the query to fetch results
             $filteredEvents = $qb->getQuery()->getResult();
 
-            return ApiResponse::success('Events filtered successfully.', $filteredEvents);
+            return ApiResponse::success('Events filtered successfully.', $filteredEvents,Response::HTTP_OK);
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while filtering events: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while filtering events: ' . $e->getMessage(),null,Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
