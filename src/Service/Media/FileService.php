@@ -132,7 +132,7 @@ class FileService
         // Téléverser le fichier
         try {
             $this->phpseclibService->uploadFile($uploadedFile->getPathname(), $filePath);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return ApiResponse::error('Erreur lors du téléversement du fichier', null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 

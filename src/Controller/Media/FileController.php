@@ -98,8 +98,13 @@ class FileController extends BaseController
      * @return JsonResponse A JSON response indicating the status of the file deletion.
      */
     #[Route('/delete', name: 'delete', methods: ['POST'])]
-    public function delete(string $filePath): JsonResponse
+    public function delete(Request $request): JsonResponse
     {
+        $filePath = $this->validatorService->validateJson($request);
+        if (!$filePath) {
+            return new JsonResponse(['error' => 'Invalid JSON data'], Response::HTTP_BAD_REQUEST);
+        }
+        $filePath = $filePath->getData()[ 'filePath' ];
         $response = $this->fileService->deleteFile($filePath);
         if (!$response->isSuccess()) {
             return new JsonResponse(['error' => $response->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);

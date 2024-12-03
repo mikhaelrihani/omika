@@ -12,6 +12,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints\Cascade;
 
 #[ORM\Entity(repositoryClass: ContactRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_EMAIL', fields: ['email'])]
@@ -91,11 +92,12 @@ class Contact extends BaseEntity implements RecipientInterface
     /**
      * @var Collection<int, Absence>
      */
-    #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'contact',cascade: [ 'remove'])]
+    #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'contact', cascade: ['remove'])]
     #[Groups(['contact'])]
     private Collection $absence;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne(cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\JoinColumn(nullable: true)]
     private ?Picture $avatar = null;
 
     public function __construct()

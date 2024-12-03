@@ -80,16 +80,16 @@ class PictureService
     //! --------------------------------------------------------------------------------------------
 
     /**
-     * Updates the avatar of a given entity.
+     * Updates the avatar of a given entity with a new picture.
      *
-     * This method retrieves the entity by its ID, updates its avatar with the uploaded file,
-     * and persists the changes to the database.
+     * This method retrieves the entity by its ID, validates the entity, deletes the current avatar,
+     * uploads the new picture, and updates the entity with the new avatar.
      *
-     * @param Request $request The HTTP request containing the uploaded file.
+     * @param Request $request The HTTP request containing the new avatar picture.
      * @param int $Id The ID of the entity to update.
      * @param string $entityName The name of the entity to update (e.g., 'user', 'business').
-     * @param object $thisClass The instance of the class calling this method.
-     * @param string $category The category of the file (recipe, menu, inventory).
+     * @param object $thisClass The class instance calling this method.
+     * @param string $category The category of the picture (recipe, menu, inventory).
      *
      * @return ApiResponse An API response indicating success or failure with appropriate data and status code.
      *
@@ -97,30 +97,40 @@ class PictureService
      */
     public function updateAvatar(Request $request, int $Id, string $entityName, object $thisClass, string $category): ApiResponse
     {
+        $this->em->beginTransaction();
         try {
             $methodName = 'find' . ucfirst($entityName);
             $serviceName = "{$entityName}Service";
             $entityResponse = $thisClass->$serviceName->$methodName($Id);
             if (!$entityResponse->isSuccess()) {
+                $this->em->rollback();
                 return $entityResponse;
             }
             $entity = $entityResponse->getData()[$entityName];
+            $currentAvatar = $entity->getAvatar();
 
-            $deleteResponse = $this->deleteCurrentAvatar($entity);
-            if (!$deleteResponse->isSuccess()) {
-                return $deleteResponse;
+            if ($currentAvatar) {
+                $deleteResponse = $this->deleteCurrentAvatar($currentAvatar, $entity);
+                if (!$deleteResponse->isSuccess()) {
+                    $this->em->rollback();
+                    return $deleteResponse;
+                }
             }
-
+           
             $uploadResponse = $this->uploadPicture($request, category: $category);
             if (!$uploadResponse->isSuccess()) {
+                $this->em->rollback();
                 return $uploadResponse;
             }
+
             $avatar = $uploadResponse->getData()[ 'picture' ];
             $entity->setAvatar($avatar);
 
+            $this->em->commit();
             $this->em->flush();
             return ApiResponse::success("Avatar updated successfully", [], Response::HTTP_OK);
         } catch (Exception $exception) {
+            $this->em->rollback();
             return ApiResponse::error("error while updating Avatar :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -168,27 +178,31 @@ class PictureService
     //! --------------------------------------------------------------------------------------------
 
     /**
-     * Supprime l'avatar associé à une entité donnée de la base de données et du serveur.
+     * Deletes the current avatar of a given entity.
      *
-     * @param object $entity L'entité dont l'avatar doit être supprimé.
-     * @return ApiResponse Réponse indiquant le succès ou l'échec de l'opération.
+     * This method deletes the current avatar of the entity from the server and the database.
+     *
+     * @param object $currentAvatar The current avatar of the entity.
+     * @param object $entity The entity to update.
+     *
+     * @return ApiResponse An API response indicating success or failure with appropriate data and status code.
+     *
+     * @throws Exception If an error occurs during the deletion of the current avatar.
      */
-    private function deleteCurrentAvatar(object $entity): ApiResponse
+    private function deleteCurrentAvatar(object $currentAvatar, object $entity): ApiResponse
     {
         // supprimer l'avatar actuel du serveur 
-        $currentAvatar = $entity->getAvatar();
-        $deleteFileResponse = $this->fileService->deleteFile($currentAvatar->getPath());
-        if (!$deleteFileResponse->isSuccess()) {
-            return $deleteFileResponse;
-        }
-
-        // supprimer l'avatar actuel de la bdd
-        if ($this->em->remove($currentAvatar)) {
-            $this->em->flush();
-            return ApiResponse::success("Current Avatar removed successfully", [], Response::HTTP_OK);
-        } else {
-            return ApiResponse::error("Error while removing current Avatar: ", null, Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
+            $deleteFileResponse = $this->fileService->deleteFile($currentAvatar->getPath());
+            if (!$deleteFileResponse->isSuccess()) {
+                return $deleteFileResponse;
+            }
+            try {
+                // supprimer l'avatar actuel de la base de données
+                $entity->setAvatar(null);
+                return ApiResponse::success("Current Avatar removed successfully", [], Response::HTTP_OK);
+            } catch (Exception $e) {
+                return ApiResponse::error("Error while removing current Avatar:{$e->getMessage()} ", null, Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
     }
 
     //! --------------------------------------------------------------------------------------------
