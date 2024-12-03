@@ -109,7 +109,7 @@ class ContactController extends BaseController
             if (!$response->isSuccess()) {
                 return $this->json($response->getMessage(), $response->getStatusCode());
             }
-            $response = $this->contactService->createContact($response->getData());
+            $response = $this->contactService->createContact($response);
 
             if (!$response->isSuccess()) {
                 return $this->json([$response->getMessage(), $response->getData()], $response->getStatusCode());
@@ -144,7 +144,7 @@ class ContactController extends BaseController
             }
 
             // delete the business if the Contact is the last user in the business
-            $response = $this->businessService->delete($contact->getData()[ 'contact' ]);
+            $response = $this->businessService->deleteIfLastContact($contact->getData()[ 'contact' ]);
             if (!$response->isSuccess()) {
                 $this->em->rollback();
                 return $this->json($response->getMessage(), $response->getStatusCode());

@@ -71,26 +71,21 @@ class BusinessService
 
 
     /**
-     * Creates a new business entity and associates it with a contact.
+     * Creates a new business entity.
      *
-     * @param Request $request The HTTP request containing JSON data for creating the business.
+     * This method creates a new business entity using the provided JSON data.
+     * The method validates the input data, checks if the business name already exists,
+     * and associates the business with a contact entity. If the business is created successfully,
+     * a success response is returned with the new business entity. Otherwise, an error response is returned.
      *
-     * @return ApiResponse
+     * @param object $data The validated request data containing the business name and contact ID.
      *
-     * **Process**:
-     * - Validates the input JSON data.
-     * - Checks if a business with the same name already exists using `isBusinessAlreadyExist`.
-     * - Verifies the existence of the contact by ID.
-     * - Validates and persists the new business entity.
+     * @return ApiResponse Returns a success response with the new business entity if created successfully,
+     *                     or an error response if the business name already exists or validation fails.
      */
-    public function createBusiness(Request $request): ApiResponse
+    public function createBusiness(object $data): ApiResponse
     {
         try {
-            // Validate the JSON data in the request
-            $data = $this->validatorService->validateJson($request);
-            if (!$data->isSuccess()) {
-                return ApiResponse::error($data->getMessage(), null, Response::HTTP_BAD_REQUEST);
-            }
 
             // Check if the business name already exists
             $exist = $this->isBusinessAlreadyExist($data);
@@ -100,15 +95,17 @@ class BusinessService
 
             // Create a new business entity
             $business = (new Business())
-                ->setName($data->getData()[ 'name' ]);
+                ->setName($data->getData()[ "businessName" ]);
 
             // Find and associate the contact
-            $contact = $this->contactRepository->find($data->getData()[ 'contact' ]);
-            if (!$contact) {
-                return ApiResponse::error("There is no contact with this ID", null, Response::HTTP_BAD_REQUEST);
+            if(array_key_exists("contact", $data->getData())){
+                $contact = $this->contactRepository->find($data->getData()[ 'contact' ]);
+                if (!$contact) {
+                    return ApiResponse::error("There is no contact with this ID", null, Response::HTTP_BAD_REQUEST);
+                }
+                $business->addContact($contact);
             }
-            $business->addContact($contact);
-
+           
             // Validate the business entity
             $response = $this->validatorService->validateEntity($business);
             if (!$response->isSuccess()) {
@@ -182,7 +179,7 @@ class BusinessService
      * @return ApiResponse Returns a success response if the business is deleted successfully,
      *                     or an error response if the business cannot be deleted.
      */
-    public function delete(Contact $contact): ApiResponse
+    public function deleteIfLastContact(Contact $contact): ApiResponse
     {
         try {
             $business = $contact->getBusiness();
@@ -197,6 +194,28 @@ class BusinessService
         }
     }
 
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Deletes a business entity.
+     *
+     * This method deletes a business entity from the database.
+     *
+     * @param Business $business The business entity to delete.
+     *
+     * @return ApiResponse Returns a success response if the business is deleted successfully,
+     *                     or an error response if the business cannot be deleted.
+     */
+    public function delete(Business $business): ApiResponse
+    {
+        try {
+            $this->em->remove($business);
+            $this->em->flush();
+            return ApiResponse::success("Business deleted successfully ", null, Response::HTTP_OK);
+        } catch (Exception $e) {
+            return ApiResponse::error($e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
 
     //! --------------------------------------------------------------------------------------------
 
@@ -215,7 +234,7 @@ class BusinessService
     private function isBusinessAlreadyExist(object $data): ApiResponse
     {
         $businesses = $this->businessRepository->findAll();
-        $businessNameAlreadyExist = array_filter($businesses, fn($business) => $business->getName() == $data->getData()[ 'name' ]);
+        $businessNameAlreadyExist = array_filter($businesses, fn($business) => $business->getName() == $data->getData()[ "businessName" ]);
         if ($businessNameAlreadyExist) {
             return ApiResponse::error("This business name already exist", null, Response::HTTP_BAD_REQUEST);
         } else {
@@ -225,4 +244,38 @@ class BusinessService
 
     //! --------------------------------------------------------------------------------------------
 
+
+    /**
+     * Retrieves a business entity from the database.
+     *
+     * This method fetches a business entity from the database using its ID.
+     * If the business is found, it returns a success response with the business entity.
+     * Otherwise, it returns an error response indicating that the business was not found.
+     *
+     * @param int $id The ID of the business entity to retrieve.
+     *
+     * @return ApiResponse Returns a success response with the business entity if found,
+     *                     or an error response if the business is not found.
+     */
+    public function getBusinessFromData(object $dataObject)
+    {
+        $data = $dataObject->getData();
+        if (!$data[ 'businessId' ]) {
+            if ($data[ "businessName" ]) {
+                $businessResponse = $this->createBusiness($dataObject);
+                if (!$businessResponse->isSuccess()) {
+                    return $businessResponse;
+                }
+                $business = $businessResponse->getData()[ 'business' ];
+            } else {
+                return ApiResponse::error(" missing property 'businessName' ", null, Response::HTTP_BAD_REQUEST);
+            }
+        } elseif ($data[ 'businessId' ]) {
+            $business = $this->em->getRepository(Business::class)->find($data[ 'businessId' ]);
+            if (!$business) {
+                return ApiResponse::error("There is no business with this id", null, Response::HTTP_BAD_REQUEST);
+            }
+        }
+        return ApiResponse::success("Business retrieved successfully", ["business" => $business], Response::HTTP_OK);
+    }
 }

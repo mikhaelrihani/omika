@@ -29,7 +29,8 @@ class ContactService
         private SerializerInterface $serializer,
         private SluggerInterface $slugger,
         private ParameterBagInterface $params,
-        private PictureService $pictureService
+        private PictureService $pictureService,
+        private BusinessService $businessService
     ) {
     }
 
@@ -61,27 +62,31 @@ class ContactService
     /**
      * Creates a new contact and associates it with a business.
      *
-     * This method takes an array of contact data, validates it, and persists a new 
-     * contact entity in the database. If the associated business ID is invalid, 
-     * or if the contact data is invalid, an error response is returned.
+     * This method handles the creation of a new contact entity, validates it, associates it with an existing
+     * business retrieved from the provided data, and persists it in the database. If an error occurs during
+     * the process, the associated business is deleted to maintain data integrity.
      *
-     * @param array $data An associative array containing the following keys:
-     *                    - 'firstname': string, the first name of the contact.
-     *                    - 'surname': string, the surname of the contact.
-     *                    - 'email': string, the email of the contact.
-     *                    - 'phone': string, the phone number of the contact.
-     *                    - 'whatsapp': string, the WhatsApp number of the contact.
-     *                    - 'job': string, the job title of the contact.
-     *                    - 'businessId': int, the ID of the business to associate with the contact.
+     * @param object $dataObject An object containing the data required to create a contact. 
+     *                           Expected structure:
+     *                           [
+     *                               'firstname' => string,
+     *                               'surname' => string,
+     *                               'email' => string,
+     *                               'phone' => string,
+     *                               'whatsapp' => string,
+     *                               'job' => string,
+     *                               'businessId' => int ou null
+     *                               'businessName' => string
+     *                           ].
      *
-     * @return ApiResponse Returns a success response with the created contact 
-     *                     if successful, or an error response if something fails.
+     * @return ApiResponse Returns a success response with the created contact if successful, 
+     *                     or an error response with a message if an exception occurs.
      */
-    public function createContact(array $data): ApiResponse
+    public function createContact(object $dataObject): ApiResponse
     {
 
         try {
-
+            $data = $dataObject->getData();
             $contact = (new Contact())
                 ->setFirstname($data[ 'firstname' ])
                 ->setSurname($data[ 'surname' ])
@@ -92,11 +97,13 @@ class ContactService
                 ->setLateCount(0)
                 ->setUuid(Uuid::v4());
 
-            $business = $this->em->getRepository(Business::class)->find($data[ 'businessId' ]);
-            if (!$business) {
-                return ApiResponse::error("There is no business with this id", null, Response::HTTP_BAD_REQUEST);
+            $businessResponse = $this->businessService->getBusinessFromData($dataObject);
+            if (!$businessResponse->isSuccess()) {
+                return $businessResponse;
             }
+            $business = $businessResponse->getData()[ 'business' ];
             $contact->setBusiness($business);
+            $business->addContact($contact);
 
             $this->em->persist($contact);
 
@@ -104,13 +111,11 @@ class ContactService
             if (!$response->isSuccess()) {
                 return $response;
             }
-
-
             $this->em->flush();
             return ApiResponse::success("Contact created successfully", ["contact" => $contact], Response::HTTP_CREATED);
 
         } catch (Exception $exception) {
-
+            $this->businessService->delete($business);
             return ApiResponse::error("error while creating contact :" . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
