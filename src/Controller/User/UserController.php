@@ -6,12 +6,14 @@ use App\Controller\BaseController;
 use App\Repository\User\UserLoginRepository;
 use App\Repository\User\UserRepository;
 use App\Service\Event\EventService;
+use App\Service\Media\FileService;
 use App\Service\Media\PictureService;
 use App\Service\User\BusinessService;
 use App\Service\User\UserService;
 use App\Service\ValidatorService;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,6 +32,7 @@ class UserController extends BaseController
         private EventService $eventService,
         private PictureService $pictureService,
         private BusinessService $businessService,
+        private FileService $fileService
     ) {
     }
 
@@ -224,7 +227,7 @@ class UserController extends BaseController
     public function updateAvatar(Request $request, int $id): JsonResponse
     {
         try {
-            $response = $this->pictureService->updateAvatar($request, $id, "user", $this);
+            $response = $this->pictureService->updateAvatar($request, $id, "user", $this, "picture");
             if (!$response->isSuccess()) {
                 return $this->json([$response->getMessage(), $response->getData()], $response->getStatusCode());
             }
@@ -234,9 +237,6 @@ class UserController extends BaseController
         }
     }
 
-
-
-    //! --------------------------------------------------------------------------------------------
 
 
    

@@ -4,7 +4,6 @@ namespace App\Service\User;
 
 use App\Entity\User\Business;
 use App\Entity\User\Contact;
-use App\Entity\User\User;
 use App\Repository\User\BusinessRepository;
 use App\Repository\User\ContactRepository;
 use App\Service\ValidatorService;

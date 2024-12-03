@@ -212,7 +212,7 @@ class ContactController extends BaseController
     {
         try {
 
-            $response = $this->pictureService->updateAvatar($request, $id, "contact", $this);
+            $response = $this->pictureService->updateAvatar($request, $id, "contact", $this, "picture");
             if (!$response->isSuccess()) {
                 return $this->json([$response->getMessage(), $response->getData()], $response->getStatusCode());
             }

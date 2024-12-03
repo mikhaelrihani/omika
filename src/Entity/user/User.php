@@ -5,6 +5,7 @@ namespace App\Entity\User;
 use App\Entity\BaseEntity;
 use App\Entity\Event\Event;
 use App\Repository\User\UserRepository;
+use App\Validator\UniquePictureValidator;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -14,7 +15,6 @@ use App\Interface\entity\RecipientInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Serializer\Annotation\Groups;
 
-//#[UniqueEntity(fields: ['avatar'], message: 'This picture is already used as an avatar by another user.')]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 class User extends BaseEntity implements RecipientInterface
 {
@@ -90,6 +90,8 @@ class User extends BaseEntity implements RecipientInterface
     private ?UserLogin $userLogin = null;
 
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[UniquePictureValidator]
+    #[Assert\Email(message: "The Avatar name :'{{ value }}' is already used.")]
     #[Groups(['user'])]
     private ?picture $avatar = null;
 

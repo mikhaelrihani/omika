@@ -23,7 +23,7 @@ class PictureService
         private ValidatorService $validateService,
         private SluggerInterface $slugger,
         private ParameterBagInterface $params,
-
+        private FileService $fileService
     ) {
     }
 
@@ -42,50 +42,26 @@ class PictureService
      * @throws Exception If an error occurs during the creation of the picture entity.
      */
 
-    public function createPicture(Request $request): ApiResponse
+    public function createPicture(Request $request, string $category): ApiResponse
     {
         try {
-            // Récupérer le fichier téléchargé
-            $uploadedFile = $request->files->get('file');
-
-            if (!$uploadedFile) {
-                return ApiResponse::error("No file uploaded", null, Response::HTTP_BAD_REQUEST);
+            $dataResponse = $this->getPictureData($request);
+            if (!$dataResponse->isSuccess()) {
+                return $dataResponse;
             }
 
-            // Obtenir le nom original et le MIME
-            $originalFilename = pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
-            $mimeType = $uploadedFile->guessExtension();
-            $mime = $this->em->getRepository(Mime::class)->findOneBy(["name" => $mimeType]);
+            [$uploadedFile, $originalFilename, $mime] = $dataResponse->getData();
+            $picturePath = $this->fileService->createFilePath($request, $uploadedFile, $category);
+            $slug = $this->fileService->slugify($originalFilename);
 
-            $allowedMimeTypes = $this->em->getRepository(Mime::class)->findAll();
-            $allowedMimeTypes = array_map(fn($mime): string => $mime->getName(), $allowedMimeTypes);
-
-            if ($allowedMimeTypes && !in_array($mimeType, $allowedMimeTypes)) {
-                return ApiResponse::error("Invalid file type: $mimeType", null, Response::HTTP_BAD_REQUEST);
-            }
-
-            // Ajout d'un paramètre pour définir si le fichier est privé ou public
-            $isPrivate = $request->request->get('is_private', false); // Par défaut, c'est public
-
-            // Définir le chemin de stockage en fonction de l'état privé/public
-            $serverPath = $isPrivate ? $this->params->get('server_private_files_path') : $this->params->get('server_files_path');
-
-            // Définir le chemin complet où stocker le fichier sur le serveur distant
-            $destination = "{$serverPath}/user/{ $originalFilename}";
-
-            // Générer un slug basé sur le nom original
-            $slug = $this->slugify($originalFilename);
-
-            // Créer l'entité Picture
             $picture = (new Picture())
                 ->setMime($mime)
                 ->setSlug($slug)
                 ->setName($originalFilename)
-                ->setPath($destination);
+                ->setPath($picturePath);
             $this->em->persist($picture);
 
             $response = $this->validateService->validateEntity($picture);
-
             if (!$response->isSuccess()) {
                 return $response;
             }
@@ -94,34 +70,6 @@ class PictureService
         } catch (Exception $exception) {
             return ApiResponse::error("Error while updating avatar: " . $exception->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-    }
-
-    /**
-     * Generates a URL-friendly slug from an original filename.
-     *
-     * This method cleans the filename by:
-     * - Removing common dimension patterns (e.g., "1024x640").
-     * - Replacing non-alphanumeric characters with hyphens.
-     * - Trimming excess hyphens from the start or end of the string.
-     * - Converting the result to lowercase using a slugger utility.
-     *
-     * @param string $originalFilename The original filename (without path).
-     * 
-     * @return string The cleaned and slugified filename.
-     */
-    private function slugify(string $originalFilename): string
-    {
-        // Remove dimension patterns at the end of the filename (e.g., "1024x640")
-        $cleanedFilename = preg_replace('/\d+x\d+$/', '', $originalFilename);
-
-        // Replace non-alphanumeric characters with hyphens
-        $cleanedFilename = preg_replace('/[^a-zA-Z0-9]+/', '-', $cleanedFilename);
-
-        // Trim hyphens from the start and end
-        $cleanedFilename = trim($cleanedFilename, '-');
-
-        // Convert the cleaned filename to a slug using the slugger and return it
-        return $this->slugger->slug($cleanedFilename)->lower();
     }
 
 
@@ -145,7 +93,7 @@ class PictureService
      *
      * @throws Exception If an error occurs while updating the avatar.
      */
-    public function updateAvatar(Request $request, int $Id, string $entityName, object $service): ApiResponse
+    public function updateAvatar(Request $request, int $Id, string $entityName, object $service, string $category): ApiResponse
     {
         try {
             $methodName = 'find' . ucfirst($entityName);
@@ -155,12 +103,11 @@ class PictureService
                 return $entity;
             }
             $entity = $entity->getData()[$entityName];
-            $avatar = $this->createPicture($request);
+            $avatar = $this->createPicture($request, category: $category);
             if (!$avatar->isSuccess()) {
                 return $avatar;
             }
             $avatar = $avatar->getData()[ 'picture' ];
-            // Associer l'avatar à l'utilisateur
             $entity->setAvatar($avatar);
 
             $this->em->flush();
@@ -170,7 +117,50 @@ class PictureService
         }
     }
 
+    //! --------------------------------------------------------------------------------------------
 
+    /**
+     * Retrieves picture data from the uploaded file.
+     *
+     * This method validates the uploaded file, checks its MIME type, and ensures it is allowed.
+     * If valid, it returns the original filename, MIME type, and the MIME entity from the database.
+     *
+     * @param Request $request The HTTP request containing the uploaded file.
+     *
+     * @return ApiResponse The API response containing the file data or an error message.
+     *
+     * @throws \Exception If an error occurs while processing the file.
+     */
+    public function getPictureData(Request $request): ApiResponse
+    {
+        // Récupérer le fichier téléchargé
+        $uploadedFile = $request->files->get('file');
+
+        if (!$uploadedFile) {
+            return ApiResponse::error("No file uploaded", null, Response::HTTP_BAD_REQUEST);
+        }
+
+        // Obtenir le nom original et le MIME
+        $originalFilename = pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
+        $mimeType = $uploadedFile->guessExtension();
+        $mime = $this->em->getRepository(Mime::class)->findOneBy(["name" => $mimeType]);
+
+        $allowedMimeTypes = $this->em->getRepository(Mime::class)->findAll();
+        $allowedMimeTypes = array_map(fn($mime): string => $mime->getName(), $allowedMimeTypes);
+
+        if ($allowedMimeTypes && !in_array($mimeType, $allowedMimeTypes)) {
+            return ApiResponse::error("Invalid file type: $mimeType", null, Response::HTTP_BAD_REQUEST);
+        }
+
+        return ApiResponse::success("Picture data retrieved successfully", [$uploadedFile, $originalFilename, $mime], Response::HTTP_OK);
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    public function deletePicture()
+    {
+
+    }
 
     //! --------------------------------------------------------------------------------------------
 

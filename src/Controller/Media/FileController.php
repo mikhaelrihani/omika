@@ -3,15 +3,14 @@
 namespace App\Controller\Media;
 
 use App\Controller\BaseController;
-use App\Repository\Carte\MenuRepository;
-use App\Repository\Inventory\InventoryRepository;
-use App\Repository\Recipe\RecipeRepository;
+use App\Service\Media\FileService;
 use App\Service\PhpseclibService;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Class FileController
@@ -19,146 +18,67 @@ use Symfony\Component\HttpFoundation\Response;
  * Handles file upload, retrieval, and deletion operations for various media categories 
  * (recipe, menu, inventory) through an API.
  */
-#[Route('/api/media/file', name: "app_file")]
+#[Route('/api/file', name: "app_file")]
 class FileController extends BaseController
 {
-    private PhpseclibService $phpseclibService;
-    private ParameterBagInterface $params;
-    private RecipeRepository $recipeRepository;
-    private MenuRepository $menuRepository;
-    private InventoryRepository $inventoryRepository;
 
-    /**
-     * FileController constructor.
-     *
-     * @param PhpseclibService $phpseclibService Service for SFTP operations.
-     * @param ParameterBagInterface $params Parameter bag for configuration parameters.
-     * @param RecipeRepository $recipeRepository Repository for recipe entities.
-     * @param MenuRepository $menuRepository Repository for menu entities.
-     * @param InventoryRepository $inventoryRepository Repository for inventory entities.
-     */
     public function __construct(
-        PhpseclibService $phpseclibService,
-        ParameterBagInterface $params,
-        RecipeRepository $recipeRepository,
-        MenuRepository $menuRepository,
-        InventoryRepository $inventoryRepository
+        private PhpseclibService $phpseclibService,
+        private ParameterBagInterface $params,
+        private FileService $fileService
     ) {
-        $this->phpseclibService = $phpseclibService;
-        $this->params = $params;
-        $this->recipeRepository = $recipeRepository;
-        $this->menuRepository = $menuRepository;
-        $this->inventoryRepository = $inventoryRepository;
     }
 
-    //! UPLOAD FILE to server
+    //! --------------------------------------------------------------------------------------------
 
     /**
-     * Uploads a file to the server for a specified category.
+     * Uploads a file to the server.
      *
-     * @param Request $request The HTTP request containing the uploaded file.
+     * This method handles the file upload process, including validation, storage, and response generation.
+     *
+     * @param Request $request The HTTP request containing the file to upload.
      * @param string $category The category of the file (recipe, menu, inventory).
      *
-     * @return JsonResponse A JSON response with the status of the upload.
+     * @return JsonResponse A JSON response indicating the status of the file upload.
      */
     #[Route('/{category}/upload', methods: ['POST'])]
     public function upload(Request $request, string $category): JsonResponse
     {
-        // Récupérer le fichier téléversé depuis la requête
-        $uploadedFile = $request->files->get('file');
-        if (!$uploadedFile) {
-            return new JsonResponse(['error' => 'File not found'], Response::HTTP_BAD_REQUEST);
+        $fileResponse = $this->fileService->uploadFile($request, $category);
+        if (!$fileResponse->isSuccess()) {
+            return new JsonResponse(['error' => $fileResponse->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+        $filePath = $fileResponse->getData()[ 'filePath' ];
 
-        // Vérifie si la catégorie est valide
-        $validCategories = ['recipe', 'menu', 'inventory'];
-        if (!in_array($category, $validCategories)) {
-            return new JsonResponse(['error' => 'Catégorie invalide'], Response::HTTP_BAD_REQUEST);
-        }
-
-        // Ajout d'un paramètre pour définir si le fichier est privé ou public
-        $isPrivate = $request->request->get('is_private', false); // Par défaut, c'est public
-
-        // Définir le chemin de stockage en fonction de l'état privé/public
-        $serverPath = $isPrivate ? $this->params->get('server_private_files_path') : $this->params->get('server_files_path');
-
-        // Définir le chemin complet où stocker le fichier sur le serveur distant
-        $fileName = $uploadedFile->getClientOriginalName();
-        $filePath = $serverPath . "/" . $category . "/" . $fileName;
-
-        // Téléverser le fichier
-        try {
-            $this->phpseclibService->uploadFile($uploadedFile->getPathname(), $filePath);
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-
-        // Retourner une réponse JSON avec le chemin du fichier téléversé
         return new JsonResponse([
             'message'  => 'File uploaded successfully',
             'filePath' => $filePath
         ]);
     }
 
-    //! GET private file
+    //! --------------------------------------------------------------------------------------------
+
 
     /**
-     * Retrieves a private file for a specified category and ID.
+     * Downloads a private file from the server.
      *
      * @param string $category The category of the file (recipe, menu, inventory).
-     * @param int $id The ID of the entity associated with the file.
+     * @param int $id The ID of the file to download.
      *
-     * @return Response A response containing the file for download or an error message.
+     * @return Response A response containing the file to download.
      */
-    #[Route('/private/{category}/{id}', name: 'serve_private', methods: ['GET'])]
-    public function servePrivateFile(string $category, int $id): Response
+    #[Route('/downloadPrivateFile/{category}/{id}', name: 'downloadPrivateFile', methods: ['GET'])]
+    public function downloadPrivateFile(string $category, int $id): Response
     {
-        // Vérification si la catégorie est valide
-        $validCategories = ['recipe', 'menu', 'inventory'];
-        if (!in_array($category, $validCategories)) {
-            return new JsonResponse(['error' => 'Catégorie invalide'], Response::HTTP_BAD_REQUEST);
+        // Récupérer le chemin du fichier à partir de la base de données
+        $filePath = $this->fileService->getOneFilePath($id, $category);
+        if (!$filePath->isSuccess()) {
+            return new Response($filePath->getMessage(), Response::HTTP_NOT_FOUND);
         }
-
-        // Sélection du bon repository en fonction de la catégorie
-        switch ($category) {
-            case 'recipe':
-                $entity = $this->recipeRepository->find($id);
-                break;
-            case 'menu':
-                $entity = $this->menuRepository->find($id);
-                break;
-            case 'inventory':
-                $entity = $this->inventoryRepository->find($id);
-                break;
-            default:
-                return new JsonResponse(['error' => 'Catégorie non gérée'], Response::HTTP_BAD_REQUEST);
-        }
-
-        // Vérifier si l'entité existe
-        if (!$entity) {
-            return new JsonResponse(['error' => ucfirst($category) . ' non trouvé(e)'], Response::HTTP_NOT_FOUND);
-        }
-
-        // Récupérer le chemin du fichier dans la base de données
-        $filePath = $entity->getPath();
-        if (!$filePath) {
-            return new JsonResponse(['error' => 'Fichier non trouvé'], Response::HTTP_NOT_FOUND);
-        }
-
-        // Chemin complet vers le fichier sur le serveur distant
-        $serverPrivateFilesPath = $this->params->get('server_private_files_path');
-        $fullFilePath = $serverPrivateFilesPath . '/' . $category . '/' . $filePath;
-
-        // Vérifier si le fichier existe sur le serveur distant
-        if (!$this->phpseclibService->fileExists($fullFilePath)) {
-            return new JsonResponse(['error' => 'Fichier introuvable sur le serveur distant: ' . $fullFilePath], Response::HTTP_NOT_FOUND);
-        }
-
-        // Utiliser la méthode de téléchargement qui gère la réponse
-        return $this->phpseclibService->downloadFile($fullFilePath);
+        return $this->fileService->downloadFile($filePath->getData()[ 'filePath' ]);
     }
 
-    //! Delete
+    //! --------------------------------------------------------------------------------------------
 
     /**
      * Deletes a file from the server.
@@ -170,9 +90,8 @@ class FileController extends BaseController
     #[Route('/delete', name: 'delete', methods: ['POST'])]
     public function delete(Request $request): JsonResponse
     {
-        // Récupère le JSON
         $data = json_decode($request->getContent(), true);
-        $filePath = $data['filePath'] ?? null;
+        $filePath = $data[ 'filePath' ] ?? null;
 
         if (!$filePath) {
             return new JsonResponse(['error' => 'filePath not found'], Response::HTTP_BAD_REQUEST);
@@ -188,4 +107,7 @@ class FileController extends BaseController
             'message' => 'File ' . $filePath . ' deleted successfully'
         ]);
     }
+
+    //! --------------------------------------------------------------------------------------------
+
 }
