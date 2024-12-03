@@ -4,20 +4,19 @@ namespace App\Controller\Media;
 
 use App\Controller\BaseController;
 use App\Service\Media\FileService;
+use App\Service\Media\PictureService;
 use App\Service\PhpseclibService;
+use App\Service\User\ContactService;
+use App\Service\User\UserService;
+use App\Service\ValidatorService;
+use Exception;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
-/**
- * Class FileController
- *
- * Handles file upload, retrieval, and deletion operations for various media categories 
- * (recipe, menu, inventory) through an API.
- */
+
 #[Route('/api/file', name: "app_file")]
 class FileController extends BaseController
 {
@@ -25,7 +24,11 @@ class FileController extends BaseController
     public function __construct(
         private PhpseclibService $phpseclibService,
         private ParameterBagInterface $params,
-        private FileService $fileService
+        private FileService $fileService,
+        private ValidatorService $validatorService,
+        private PictureService $pictureService,
+        public UserService $userService,
+        public ContactService $contactService
     ) {
     }
 
@@ -44,7 +47,14 @@ class FileController extends BaseController
     #[Route('/{category}/upload', methods: ['POST'])]
     public function upload(Request $request, string $category): JsonResponse
     {
-        $fileResponse = $this->fileService->uploadFile($request, $category);
+        $uploadedFile = $request->files->get('file');
+
+        if (!$uploadedFile) {
+            return new JsonResponse(['error' => 'No file uploaded'], Response::HTTP_BAD_REQUEST);
+        }
+        $isPrivate = $request->get('isPrivate', false);
+
+        $fileResponse = $this->fileService->uploadFile($isPrivate, $uploadedFile, $category);
         if (!$fileResponse->isSuccess()) {
             return new JsonResponse(['error' => $fileResponse->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
@@ -67,8 +77,8 @@ class FileController extends BaseController
      *
      * @return Response A response containing the file to download.
      */
-    #[Route('/downloadPrivateFile/{category}/{id}', name: 'downloadPrivateFile', methods: ['GET'])]
-    public function downloadPrivateFile(string $category, int $id): Response
+    #[Route('/downloadFile/{category}/{id}', name: 'downloadFile', methods: ['GET'])]
+    public function downloadFile(string $category, int $id): Response
     {
         // Récupérer le chemin du fichier à partir de la base de données
         $filePath = $this->fileService->getOneFilePath($id, $category);
@@ -83,31 +93,45 @@ class FileController extends BaseController
     /**
      * Deletes a file from the server.
      *
-     * @param Request $request The HTTP request containing the file path to delete.
+     * @param string $filePath The path of the file to delete.
      *
-     * @return JsonResponse A JSON response with the status of the deletion.
+     * @return JsonResponse A JSON response indicating the status of the file deletion.
      */
     #[Route('/delete', name: 'delete', methods: ['POST'])]
-    public function delete(Request $request): JsonResponse
+    public function delete(string $filePath): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-        $filePath = $data[ 'filePath' ] ?? null;
-
-        if (!$filePath) {
-            return new JsonResponse(['error' => 'filePath not found'], Response::HTTP_BAD_REQUEST);
+        $response = $this->fileService->deleteFile($filePath);
+        if (!$response->isSuccess()) {
+            return new JsonResponse(['error' => $response->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        try {
-            $this->phpseclibService->deleteFile($filePath);
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-
         return new JsonResponse([
-            'message' => 'File ' . $filePath . ' deleted successfully'
+            'message' => 'File: ' . $filePath . ' deleted successfully'
         ]);
     }
 
     //! --------------------------------------------------------------------------------------------
 
+    /**
+     * Updates the avatar for a specified entity in the database and saves it to the server.
+     *
+     * @param Request $request The HTTP request containing the file data for the avatar update.
+     * @param string $entityName The name of the entity to update (user or contact).
+     * @param int $id The ID of the entity whose avatar is being updated.
+     *
+     * @return JsonResponse A JSON response indicating the status of the avatar update.
+     */
+
+    #[Route('/updateAvatar/{entityName}/{id}', name: 'updateAvatar', methods: 'post')]
+    public function updateAvatar(Request $request, string $entityName, int $id): JsonResponse
+    {
+        try {
+            $response = $this->pictureService->updateAvatar($request, $id, $entityName, $this, "picture");
+            if (!$response->isSuccess()) {
+                return $this->json([$response->getMessage(), $response->getData()], $response->getStatusCode());
+            }
+            return $this->json($response->getMessage(), Response::HTTP_OK);
+        } catch (Exception $e) {
+            return $this->json($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
 }

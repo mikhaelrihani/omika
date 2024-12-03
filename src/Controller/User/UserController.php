@@ -13,7 +13,6 @@ use App\Service\User\UserService;
 use App\Service\ValidatorService;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,7 +26,7 @@ class UserController extends BaseController
         private UserRepository $userRepository,
         private UserLoginRepository $userLoginRepository,
         private EntityManagerInterface $em,
-        private UserService $userService,
+        public UserService $userService,
         private ValidatorService $validateService,
         private EventService $eventService,
         private PictureService $pictureService,
@@ -206,36 +205,7 @@ class UserController extends BaseController
 
     //! --------------------------------------------------------------------------------------------
 
-    /**
-     * Updates the avatar of a user.
-     *
-     * This method processes a request to update the avatar for a specific user by delegating 
-     * the task to the UserService. It handles errors and returns appropriate JSON responses.
-     *
-     * @Route("/updateAvatar/{id}", name="updateAvatar", methods="POST")
-     *
-     * @param Request $request The HTTP request containing the uploaded avatar file.
-     * @param int $id The ID of the user whose avatar is being updated.
-     *
-     * @return JsonResponse A JSON response indicating the status of the operation.
-     *
-     * @throws Exception If an error occurs during the avatar update process.
-     *
-     */
-
-    #[Route('/updateAvatar/{id}', name: 'updateAvatar', methods: 'post')]
-    public function updateAvatar(Request $request, int $id): JsonResponse
-    {
-        try {
-            $response = $this->pictureService->updateAvatar($request, $id, "user", $this, "picture");
-            if (!$response->isSuccess()) {
-                return $this->json([$response->getMessage(), $response->getData()], $response->getStatusCode());
-            }
-            return $this->json($response->getMessage(), Response::HTTP_OK);
-        } catch (Exception $e) {
-            return $this->json($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-    }
+   
 
 
 

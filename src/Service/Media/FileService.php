@@ -7,6 +7,7 @@ use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
 use App\Utils\JsonResponseBuilder;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -95,26 +96,25 @@ class FileService
             return ApiResponse::error('Fichier introuvable sur le serveur distant: ' . $filePath, null, Response::HTTP_NOT_FOUND);
         }
 
-        return ApiResponse::success("filePath retrieved succesfully", ["filePath" =>$filePath], Response::HTTP_OK);
+        return ApiResponse::success("filePath retrieved succesfully", ["filePath" => $filePath], Response::HTTP_OK);
     }
 
     //! --------------------------------------------------------------------------------------------
 
     /**
-     * Handles file upload for a specific category, with support for private or public storage.
+     * Uploads a file to the server.
      *
-     * @param Request $request The HTTP request containing the file and additional parameters.
-     * @param string $category The category under which the file should be stored (e.g., recipe, menu).
-     * @param bool $isPrivate Indicates whether the file should be stored in a private directory (default: false).
-     * @return ApiResponse Returns an ApiResponse indicating success or failure of the file upload.
-     */
-    public function uploadFile(Request $request, $category, $isPrivate = false): ApiResponse
+     * This method uses the Phpseclib service to upload a file to a remote server
+     * based on the provided file path. 
+     * If the file is successfully uploaded.
+     * @param bool $isPrivate The privacy setting for the file (true for private, false for public).
+     * @param string $category The category of the file (recipe, menu, inventory,picture).
+     * @param object $uploadedFile The uploaded file to store on the server.
+     * @return ApiResponse
+     * @throws \Exception if the upload fails.
+     * */
+    public function uploadFile(bool $isPrivate, object $uploadedFile, string $category): ApiResponse
     {
-        // Récupérer le fichier téléversé depuis la requête
-        $uploadedFile = $request->files->get('file');
-        if (!$uploadedFile) {
-            return ApiResponse::error('Fichier non trouvé', null, Response::HTTP_BAD_REQUEST);
-        }
 
         // Vérifie si la catégorie est valide
         $validCategories = ['recipe', 'menu', 'inventory', "picture"];
@@ -122,7 +122,12 @@ class FileService
             return ApiResponse::error('Catégorie non gérée', null, Response::HTTP_BAD_REQUEST);
         }
 
-        $filePath = $this->createFilePath($request, $uploadedFile, $category);
+        $filePath = $this->createFilePath($isPrivate, $uploadedFile, $category);
+
+        $isfileExists = $this->isFileExists($filePath);
+        if ($isfileExists) {
+            return ApiResponse::error('Un fichier avec le même nom existe déjà', null, Response::HTTP_CONFLICT);
+        }
 
         // Téléverser le fichier
         try {
@@ -150,11 +155,8 @@ class FileService
      *
      * @throws \InvalidArgumentException If the $category is invalid or the $uploadedFile is not provided.
      */
-    public function createFilePath(Request $request, $uploadedFile, $category)
+    public function createFilePath(bool $isPrivate, object $uploadedFile, string $category)
     {
-        // Ajout d'un paramètre pour définir si le fichier est privé ou public
-        $isPrivate = $request->request->get('is_private', false);
-
         // Définir le chemin de stockage en fonction de l'état privé/public
         $serverPath = $isPrivate ? $this->params->get('server_private_files_path') : $this->params->get('server_files_path');
 
@@ -183,4 +185,40 @@ class FileService
 
     //! --------------------------------------------------------------------------------------------
 
+    /**
+     * Vérifie si un fichier existe à l'emplacement spécifié.
+     *
+     * @param string $filePath Chemin complet du fichier à vérifier.
+     *
+     * @return bool Retourne true si le fichier existe, sinon false.
+     */
+    public function isFileExists($filePath): bool
+    {
+        return $this->phpseclibService->fileExists($filePath);
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Supprime un fichier du server distant.
+     *
+     * @param string $filePath Chemin complet du fichier à supprimer.
+     * @return ApiResponse Réponse indiquant le succès ou l'échec de l'opération.
+     */
+    public function deleteFile($filePath): ApiResponse
+    {
+        $isFileExists = $this->isFileExists($filePath);
+        if (!$isFileExists) {
+            return ApiResponse::error('Fichier introuvable' . $filePath, null, Response::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $this->phpseclibService->deleteFile($filePath);
+            return ApiResponse::success('Fichier supprimé avec succès', null, Response::HTTP_OK);
+        } catch (Exception $e) {
+            return ApiResponse::error('Erreur lors de la suppression du fichier' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    //! --------------------------------------------------------------------------------------------
 }

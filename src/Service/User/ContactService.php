@@ -2,8 +2,6 @@
 
 namespace App\Service\User;
 
-
-use App\Entity\User\Business;
 use App\Entity\User\Contact;
 use App\Service\Media\PictureService;
 use App\Service\ValidatorService;

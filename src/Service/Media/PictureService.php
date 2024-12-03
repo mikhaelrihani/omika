@@ -23,7 +23,7 @@ class PictureService
         private ValidatorService $validateService,
         private SluggerInterface $slugger,
         private ParameterBagInterface $params,
-        private FileService $fileService
+        private FileService $fileService,
     ) {
     }
 
@@ -42,7 +42,7 @@ class PictureService
      * @throws Exception If an error occurs during the creation of the picture entity.
      */
 
-    public function createPicture(Request $request, string $category): ApiResponse
+    public function uploadPicture(Request $request, string $category): ApiResponse
     {
         try {
             $dataResponse = $this->getPictureData($request);
@@ -50,8 +50,12 @@ class PictureService
                 return $dataResponse;
             }
 
-            [$uploadedFile, $originalFilename, $mime] = $dataResponse->getData();
-            $picturePath = $this->fileService->createFilePath($request, $uploadedFile, $category);
+            [$isPrivate, $uploadedFile, $originalFilename, $mime] = $dataResponse->getData();
+            $uploadResponse = $this->fileService->uploadFile($isPrivate, $uploadedFile, $category);
+            if (!$uploadResponse->isSuccess()) {
+                return $uploadResponse;
+            }
+            $picturePath = $uploadResponse->getData()[ 'filePath' ];
             $slug = $this->fileService->slugify($originalFilename);
 
             $picture = (new Picture())
@@ -76,38 +80,42 @@ class PictureService
     //! --------------------------------------------------------------------------------------------
 
     /**
-     * Updates the avatar of a specified entity.
+     * Updates the avatar of a given entity.
      *
-     * @param Request $request The HTTP request containing the file upload.
-     * @param int $Id The unique identifier of the entity to update.
-     * @param string $entityName The name of the entity type (e.g., 'User', 'Contact', etc.).
-     * @param object $service The service handling the operations for the specified entity type.
+     * This method retrieves the entity by its ID, updates its avatar with the uploaded file,
+     * and persists the changes to the database.
      *
-     * @return ApiResponse
-     * 
-     * - Returns a success response if the avatar is updated successfully.
-     * - Returns an error response if:
-     *   - The entity is not found.
-     *   - The uploaded picture is invalid.
-     *   - Any exception occurs during processing.
+     * @param Request $request The HTTP request containing the uploaded file.
+     * @param int $Id The ID of the entity to update.
+     * @param string $entityName The name of the entity to update (e.g., 'user', 'business').
+     * @param object $thisClass The instance of the class calling this method.
+     * @param string $category The category of the file (recipe, menu, inventory).
      *
-     * @throws Exception If an error occurs while updating the avatar.
+     * @return ApiResponse An API response indicating success or failure with appropriate data and status code.
+     *
+     * @throws Exception If an error occurs during the update of the avatar.
      */
-    public function updateAvatar(Request $request, int $Id, string $entityName, object $service, string $category): ApiResponse
+    public function updateAvatar(Request $request, int $Id, string $entityName, object $thisClass, string $category): ApiResponse
     {
         try {
             $methodName = 'find' . ucfirst($entityName);
             $serviceName = "{$entityName}Service";
-            $entity = $service->$serviceName->$methodName($Id);
-            if (!$entity->isSuccess()) {
-                return $entity;
+            $entityResponse = $thisClass->$serviceName->$methodName($Id);
+            if (!$entityResponse->isSuccess()) {
+                return $entityResponse;
             }
-            $entity = $entity->getData()[$entityName];
-            $avatar = $this->createPicture($request, category: $category);
-            if (!$avatar->isSuccess()) {
-                return $avatar;
+            $entity = $entityResponse->getData()[$entityName];
+
+            $deleteResponse = $this->deleteCurrentAvatar($entity);
+            if (!$deleteResponse->isSuccess()) {
+                return $deleteResponse;
             }
-            $avatar = $avatar->getData()[ 'picture' ];
+
+            $uploadResponse = $this->uploadPicture($request, category: $category);
+            if (!$uploadResponse->isSuccess()) {
+                return $uploadResponse;
+            }
+            $avatar = $uploadResponse->getData()[ 'picture' ];
             $entity->setAvatar($avatar);
 
             $this->em->flush();
@@ -139,6 +147,8 @@ class PictureService
         if (!$uploadedFile) {
             return ApiResponse::error("No file uploaded", null, Response::HTTP_BAD_REQUEST);
         }
+        // le fichier est il privé
+        $isPrivate = $request->get('isPrivate', false);
 
         // Obtenir le nom original et le MIME
         $originalFilename = pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
@@ -152,16 +162,36 @@ class PictureService
             return ApiResponse::error("Invalid file type: $mimeType", null, Response::HTTP_BAD_REQUEST);
         }
 
-        return ApiResponse::success("Picture data retrieved successfully", [$uploadedFile, $originalFilename, $mime], Response::HTTP_OK);
+        return ApiResponse::success("Picture data retrieved successfully", [$isPrivate, $uploadedFile, $originalFilename, $mime], Response::HTTP_OK);
     }
 
     //! --------------------------------------------------------------------------------------------
 
-    public function deletePicture()
+    /**
+     * Supprime l'avatar associé à une entité donnée de la base de données et du serveur.
+     *
+     * @param object $entity L'entité dont l'avatar doit être supprimé.
+     * @return ApiResponse Réponse indiquant le succès ou l'échec de l'opération.
+     */
+    private function deleteCurrentAvatar(object $entity): ApiResponse
     {
+        // supprimer l'avatar actuel du serveur 
+        $currentAvatar = $entity->getAvatar();
+        $deleteFileResponse = $this->fileService->deleteFile($currentAvatar->getPath());
+        if (!$deleteFileResponse->isSuccess()) {
+            return $deleteFileResponse;
+        }
 
+        // supprimer l'avatar actuel de la bdd
+        if ($this->em->remove($currentAvatar)) {
+            $this->em->flush();
+            return ApiResponse::success("Current Avatar removed successfully", [], Response::HTTP_OK);
+        } else {
+            return ApiResponse::error("Error while removing current Avatar: ", null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     //! --------------------------------------------------------------------------------------------
+
 
 }

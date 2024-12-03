@@ -198,33 +198,5 @@ class ContactController extends BaseController
     //! --------------------------------------------------------------------------------------------
 
 
-    /**
-     * Updates the avatar for a specified contact.
-     *
-     * @Route("/updateAvatar/{id}", name="updateAvatar", methods={"post"})
-     *
-     * @param Request $request The HTTP request containing the file data for the avatar update.
-     * @param int $id The ID of the contact whose avatar is being updated.
-     *
-     * @return JsonResponse
-     */
-    public function updateAvatar(Request $request, int $id): JsonResponse
-    {
-        try {
-
-            $response = $this->pictureService->updateAvatar($request, $id, "contact", $this, "picture");
-            if (!$response->isSuccess()) {
-                return $this->json([$response->getMessage(), $response->getData()], $response->getStatusCode());
-            }
-            return $this->json($response->getMessage(), Response::HTTP_OK);
-        } catch (Exception $e) {
-
-            return $this->json($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-
-
-    //! --------------------------------------------------------------------------------------------
 
 }
