@@ -9,6 +9,7 @@ use App\Service\PhpseclibService;
 use App\Service\User\ContactService;
 use App\Service\User\UserService;
 use App\Service\ValidatorService;
+use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -28,7 +29,8 @@ class FileController extends BaseController
         private ValidatorService $validatorService,
         private PictureService $pictureService,
         public UserService $userService,
-        public ContactService $contactService
+        public ContactService $contactService,
+        private EntityManagerInterface $em
     ) {
     }
 
@@ -138,5 +140,45 @@ class FileController extends BaseController
         } catch (Exception $e) {
             return $this->json($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Supprime l'avatar actuel d'une entité.
+     *
+     * Cette méthode permet de supprimer l'avatar associé à une entité spécifique (par exemple, un utilisateur ou un contact).
+     * L'avatar est supprimé du serveur et de la base de données. Si l'entité ou l'avatar n'existe pas, une réponse d'erreur est retournée.
+     *
+     * @Route("/deleteAvatar/{entityName}/{id}", name="deleteAvatar", methods={"DELETE"})
+     *
+     * @param int $id L'identifiant de l'entité.
+     * @param string $entityName Le nom de l'entité (exemple : "Contact", "User").
+     *
+     * @return JsonResponse Une réponse JSON contenant le message de succès ou d'erreur.
+     *
+     * @throws \InvalidArgumentException Si le nom de l'entité est invalide.
+     * @throws \Exception En cas d'erreur lors de la suppression.
+     */
+    #[Route('/deleteAvatar/{entityName}/{id}', name: 'deleteAvatar', methods: 'delete')]
+    public function deleteAvatar(int $id, string $entityName): JsonResponse
+    {
+        $repositoryName = "App\\Entity\\User\\" . ucfirst($entityName);
+        $entity = $this->em->getRepository($repositoryName)->find($id);
+
+        if (!$entity) {
+            return $this->json(ucfirst($entityName) . ' non trouvé(e)', Response::HTTP_NOT_FOUND);
+        }
+        $currentAvatar = $entity->getAvatar();
+        if (!$currentAvatar) {
+            return $this->json('Avatar non trouvé', Response::HTTP_NOT_FOUND);
+        }
+
+        $response = $this->pictureService->deleteCurrentAvatar($currentAvatar, $entity);
+        if (!$response->isSuccess()) {
+            return $this->json($response->getMessage(), $response->getStatusCode());
+        }
+        $this->em->flush();
+        return $this->json('Avatar supprimé avec succès', Response::HTTP_OK);
     }
 }
