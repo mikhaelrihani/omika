@@ -4,6 +4,8 @@ namespace App\Controller\Media;
 
 use App\Controller\BaseController;
 use App\Service\TwilioService;
+use App\Service\User\ContactService;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,29 +18,16 @@ use Symfony\Component\Routing\Annotation\Route;
  * 
  * This controller handles sending SMS, MMS, and WhatsApp messages using Twilio.
  */
-#[Route('/api/media/message', name: "app_message_")]
+#[Route('/api/message', name: "app_message_")]
 class MessageController extends BaseController
 {
-    /**
-     * @var TwilioService Twilio service instance
-     */
-    private TwilioService $twilioService;
 
-    /**
-     * @var string Upload directory path
-     */
-    private string $uploadDirectory;
-
-    /**
-     * MessageController constructor.
-     *
-     * @param ParameterBagInterface $params Holds parameters like upload directory path.
-     * @param TwilioService $twilioService Service to handle Twilio operations.
-     */
-    public function __construct(ParameterBagInterface $params, TwilioService $twilioService)
-    {
-        $this->twilioService = $twilioService;
-        $this->uploadDirectory = $params->get('upload_directory');
+    public function __construct(
+        private ParameterBagInterface $params,
+        private TwilioService $twilioService,
+        private EntityManagerInterface $em,
+        private ContactService $contactService
+    ) {
     }
 
     /**
@@ -49,7 +38,7 @@ class MessageController extends BaseController
      * @param Request $request Incoming request containing "to" and "body" parameters.
      * @return Response JSON response indicating success or failure.
      */
-    #[Route('/sendSms', methods: ['POST'])]
+    #[Route('/sendSms', "sendSms", methods: ['POST'])]
     public function sendSms(Request $request): Response
     {
         $parameters = $this->getTwilioParameters($request);
@@ -62,6 +51,9 @@ class MessageController extends BaseController
         }
     }
 
+
+    //! ------------------------------------------------------------------------------------------------
+
     /**
      * Sends an MMS via Twilio.
      *
@@ -70,7 +62,7 @@ class MessageController extends BaseController
      * @param Request $request Incoming request containing "to", "body", and "mediaUrl" or "file".
      * @return Response JSON response indicating success or failure.
      */
-    #[Route('/sendMms', methods: ['POST'])]
+    #[Route('/sendMms', "sendMms", methods: ['POST'])]
     public function sendMms(Request $request): Response
     {
         $parameters = $this->getTwilioParameters($request);
@@ -83,7 +75,7 @@ class MessageController extends BaseController
 
             // Remove temporary file if uploaded
             if ($parameters[ 'fileName' ]) {
-                $fileTempPath = $this->uploadDirectory . '/' . $parameters[ 'fileName' ];
+                $fileTempPath = $this->params->get('upload_directory') . '/' . $parameters[ 'fileName' ];
                 if (file_exists($fileTempPath)) {
                     unlink($fileTempPath);
                 }
@@ -95,6 +87,9 @@ class MessageController extends BaseController
         }
     }
 
+
+    //! ------------------------------------------------------------------------------------------------
+
     /**
      * Sends a WhatsApp message via Twilio.
      *
@@ -103,7 +98,7 @@ class MessageController extends BaseController
      * @param Request $request Incoming request containing "to", "body", and optional "mediaUrl" or "file".
      * @return Response JSON response indicating success or failure.
      */
-    #[Route('/sendWhatsApp', methods: ['POST'])]
+    #[Route('/sendWhatsApp', "sendWhatsApp", methods: ['POST'])]
     public function sendWhatsapp(Request $request): Response
     {
         $parameters = $this->getTwilioParameters($request);
@@ -116,13 +111,14 @@ class MessageController extends BaseController
         }
     }
 
+    //! ------------------------------------------------------------------------------------------------
     /**
      * Extracts parameters from the request for sending a message via Twilio.
      *
      * @param Request $request The incoming HTTP request containing form data.
      * @return array|JsonResponse An array of parameters or a JSON response with an error.
      */
-    public function getTwilioParameters(Request $request)
+    private function getTwilioParameters(Request $request)
     {
         $to = $request->request->get('to');
         $body = $request->request->get('body');
@@ -143,10 +139,10 @@ class MessageController extends BaseController
         if ($file) {
             $fileName = $file->getClientOriginalName();
             $parameters[ 'fileName' ] = $fileName;
-            $file->move($this->uploadDirectory, $fileName);
+            $file->move($this->params->get('upload_directory'), $fileName);
             // Generate the public URL for the uploaded file
             $mediaUrl = $this->getParameter('twillio_file_upload_public') . urlencode($fileName);
-        
+
         } else {
             // If no file is uploaded, check if a media URL is provided
             $mediaUrl = $request->request->get('mediaUrl');
@@ -159,4 +155,28 @@ class MessageController extends BaseController
 
         return $parameters;
     }
+
+    //! ------------------------------------------------------------------------------------------------
+
+    /**
+     * Autocompletes contact names based on partial input.
+     *
+     * @Route("/findContact", name="findContact", methods={"GET"})
+     *
+     * @param Request $request HTTP request containing the 'query' parameter.
+     *
+     * @return JsonResponse JSON response with a list of possible contacts.
+     */
+    #[Route("/findContact", name: "findContact", methods: ["GET"])]
+    public function findContact(Request $request): JsonResponse
+    {
+        $responseData = $this->contactService->autocompleteContact($request);
+        if (!$responseData->isSuccess()) {
+            return $this->json($responseData->getMessage(), $responseData->getStatusCode());
+        }
+        return $this->json(["message" => $responseData->getMessage(), "contacts" => $responseData->getData()[ "contacts" ]], $responseData->getStatusCode(), [], ['groups' => 'contact']);
+
+    }
+
+
 }

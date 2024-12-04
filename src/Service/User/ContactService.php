@@ -10,6 +10,7 @@ use App\Utils\JsonResponseBuilder;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
@@ -159,5 +160,44 @@ class ContactService
 
     //! --------------------------------------------------------------------------------------------
 
+    /**
+     * Autocomplete contact names based on partial input.
+     *
+     * @param Request $request HTTP request containing the 'query' parameter.
+     *
+     * @return ApiResponse JSON response with a list of possible contacts.
+     */
+    public function autocompleteContact(Request $request): ApiResponse
+    {
+        $query = $request->query->get('query');
+        if (empty($query)) {
+            return ApiResponse::error("Query parameter is required", null, Response::HTTP_BAD_REQUEST);
+        }
+
+        // Search for contacts with matching names
+        $contacts = $this->em->getRepository(Contact::class)->createQueryBuilder('c')
+            ->where('LOWER(c.firstname) LIKE :query OR LOWER(c.surname) LIKE :query')
+            ->setParameter('query', '%' . strtolower($query) . '%')
+            ->setMaxResults(10) // Limit the number of results for performance
+            ->getQuery()
+            ->getResult();
+
+        // If no contacts are found
+        if (empty($contacts)) {
+            return ApiResponse::error("No contacts found", null, Response::HTTP_NOT_FOUND);
+        }
+
+        // Format response data
+        $serializedContacts = array_map(function ($contact) {
+            return [
+                'id'        => $contact->getId(),
+                'firstname' => $contact->getFirstname(),
+                'surname'   => $contact->getSurname(),
+                'email'     => $contact->getEmail(),
+            ];
+        }, $contacts);
+
+        return ApiResponse::success("Contacts found", ["contacts" => $serializedContacts], Response::HTTP_OK);
+    }
 
 }
