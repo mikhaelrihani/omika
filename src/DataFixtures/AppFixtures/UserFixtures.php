@@ -52,11 +52,10 @@ class UserFixtures extends BaseFixtures
         $this->createUsers(5);
         $users = $this->retrieveEntities('user', $this);
         $contacts = $this->retrieveEntities('contact', $this);
-        // Flush to set the ID of each recipient entity when sending message
+     
         $manager->flush();
         //* To avoid a circular dependency between UserFixtures and MediaFixtures,
-        //* we implement the logic for creating notes and messages here, rather than in MediaFixtures.
-        $this->createMessages($users, $contacts);
+        //* we implement the logic for creating notes here, rather than in MediaFixtures.
         $this->createNotes($users);
 
         $manager->flush();
@@ -71,7 +70,7 @@ class UserFixtures extends BaseFixtures
     {
 
         $timestamps = $this->faker->createTimeStamps();
-        $userLogin = new UserLogin($this->userPasswordHasher);
+        $userLogin = new UserLogin();
         $userLogin
             ->setRoles(["ROLE_SUPER_ADMIN"])
             ->setPassword($this->userPasswordHasher->hashPassword($userLogin, "Password29!"))
@@ -93,7 +92,7 @@ class UserFixtures extends BaseFixtures
     public function createUserLogin(): UserLogin
     {
         $timestamps = $this->faker->createTimeStamps();
-        $userLogin = new UserLogin($this->userPasswordHasher);
+        $userLogin = new UserLogin();
         $userLogin
             ->setRoles($this->faker->role())
             ->setPassword($this->userPasswordHasher->hashPassword($userLogin, "Password29!"))
@@ -278,36 +277,7 @@ class UserFixtures extends BaseFixtures
         }
     }
 
-    private function createMessages(array $users, array $contacts): void
-    {
-        for ($m = 0; $m < 30; $m++) {
-            if (!empty($users) && !empty($contacts)) {
-
-                $timestamps = $this->faker->createTimeStamps();
-
-                $message = new Message();
-                $randomIndexUsers = array_rand($users);
-                $writer = $users[$randomIndexUsers];
-                // we take out the user from users array to avoid sending a message to himself
-                array_splice($users, $randomIndexUsers, 1);
-
-                $everybody = array_merge($users, $contacts);
-                if (!empty($everybody)) {
-                    $recipient = $this->faker->randomElement($everybody);
-                    $message
-                        ->setWriter($writer)
-                        ->setText($this->faker->text(200))
-                        ->setRecipient($recipient)
-                        ->setCreatedAt($timestamps[ 'createdAt' ])
-                        ->setUpdatedAt($timestamps[ 'updatedAt' ]);
-
-                    $this->em->persist($message);
-                }
-                // we put back the user in the users array
-                $users[] = $writer;
-            }
-        }
-    }
+   
 
     public function getDependencies()
     {

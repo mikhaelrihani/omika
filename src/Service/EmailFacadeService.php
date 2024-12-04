@@ -11,6 +11,7 @@ use Exception;
  */
 class EmailFacadeService
 {
+    // @todo  create function to retrieve and serve emailtemplate from contact
     private MailerService $mailerService;
 
     /**
@@ -59,5 +60,6 @@ class EmailFacadeService
             throw new Exception('Failed to send welcome email: ' . $e->getMessage());
         }
     }
-   
+
+
 }

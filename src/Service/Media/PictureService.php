@@ -5,6 +5,7 @@ namespace App\Service\Media;
 use App\Entity\Media\Mime;
 use App\Entity\Media\Picture;
 use App\Service\ValidatorService;
+use App\Service\Media\FileService;
 use App\Utils\ApiResponse;
 use App\Utils\JsonResponseBuilder;
 use Doctrine\ORM\EntityManagerInterface;

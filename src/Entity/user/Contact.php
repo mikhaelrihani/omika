@@ -100,6 +100,9 @@ class Contact extends BaseEntity implements RecipientInterface
     #[ORM\JoinColumn(nullable: true)]
     private ?Picture $avatar = null;
 
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $emailTemplate = null;
+
     public function __construct()
     {
         parent::__construct();
@@ -264,6 +267,18 @@ class Contact extends BaseEntity implements RecipientInterface
     public function setAvatar(?Picture $avatar): static
     {
         $this->avatar = $avatar;
+
+        return $this;
+    }
+
+    public function getEmailTemplate(): ?string
+    {
+        return $this->emailTemplate;
+    }
+
+    public function setEmailTemplate(?string $emailTemplate): static
+    {
+        $this->emailTemplate = $emailTemplate;
 
         return $this;
     }

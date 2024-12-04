@@ -4,6 +4,7 @@ namespace App\Entity\User;
 
 use App\Entity\BaseEntity;
 use App\Entity\Event\Event;
+use App\Entity\Media\Message;
 use App\Repository\User\UserRepository;
 use App\Validator\UniquePictureValidator;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -118,6 +119,7 @@ class User extends BaseEntity implements RecipientInterface
     #[ORM\ManyToMany(targetEntity: Event::class, mappedBy: 'favoritedBy', cascade: [ 'remove'])]
     private Collection $favoriteEvents;
 
+   
     public function __construct()
     {
         parent::__construct();
@@ -340,6 +342,5 @@ class User extends BaseEntity implements RecipientInterface
 
         return $this;
     }
-    
 
 }

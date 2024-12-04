@@ -5,7 +5,6 @@ namespace App\DataFixtures\AppFixtures;
 use App\DataFixtures\AppFixtures\BaseFixtures;
 use App\Entity\Media\Mime;
 use App\Entity\Media\Picture;
-use App\Entity\Media\Template;
 use Doctrine\Persistence\ObjectManager;
 
 
@@ -16,13 +15,10 @@ class MediaFixtures extends BaseFixtures
     public function load(ObjectManager $manager): void
     {
         $mimes = $this->createMimes();
-        $this->createTemplates();
         $this->createPictures($mimes);
 
         $this->em->flush();
     }
-
-
 
     /**
      * Create Mime entities.
@@ -52,28 +48,6 @@ class MediaFixtures extends BaseFixtures
         }
         return $mimes;
     }
-
-
-    /**
-     * Create Template entities.
-     */
-    private function createTemplates(): void
-    {
-        for ($t = 0; $t < 10; $t++) {
-            // Generate timestamps for each template
-            $timestamps = $this->faker->createTimeStamps();
-
-            $template = new Template();
-            $template
-                ->setName($this->faker->realText(50))
-                ->setText($this->faker->realText(1000))
-                ->setCreatedAt($timestamps[ 'createdAt' ])
-                ->setUpdatedAt($timestamps[ 'updatedAt' ]);
-
-            $this->em->persist($template);
-        }
-    }
-
 
     /**
      * Create Picture entities.
