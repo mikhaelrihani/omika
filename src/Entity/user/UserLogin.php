@@ -18,14 +18,14 @@ class UserLogin extends BaseEntity implements UserInterface, PasswordAuthenticat
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(["user", 'userLogin'])]
+    #[Groups(["user", 'userLogin','absence'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 180)]
     #[Assert\NotBlank(message: "Email should not be blank.")]
     #[UniqueEmail]
     #[Assert\Email(message: "The email '{{ value }}' is not a valid email.")]
-    #[Groups(['userLogin'])]
+    #[Groups(['userLogin','absence'])]
     private ?string $email = null;
 
     /**

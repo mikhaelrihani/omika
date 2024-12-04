@@ -188,7 +188,7 @@ class ContactService
         }
 
         // Format response data
-        $serializedContacts = array_map(function ($contact) {
+        $formatedContacts = array_map(function ($contact) {
             return [
                 'id'        => $contact->getId(),
                 'firstname' => $contact->getFirstname(),
@@ -197,7 +197,7 @@ class ContactService
             ];
         }, $contacts);
 
-        return ApiResponse::success("Contacts found", ["contacts" => $serializedContacts], Response::HTTP_OK);
+        return ApiResponse::success("Contacts found", ["contacts" => $formatedContacts], Response::HTTP_OK);
     }
 
 }

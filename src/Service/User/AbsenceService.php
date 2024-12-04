@@ -11,7 +11,8 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\Response;
 use App\Entity\User\Contact;
 use App\Entity\User\User;
-
+use App\Repository\User\AbsenceRepository;
+use DateTimeImmutable;
 
 class AbsenceService
 {
@@ -20,6 +21,7 @@ class AbsenceService
         private JsonResponseBuilder $jsonResponseBuilder,
         private ValidatorService $validateService,
         private ParameterBagInterface $params,
+        private AbsenceRepository $absenceRepository
     ) {
     }
 
@@ -54,6 +56,54 @@ class AbsenceService
         return ApiResponse::success(ucfirst($entityName) . " property late_count updated successfully", [$entityName => $entity], Response::HTTP_OK);
     }
 
+
     //! --------------------------------------------------------------------------------------------
 
+    /**
+     * Retrieve absences based on the status, entity type (user/contact), and date.
+     *
+     * @param array $data Contains the following keys:
+     *                    - string $data[0]: The entity type ('user' or 'contact').
+     *                    - int $data[1]: The ID of the entity (user or contact).
+     *                    - string $data[2]: The date in 'Y-m-d' format.
+     * @return ApiResponse
+     * @throws \Exception If an unexpected error occurs during database interaction.
+     */
+    public function getAbsences(string $date): ApiResponse
+    {
+        try {
+            $absences = $this->absenceRepository->findByStatusAndDate($date);
+
+            return ApiResponse::success("Absences retrieved successfully", ["absences" => $absences], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return ApiResponse::error(
+                "Failed to retrieve absences: " . $e->getMessage(),
+                null,
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+
+
+    //! --------------------------------------------------------------------------------------------
+
+    public function newAbsence()
+    {
+
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    public function updateAbsence()
+    {
+
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    public function deleteAbsence()
+    {
+
+    }
 }

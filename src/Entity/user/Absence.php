@@ -10,12 +10,16 @@ use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: AbsenceRepository::class)]
+#[ORM\Index(
+    name: 'absence_search_idx',
+    columns: ['status', 'user_id', 'contact_id', 'start_date', 'end_date']
+)]
 class Absence extends BaseEntity
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['user','contact'])]
+    #[Groups(['user', 'contact','absence'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 50, nullable: false)]
@@ -48,12 +52,14 @@ class Absence extends BaseEntity
     private ?bool $planningUpdate = null;
 
     #[ORM\ManyToOne(inversedBy: 'absence')]
+    #[Groups(['absence'])]
     private ?User $user = null;
 
     #[ORM\ManyToOne(inversedBy: 'absence')]
+    #[Groups(['absence'])]
     private ?Contact $contact = null;
 
-    
+
     public function getId(): ?int
     {
         return $this->id;
@@ -154,6 +160,6 @@ class Absence extends BaseEntity
 
         return $this;
     }
-    
-   
+
+
 }

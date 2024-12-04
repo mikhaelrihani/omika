@@ -22,7 +22,7 @@ class Contact extends BaseEntity implements RecipientInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['contact'])]
+    #[Groups(['contact','absence'])]
     private ?int $id = null;
 
     #[ORM\Column(type: Types::GUID, nullable: false)]
@@ -31,18 +31,18 @@ class Contact extends BaseEntity implements RecipientInterface
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "First name should not be blank.")]
-    #[Groups(['contact'])]
+    #[Groups(['contact','absence'])]
     private ?string $firstname = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Surname should not be blank.")]
-    #[Groups(['contact'])]
+    #[Groups(['contact','absence'])]
     private ?string $surname = null;
 
     #[ORM\Column(length: 180)]
     #[Assert\NotBlank(message: "Email should not be blank.")]
     #[Assert\Email(message: "The email '{{ value }}' is not a valid email.")]
-    #[Groups(['contact'])]
+    #[Groups(['contact','absence'])]
     private ?string $email = null;
 
     #[ORM\Column(length: 20, nullable: false)]
@@ -94,7 +94,7 @@ class Contact extends BaseEntity implements RecipientInterface
      */
     #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'contact', cascade: ['remove'])]
     #[Groups(['contact'])]
-    private Collection $absence;
+    private Collection $absences;
 
     #[ORM\OneToOne(cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\JoinColumn(nullable: true)]
@@ -106,7 +106,7 @@ class Contact extends BaseEntity implements RecipientInterface
     public function __construct()
     {
         parent::__construct();
-        $this->absence = new ArrayCollection();
+        $this->absences = new ArrayCollection();
     }
 
 
@@ -232,15 +232,15 @@ class Contact extends BaseEntity implements RecipientInterface
     /**
      * @return Collection<int, Absence>
      */
-    public function getAbsence(): Collection
+    public function getAbsences(): Collection
     {
-        return $this->absence;
+        return $this->absences;
     }
 
     public function addAbsence(Absence $absence): static
     {
-        if (!$this->absence->contains($absence)) {
-            $this->absence->add($absence);
+        if (!$this->absences->contains($absence)) {
+            $this->absences->add($absence);
             $absence->setContact($this);
         }
 
@@ -249,7 +249,7 @@ class Contact extends BaseEntity implements RecipientInterface
 
     public function removeAbsence(Absence $absence): static
     {
-        if ($this->absence->removeElement($absence)) {
+        if ($this->absences->removeElement($absence)) {
             // set the owning side to null (unless already changed)
             if ($absence->getContact() === $this) {
                 $absence->setContact(null);

@@ -16,28 +16,24 @@ class AbsenceRepository extends ServiceEntityRepository
         parent::__construct($registry, Absence::class);
     }
 
-    //    /**
-    //     * @return Absence[] Returns an array of Absence objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('a')
-    //            ->andWhere('a.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('a.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+    /**
+     * Finds all active absences for a given date.
+     *
+     * @param string $date The date to search for.
+     *
+     * @return Absence[] An array of Absence objects.
+     */
+    public function findByStatusAndDate(string $date): array
+    {
+        $qb = $this->createQueryBuilder('a')
+            ->where('a.status = :status')
+            ->andWhere(':date BETWEEN a.startDate AND a.endDate')
+            ->setParameter('status', 'active')
+            ->setParameter('date', $date);
 
-    //    public function findOneBySomeField($value): ?Absence
-    //    {
-    //        return $this->createQueryBuilder('a')
-    //            ->andWhere('a.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+        return $qb->getQuery()->getResult();
+    }
+
 }
+
+

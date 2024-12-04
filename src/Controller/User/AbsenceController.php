@@ -2,12 +2,14 @@
 
 namespace App\Controller\User;
 
+use App\Repository\User\AbsenceRepository;
 use App\Repository\User\UserLoginRepository;
 use App\Repository\User\UserRepository;
 use App\Service\Media\FileService;
 use App\Service\User\AbsenceService;
 use App\Service\User\UserService;
 use App\Service\ValidatorService;
+use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -25,7 +27,8 @@ class AbsenceController extends AbstractController
         public UserService $userService,
         private ValidatorService $validateService,
         private FileService $fileService,
-        private AbsenceService $absenceService
+        private AbsenceService $absenceService,
+        private AbsenceRepository $absenceRepository
     ) {
     }
 
@@ -60,5 +63,83 @@ class AbsenceController extends AbstractController
 
         $responseLate = $this->absenceService->updateLateCount($id, $entityName, $responseData->getData()[ "late" ]);
         return $this->json($responseLate->getMessage(), $responseLate->getStatusCode());
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Retrieve an absence by its ID.
+     *
+     * @Route("/getAbsence/{id}", name="getAbsence", methods={"GET"})
+     *
+     * @param int $id The ID of the absence to retrieve.
+     * @return JsonResponse A JSON response containing the absence or an error message if not found.
+     */
+    #[Route("/getAbsence/{id}", name: "getAbsence", methods: ["GET"])]
+    public function getAbsence(int $id)
+    {
+        $absence = $this->absenceRepository->find($id);
+        if (!$absence) {
+            return $this->json("No absence found", Response::HTTP_NOT_FOUND);
+        }
+        return $this->json(["message" => "Absence retrieved successfully", "absence" => $absence], Response::HTTP_OK, [], ['groups' => 'absence']);
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * Retrieve all active absences for a specific date.
+     *
+     * @Route("/getActiveAbsencesByDate", name="getAbsencesByDate", methods={"POST"})
+     *
+     * @param Request $request The HTTP request containing the date in JSON format.
+     * @return JsonResponse A JSON response containing the list of active absences or an error message.
+     */
+    #[Route('/getActiveAbsencesByDate', name: 'getAbsencesByDate', methods: 'POST')]
+    public function getActiveAbsencesByDate(Request $request)
+    {
+        $responseData = $this->validateService->validateJson($request);
+        if (!$responseData->isSuccess()) {
+            return $this->json($responseData->getMessage(), $responseData->getStatusCode());
+        }
+
+        (string) $date = $responseData->getData()[ "date" ];
+
+        $responseAbsences = $this->absenceService->getAbsences($date);
+        if (!$responseAbsences->isSuccess()) {
+            return $this->json($responseAbsences->getMessage(), $responseAbsences->getStatusCode());
+        }
+
+        $Absences = $responseAbsences->getData()[ "absences" ];
+        return $this->json(
+            ["message" => $responseAbsences->getMessage(), "absences" => $Absences],
+            $responseAbsences->getStatusCode(),
+            [],
+            ['groups' => 'absence']
+        );
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    #[Route("newAbsence", name: "newAbsence", methods: ["POST"])]
+    public function newAbsence()
+    {
+
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    #[Route("updateAbsence", name: "updateAbsence", methods: ["PUT"])]
+    public function updateAbsence()
+    {
+
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    #[Route("deleteAbsence", name: "deleteAbsence", methods: ["DELETE"])]
+    public function deleteAbsence()
+    {
+
     }
 }

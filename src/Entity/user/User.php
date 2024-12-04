@@ -22,7 +22,7 @@ class User extends BaseEntity implements RecipientInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['event', 'eventRecurring','user',"tag"])]
+    #[Groups(['event', 'eventRecurring', 'user', "tag",'absence'])]
     private ?int $id = null;
 
     #[ORM\Column(type: Types::GUID, nullable: false)]
@@ -31,12 +31,12 @@ class User extends BaseEntity implements RecipientInterface
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "First name should not be blank.")]
-    #[Groups(['user'])]
+    #[Groups(['user','absence'])]
     private ?string $firstname = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Surname should not be blank.")]
-    #[Groups(['user'])]
+    #[Groups(['user','absence'])]
     private ?string $surname = null;
 
     #[ORM\Column(length: 20, nullable: false)]
@@ -104,9 +104,9 @@ class User extends BaseEntity implements RecipientInterface
     /**
      * @var Collection<int, Absence>
      */
-    #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'user', cascade: [ 'remove'])]
+    #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'user', cascade: ['remove'])]
     #[Groups(['user'])]
-    private Collection $absence;
+    private Collection $absences;
 
     #[ORM\Column(length: 1000, nullable: false)]
     #[Assert\NotBlank(message: "Private note should not be blank.")]
@@ -116,14 +116,14 @@ class User extends BaseEntity implements RecipientInterface
     /**
      * @var Collection<int, Event>
      */
-    #[ORM\ManyToMany(targetEntity: Event::class, mappedBy: 'favoritedBy', cascade: [ 'remove'])]
+    #[ORM\ManyToMany(targetEntity: Event::class, mappedBy: 'favoritedBy', cascade: ['remove'])]
     private Collection $favoriteEvents;
 
-   
+
     public function __construct()
     {
         parent::__construct();
-        $this->absence = new ArrayCollection();
+        $this->absences = new ArrayCollection();
         $this->favoriteEvents = new ArrayCollection();
     }
 
@@ -277,15 +277,15 @@ class User extends BaseEntity implements RecipientInterface
     /**
      * @return Collection<int, Absence>
      */
-    public function getAbsence(): Collection
+    public function getAbsences(): Collection
     {
-        return $this->absence;
+        return $this->absences;
     }
 
     public function addAbsence(Absence $absence): static
     {
-        if (!$this->absence->contains($absence)) {
-            $this->absence->add($absence);
+        if (!$this->absences->contains($absence)) {
+            $this->absences->add($absence);
             $absence->setUser($this);
         }
 
@@ -294,7 +294,7 @@ class User extends BaseEntity implements RecipientInterface
 
     public function removeAbsence(Absence $absence): static
     {
-        if ($this->absence->removeElement($absence)) {
+        if ($this->absences->removeElement($absence)) {
             // set the owning side to null (unless already changed)
             if ($absence->getUser() === $this) {
                 $absence->setUser(null);
