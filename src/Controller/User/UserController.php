@@ -55,7 +55,7 @@ class UserController extends BaseController
         if (!$users) {
             return $this->json("No users found", Response::HTTP_NOT_FOUND);
         }
-        return $this->json(["message" => "Users retrieved successfully", "contacts" => $users], Response::HTTP_OK, [], ['groups' => 'user']);
+        return $this->json(["message" => "Users retrieved successfully", "users" => $users], Response::HTTP_OK, [], ['groups' => 'user']);
     }
 
     //! --------------------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ class UserController extends BaseController
         if ($response === null || !$response->isSuccess()) {
             return $this->json($response->getMessage(), $response->getStatusCode());
         }
-        return $this->json(["message" => $response->getMessage(), "user" => $response->getData()[ "user" ]], $response->getStatusCode(), [], ['groups' => 'user']);
+        return $this->json(["message" => $response->getMessage(), "user" => $response->getData()[ "user" ], "type" => "user"], $response->getStatusCode(), [], ['groups' => 'user']);
     }
 
 
@@ -205,9 +205,9 @@ class UserController extends BaseController
 
     //! --------------------------------------------------------------------------------------------
 
-   
 
 
 
-   
+
+
 }

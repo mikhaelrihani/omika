@@ -11,7 +11,7 @@ use Exception;
  */
 class EmailFacadeService
 {
-    // @todo  create function to retrieve and serve emailtemplate from contact
+    
     private MailerService $mailerService;
 
     /**

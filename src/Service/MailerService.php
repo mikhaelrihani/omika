@@ -11,29 +11,15 @@ use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mailer\Transport\TransportInterface;
 
 
-/**
- * Class MailerService
- * 
- * Service pour la gestion de l'envoi d'emails via l'API.
- */
 class MailerService
 {
-    private string $from;
-    private TransportInterface $mailer;
-    private RequestStack $requestStack;
 
-    /**
-     * MailerService constructor.
-     *
-     * @param TransportInterface $transport Instance de transport pour l'envoi des emails.
-     * @param string $from Adresse email d'envoi par défaut.
-     * @param RequestStack $requestStack Pile de requêtes pour récupérer les données de la requête en cours.
-     */
-    public function __construct(TransportInterface $transport, string $from, RequestStack $requestStack)
-    {
-        $this->mailer = $transport;
-        $this->from = $from;
-        $this->requestStack = $requestStack;
+    public function __construct(
+        private TransportInterface $transport,
+        private string $from,
+        private RequestStack $requestStack,
+        private TransportInterface $mailer
+    ) {
     }
 
     /**

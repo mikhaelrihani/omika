@@ -58,7 +58,7 @@ class ContactController extends BaseController
         if (!$contacts) {
             return $this->json("No contact found", Response::HTTP_NOT_FOUND);
         }
-        return $this->json(["message" => "Contacts retrieved successfully", "contacts" => $contacts], Response::HTTP_OK, [], ['groups' => 'contact']);
+        return $this->json(["message" => "Contacts retrieved successfully", "contacts" => $contacts, "type" => "contact"], Response::HTTP_OK, [], ['groups' => 'contact']);
     }
 
     //! --------------------------------------------------------------------------------------------
