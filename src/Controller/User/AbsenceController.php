@@ -9,7 +9,6 @@ use App\Service\Media\FileService;
 use App\Service\User\AbsenceService;
 use App\Service\User\UserService;
 use App\Service\ValidatorService;
-use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -121,25 +120,62 @@ class AbsenceController extends AbstractController
 
     //! --------------------------------------------------------------------------------------------
 
-    #[Route("newAbsence", name: "newAbsence", methods: ["POST"])]
-    public function newAbsence()
+    #[Route("new", name: "new", methods: ["POST"])]
+    public function new()
     {
 
     }
 
     //! --------------------------------------------------------------------------------------------
 
-    #[Route("updateAbsence", name: "updateAbsence", methods: ["PUT"])]
-    public function updateAbsence()
+    /**
+     * Updates an absence entity with the given ID using the provided data from the request.
+     *
+     * @param int $id The ID of the absence to update.
+     * @param Request $request The HTTP request containing the data for the update.
+     *
+     * @return JsonResponse Returns a JSON response with the status and updated absence data or an error message.
+     *
+     * @Route("update/{id}", name="update", methods={"PUT"})
+     */
+    #[Route("/update/{id}", name: "update", methods: ["PUT"])]
+    public function update(int $id, Request $request): JsonResponse
     {
-
+        $responseUpdate = $this->absenceService->updateAbsence($id, $request);
+        if (!$responseUpdate->isSuccess()) {
+            return $this->json($responseUpdate->getMessage(), $responseUpdate->getStatusCode());
+        }
+        return $this->json(
+            [
+                "message" => $responseUpdate->getMessage(),
+                "absence" => $responseUpdate->getData()[ "absence" ]
+            ],
+            $responseUpdate->getStatusCode(),
+            [],
+            ['groups' => 'absence']
+        );
     }
 
     //! --------------------------------------------------------------------------------------------
 
-    #[Route("deleteAbsence", name: "deleteAbsence", methods: ["DELETE"])]
-    public function deleteAbsence()
+    /**
+     * Deletes an absence entity with the given ID.
+     *
+     * @param int $id The ID of the absence to delete.
+     *
+     * @return JsonResponse Returns a JSON response with the status of the operation or an error message.
+     *
+     * @Route("delete/{id}", name="delete", methods={"DELETE"})
+     */
+    #[Route("/delete/{id}", name: "delete", methods: ["DELETE"])]
+    public function delete(int $id): JsonResponse
     {
-
+        $responseDelete = $this->absenceService->deleteAbsence($id);
+        if (!$responseDelete->isSuccess()) {
+            return $this->json($responseDelete->getMessage(), $responseDelete->getStatusCode());
+        }
+        return $this->json($responseDelete->getMessage(), $responseDelete->getStatusCode());
     }
+
+
 }

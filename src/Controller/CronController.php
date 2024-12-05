@@ -17,6 +17,17 @@ class CronController extends AbstractController
     ) {
     }
 
+
+    /**
+     * Execute the cron jobs for both event and user-related operations.
+     *
+     * - This endpoint triggers cron tasks provided by `eventCronService` and `userCronService`.
+     * - Handles responses from both services and returns appropriate JSON responses based on their success or failure.
+     *
+     * @Route("api/cron/load", name="app_cron", methods={"GET", "POST"})
+     *
+     * @return JsonResponse The response indicating success or failure of the cron jobs.
+     */
     #[Route('api/cron/load', name: 'app_cron', methods: ['get', 'post'])]
     public function load(): JsonResponse
     {
@@ -24,12 +35,17 @@ class CronController extends AbstractController
         if (!$eventResponse->isSuccess()) {
             return $this->json($eventResponse->getMessage(), $eventResponse->getStatusCode());
         }
+
         $userResponse = $this->userCronService->load();
         if (!$userResponse->isSuccess()) {
             return $this->json($userResponse->getMessage(), $userResponse->getStatusCode());
         }
-        return $this->json("Cron job completed successfully. {$eventResponse->getMessage()}, {$userResponse->getMessage()}", Response::HTTP_OK);
 
+        return $this->json(
+            "Cron job completed successfully. {$eventResponse->getMessage()}, {$userResponse->getMessage()}",
+            Response::HTTP_OK
+        );
     }
+
 
 }

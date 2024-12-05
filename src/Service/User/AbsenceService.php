@@ -2,7 +2,7 @@
 
 namespace App\Service\User;
 
-
+use App\Entity\User\Absence;
 use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
 use App\Utils\JsonResponseBuilder;
@@ -12,17 +12,25 @@ use Symfony\Component\HttpFoundation\Response;
 use App\Entity\User\Contact;
 use App\Entity\User\User;
 use App\Repository\User\AbsenceRepository;
+use App\Utils\CurrentUser;
 use DateTimeImmutable;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
+use Symfony\Component\Serializer\SerializerInterface;
 
 class AbsenceService
 {
+    protected DateTimeImmutable $now;
     public function __construct(
         private EntityManagerInterface $em,
         private JsonResponseBuilder $jsonResponseBuilder,
         private ValidatorService $validateService,
         private ParameterBagInterface $params,
-        private AbsenceRepository $absenceRepository
+        private AbsenceRepository $absenceRepository,
+        protected SerializerInterface $serializer,
+        protected CurrentUser $CurrentUser
     ) {
+        $this->now = new DateTimeImmutable();
     }
 
 
@@ -95,15 +103,80 @@ class AbsenceService
 
     //! --------------------------------------------------------------------------------------------
 
-    public function updateAbsence()
+    /**
+     * Updates an existing absence entity based on the provided JSON payload.
+     *
+     * @param int     $id      The ID of the absence to update.
+     * @param Request $request The HTTP request containing the JSON payload with the updated absence data.
+     *
+     * @return ApiResponse Returns an ApiResponse object indicating the success or failure of the operation.
+     */
+    public function updateAbsence(int $id, Request $request): ApiResponse
     {
+        $responseData = $this->validateService->validateJson($request);
+        if (!$responseData->isSuccess()) {
+            return ApiResponse::error($responseData->getMessage(), null, $responseData->getStatusCode());
+        }
 
+        $absence = $this->absenceRepository->find($id);
+        if (!$absence) {
+            return ApiResponse::error("No absence found", null, Response::HTTP_NOT_FOUND);
+        }
+
+        $absence = $this->serializer->deserialize(
+            $request->getContent(),
+            Absence::class,
+            'json',
+            [AbstractNormalizer::OBJECT_TO_POPULATE => $absence]
+        );
+
+        if (!$absence) {
+            return ApiResponse::error("Failed to populate object absence", null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        $isActive = $this->now >= $absence->getStartDate() && $this->now <= $absence->getEndDate();
+        $absence->setStatus($isActive ? 'active' : 'inactive');
+
+        $author = $this->CurrentUser->getCurrentUser()->getFullName();
+        $absence->setAuthor($author);
+        $this->em->flush();
+        return ApiResponse::success("Absence updated successfully", ["absence" => $absence], Response::HTTP_OK);
     }
 
     //! --------------------------------------------------------------------------------------------
 
-    public function deleteAbsence()
+    /**
+     * Deletes an existing absence entity by its ID.
+     *
+     * @param int $id The ID of the absence to delete.
+     *
+     * @return ApiResponse Returns an ApiResponse object indicating the success or failure of the operation.
+     *
+     * @throws \Exception If the deletion process fails due to database errors or constraints.
+     */
+    public function deleteAbsence(int $id): ApiResponse
     {
+        $absence = $this->absenceRepository->find($id);
+        if (!$absence) {
+            return ApiResponse::error("No absence found", null, Response::HTTP_NOT_FOUND);
+        }
 
+        try {
+            // Remove the absence from associated user and contact relationships
+            if ($absence->getUser() !== null) {
+                $absence->getUser()->removeAbsence($absence);
+            }
+
+            if ($absence->getContact() !== null) {
+                $absence->getContact()->removeAbsence($absence);
+            }
+
+            $this->em->remove($absence);
+            $this->em->flush();
+            return ApiResponse::success("Absence deleted successfully", null, Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return ApiResponse::error("Failed to delete absence: " . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
+
 }

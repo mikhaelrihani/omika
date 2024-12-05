@@ -22,7 +22,7 @@ class User extends BaseEntity implements RecipientInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['event', 'eventRecurring', 'user', "tag",'absence'])]
+    #[Groups(['event', 'eventRecurring', 'user', "tag", 'absence'])]
     private ?int $id = null;
 
     #[ORM\Column(type: Types::GUID, nullable: false)]
@@ -31,12 +31,12 @@ class User extends BaseEntity implements RecipientInterface
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "First name should not be blank.")]
-    #[Groups(['user','absence'])]
+    #[Groups(['user', 'absence'])]
     private ?string $firstname = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Surname should not be blank.")]
-    #[Groups(['user','absence'])]
+    #[Groups(['user', 'absence'])]
     private ?string $surname = null;
 
     #[ORM\Column(length: 20, nullable: false)]
@@ -104,7 +104,7 @@ class User extends BaseEntity implements RecipientInterface
     /**
      * @var Collection<int, Absence>
      */
-    #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'user', cascade: ['remove'])]
+    #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'user', cascade: ['remove'], orphanRemoval: true)]
     #[Groups(['user'])]
     private Collection $absences;
 

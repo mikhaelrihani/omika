@@ -22,7 +22,7 @@ class Contact extends BaseEntity implements RecipientInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['contact','absence'])]
+    #[Groups(['contact', 'absence'])]
     private ?int $id = null;
 
     #[ORM\Column(type: Types::GUID, nullable: false)]
@@ -31,18 +31,18 @@ class Contact extends BaseEntity implements RecipientInterface
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "First name should not be blank.")]
-    #[Groups(['contact','absence'])]
+    #[Groups(['contact', 'absence'])]
     private ?string $firstname = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Surname should not be blank.")]
-    #[Groups(['contact','absence'])]
+    #[Groups(['contact', 'absence'])]
     private ?string $surname = null;
 
     #[ORM\Column(length: 180)]
     #[Assert\NotBlank(message: "Email should not be blank.")]
     #[Assert\Email(message: "The email '{{ value }}' is not a valid email.")]
-    #[Groups(['contact','absence'])]
+    #[Groups(['contact', 'absence'])]
     private ?string $email = null;
 
     #[ORM\Column(length: 20, nullable: false)]
@@ -92,7 +92,7 @@ class Contact extends BaseEntity implements RecipientInterface
     /**
      * @var Collection<int, Absence>
      */
-    #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'contact', cascade: ['remove'])]
+    #[ORM\OneToMany(targetEntity: Absence::class, mappedBy: 'contact', cascade: ['remove'],orphanRemoval: true)]
     #[Groups(['contact'])]
     private Collection $absences;
 
