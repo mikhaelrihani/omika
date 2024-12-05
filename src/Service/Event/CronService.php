@@ -55,28 +55,28 @@ class CronService
      *
      * Si une des étapes échoue, elle retourne une réponse d'erreur immédiatement avec les détails.
      *
-     * @return JsonResponse
+     * @return ApiResponse
      * - En cas de succès : retourne un message contenant les actions effectuées.
      * - En cas d'échec : retourne un message d'erreur spécifique à l'étape ayant échoué.
      */
 
-    public function load(): JsonResponse
+    public function load(): ApiResponse
     {
 
         // Définir les étapes à exécuter
         $steps = [
-            'handleYesterdayEvents'           => function () use (&$todayEvents): void {
+            'handleYesterdayEvents'          => function () use (&$todayEvents): void {
                 $todayEvents = $this->handleYesterdayEvents() ?? new ArrayCollection();
             },
-            'createTagsForToday'              => function () use (&$todayEvents): void {
+            'createTagsForToday'             => function () use (&$todayEvents): void {
                 foreach ($todayEvents as $todayEvent) {
                     $this->tagService->createTag($todayEvent);
                 }
             },
-            'deletePastTags'                  => fn(): null => $this->deletePastTag(),
-            'updateAllEventsTimeStamps'       => fn(): Collection => $this->updateAllEventsTimeStamps(),
-            'deleteOldEvents'                 => fn(): null => $this->deleteOldEvents(),
-            'createRecurringChildrenWithTag'        => function () use (&$createdChildren): void {
+            'deletePastTags'                 => fn(): null => $this->deletePastTag(),
+            'updateAllEventsTimeStamps'      => fn(): Collection => $this->updateAllEventsTimeStamps(),
+            'deleteOldEvents'                => fn(): null => $this->deleteOldEvents(),
+            'createRecurringChildrenWithTag' => function () use (&$createdChildren): void {
                 $createdChildren = $this->createRecurringChildrenWithTag() ?? new ArrayCollection();
             },
         ];
@@ -87,23 +87,23 @@ class CronService
                 $step();
             } catch (Exception $e) {
 
-                $response = ApiResponse::error(
+                return ApiResponse::error(
                     "Step -{$stepName}- failed :" . $e->getMessage(),
                     null,
                     Response::HTTP_INTERNAL_SERVER_ERROR
                 );
-                return new JsonResponse($response->getMessage(), $response->getStatusCode());
+
             }
         }
 
         // Toutes les étapes réussies
-        $response = ApiResponse::success(
-            "Cron job completed successfully. Today Events Created: {$this->todayEventsCreated}, Old Events Deleted: {$this->oldEventsDeleted}, Events Activated: {$this->eventsActivated}, RecurringChildrensCreated:{$this->recurringChildrenCreated}.",
+        return ApiResponse::success(
+            "Today Events Created: {$this->todayEventsCreated}, Old Events Deleted: {$this->oldEventsDeleted}, Events Activated: {$this->eventsActivated}, RecurringChildrensCreated:{$this->recurringChildrenCreated}.",
             null,
             Response::HTTP_OK
         );
 
-        return new JsonResponse($response->getMessage(), $response->getStatusCode());
+
 
     }
 
@@ -492,7 +492,7 @@ class CronService
         }
 
         foreach ($eventRecurrings as $eventRecurring) {
-            $response = $this->eventRecurringService-> createChildrenWithTag($eventRecurring, true);
+            $response = $this->eventRecurringService->createChildrenWithTag($eventRecurring, true);
             if (!$response->isEmpty()) {
                 foreach ($response as $createdChild) {
                     $createdChildren->add($createdChild);
