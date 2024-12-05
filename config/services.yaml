@@ -56,8 +56,8 @@ services:
             $phpBinaryPath: '%env(string:phpBinaryPath)%'
             $consolePath: '%env(string:consolePath)%'  
 
-     # Configuration du service pour CronEventMessageHandler
-    App\Scheduler\MessageHandler\CronEventMessageHandler:
+     # Configuration du service pour CronMessageHandler
+    App\Scheduler\MessageHandler\CronMessageHandler:
         arguments:
             $phpBinaryPath: '%env(string:phpBinaryPath)%'
             $consolePath: '%env(string:consolePath)%'  

@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Service\Event\CronService as EventCronService;
 use App\Service\User\CronService as UserCronService;
+use App\Service\Media\CronService as MediaCronService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -13,7 +14,8 @@ class CronController extends AbstractController
 {
     public function __construct(
         protected EventCronService $eventCronService,
-        protected UserCronService $userCronService
+        protected UserCronService $userCronService,
+        protected MediaCronService $mediaCronService
     ) {
     }
 
@@ -41,8 +43,13 @@ class CronController extends AbstractController
             return $this->json($userResponse->getMessage(), $userResponse->getStatusCode());
         }
 
+        $mediaResponse = $this->mediaCronService->load();
+        if (!$mediaResponse->isSuccess()) {
+            return $this->json($mediaResponse->getMessage(), $mediaResponse->getStatusCode());
+        }
+
         return $this->json(
-            "Cron job completed successfully. {$eventResponse->getMessage()}, {$userResponse->getMessage()}",
+            "Cron job completed successfully. {$eventResponse->getMessage()}, {$userResponse->getMessage()}, {$mediaResponse->getMessage()}.",
             Response::HTTP_OK
         );
     }

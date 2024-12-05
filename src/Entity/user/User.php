@@ -22,7 +22,7 @@ class User extends BaseEntity implements RecipientInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['event', 'eventRecurring', 'user', "tag", 'absence',"note"])]
+    #[Groups(['event', 'eventRecurring', 'user', "tag", 'absence', "note"])]
     private ?int $id = null;
 
     #[ORM\Column(type: Types::GUID, nullable: false)]
@@ -31,12 +31,12 @@ class User extends BaseEntity implements RecipientInterface
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "First name should not be blank.")]
-    #[Groups(['user', 'absence',"note"])]
+    #[Groups(['user', 'absence', "note"])]
     private ?string $firstname = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Surname should not be blank.")]
-    #[Groups(['user', 'absence',"note"])]
+    #[Groups(['user', 'absence', "note"])]
     private ?string $surname = null;
 
     #[ORM\Column(length: 20, nullable: false)]
@@ -123,7 +123,13 @@ class User extends BaseEntity implements RecipientInterface
      * @var Collection<int, Note>
      */
     #[ORM\ManyToMany(targetEntity: Note::class, mappedBy: 'Recipients')]
-    private Collection $notes;
+    private Collection $receivedNotes;
+
+    /**
+     * @var Collection<int, Note>
+     */
+    #[ORM\OneToMany(targetEntity: Note::class, mappedBy: 'author', cascade: ['remove'], orphanRemoval: true)]
+    private Collection $writtenNotes;
 
 
     public function __construct()
@@ -131,7 +137,8 @@ class User extends BaseEntity implements RecipientInterface
         parent::__construct();
         $this->absences = new ArrayCollection();
         $this->favoriteEvents = new ArrayCollection();
-        $this->notes = new ArrayCollection();
+        $this->receivedNotes = new ArrayCollection();
+        $this->writtenNotes = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -323,6 +330,21 @@ class User extends BaseEntity implements RecipientInterface
         return $this;
     }
 
+
+    public function getWrittenNotes(): Collection
+    {
+        return $this->writtenNotes;
+    }
+
+    public function addWrittenNote(Note $writtenNote): static
+    {
+        if (!$this->writtenNotes->contains($writtenNote)) {
+            $this->writtenNotes->add($writtenNote);
+            $writtenNote->setAuthor($this);
+        }
+
+        return $this;
+    }
     /**
      * @return Collection<int, Event>
      */
@@ -353,25 +375,24 @@ class User extends BaseEntity implements RecipientInterface
     /**
      * @return Collection<int, Note>
      */
-    public function getNotes(): Collection
+    public function getReceivedNotes(): Collection
     {
-        return $this->notes;
+        return $this->receivedNotes;
     }
 
-    public function addNote(Note $note): static
+    public function addreceivedNote(Note $receivedNote): static
     {
-        if (!$this->notes->contains($note)) {
-            $this->notes->add($note);
-            $note->addRecipient($this);
+        if (!$this->receivedNotes->contains($receivedNote)) {
+            $this->receivedNotes->add($receivedNote);
         }
 
         return $this;
     }
 
-    public function removeNote(Note $note): static
+    public function removeReceivedNote(Note $receivedNote): static
     {
-        if ($this->notes->removeElement($note)) {
-            $note->removeRecipient($this);
+        if ($this->receivedNotes->removeElement($receivedNote)) {
+            $receivedNote->removeRecipient($this);
         }
 
         return $this;

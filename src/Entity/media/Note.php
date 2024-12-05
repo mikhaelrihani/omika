@@ -7,7 +7,7 @@ use App\Repository\Media\NoteRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\User\User; 
+use App\Entity\User\User;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Serializer\Annotation\Groups;
 
@@ -25,7 +25,7 @@ class Note extends BaseEntity
     #[Groups(["note"])]
     private ?string $text = null;
 
-    #[ORM\OneToOne]
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'writtenNotes')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     #[Groups(["note"])]
     private ?User $author = null;
@@ -33,7 +33,7 @@ class Note extends BaseEntity
     /**
      * @var Collection<int, User>
      */
-    #[ORM\ManyToMany(targetEntity: User::class, inversedBy: 'notes')]
+    #[ORM\ManyToMany(targetEntity: User::class, inversedBy: 'receivedNotes')]
     #[Groups(["note"])]
     private Collection $Recipients;
 
@@ -84,6 +84,7 @@ class Note extends BaseEntity
     {
         if (!$this->Recipients->contains($recipient)) {
             $this->Recipients->add($recipient);
+            $recipient->addreceivedNote($this);
         }
 
         return $this;
@@ -91,10 +92,11 @@ class Note extends BaseEntity
 
     public function removeRecipient(User $recipient): static
     {
+        $recipient->removeReceivedNote($this);
         $this->Recipients->removeElement($recipient);
 
         return $this;
     }
 
-  
+
 }
