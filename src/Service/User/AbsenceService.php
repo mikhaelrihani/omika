@@ -96,10 +96,59 @@ class AbsenceService
 
     //! --------------------------------------------------------------------------------------------
 
-    public function newAbsence()
+    /**
+     * Creates a new absence record and associates it with a user or contact.
+     *
+     * This method validates the JSON request data, creates an `Absence` entity, 
+     * determines its status based on the current date, and associates it with 
+     * the appropriate user or contact. Finally, it persists the new entity to the database.
+     *
+     * @param Request $request The HTTP request containing the data for the new absence.
+     *
+     * @return ApiResponse Returns an `ApiResponse` indicating success or failure. 
+     *                     On success, includes the newly created `Absence` entity.
+     *
+     * @throws \Exception Throws an exception if the request data is invalid or if the 
+     *                    absence cannot be associated with a valid user or contact.
+     */
+    public function newAbsence(Request $request)
     {
+        $responseData = $this->validateService->validateJson($request);
+        if (!$responseData->isSuccess()) {
+            return ApiResponse::error($responseData->getMessage(), null, $responseData->getStatusCode());
+        }
 
+        $absence = (new Absence())
+            ->setStartDate(new DateTimeImmutable($responseData->getData()[ 'startDate' ]))
+            ->setEndDate(new DateTimeImmutable($responseData->getData()[ 'endDate' ]))
+            ->setReason($responseData->getData()[ 'reason' ])
+            ->setPlanningUpdate(0)
+            ->setAuthor($this->CurrentUser->getCurrentUser()->getFullName());
+
+        // Determine the absence status based on the current date.
+        $isActive = $this->now >= $absence->getStartDate() && $this->now <= $absence->getEndDate();
+        $absence->setStatus($isActive ? 'active' : 'inactive');
+
+        // Determine the absence type and find the corresponding user or contact.
+        $type = $responseData->getData()[ 'type' ];
+        $absent = ($type === 'user') ?
+            $this->em->getRepository(User::class)->find($responseData->getData()[ 'id' ]) :
+            $this->em->getRepository(Contact::class)->find($responseData->getData()[ 'id' ]);
+
+        if (!$absent) {
+            return ApiResponse::error("No $type found", null, Response::HTTP_NOT_FOUND);
+        }
+
+        // Associate the absence with the user or contact.
+        $absent->addAbsence($absence);
+
+        // Persist the absence entity and flush changes to the database.
+        $this->em->persist($absence);
+        $this->em->flush();
+
+        return ApiResponse::success("Absence created successfully", ["absence" => $absence], Response::HTTP_CREATED);
     }
+
 
     //! --------------------------------------------------------------------------------------------
 
@@ -137,8 +186,7 @@ class AbsenceService
         $isActive = $this->now >= $absence->getStartDate() && $this->now <= $absence->getEndDate();
         $absence->setStatus($isActive ? 'active' : 'inactive');
 
-        $author = $this->CurrentUser->getCurrentUser()->getFullName();
-        $absence->setAuthor($author);
+        $absence->setAuthor($this->CurrentUser->getCurrentUser()->getFullName());
         $this->em->flush();
         return ApiResponse::success("Absence updated successfully", ["absence" => $absence], Response::HTTP_OK);
     }

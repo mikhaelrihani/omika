@@ -120,10 +120,22 @@ class AbsenceController extends AbstractController
 
     //! --------------------------------------------------------------------------------------------
 
-    #[Route("new", name: "new", methods: ["POST"])]
-    public function new()
+    #[Route("/new", name: "new", methods: ["POST"])]
+    public function new(Request $request): JsonResponse
     {
-
+        $response = $this->absenceService->newAbsence($request);
+        if (!$response->isSuccess()) {
+            return $this->json($response->getMessage(), $response->getStatusCode());
+        }
+        return $this->json(
+            [
+                "message" => $response->getMessage(),
+                "absence" => $response->getData()[ "absence" ]
+            ],
+            $response->getStatusCode(),
+            [],
+            ['groups' => 'absence']
+        );
     }
 
     //! --------------------------------------------------------------------------------------------
@@ -141,16 +153,16 @@ class AbsenceController extends AbstractController
     #[Route("/update/{id}", name: "update", methods: ["PUT"])]
     public function update(int $id, Request $request): JsonResponse
     {
-        $responseUpdate = $this->absenceService->updateAbsence($id, $request);
-        if (!$responseUpdate->isSuccess()) {
-            return $this->json($responseUpdate->getMessage(), $responseUpdate->getStatusCode());
+        $response = $this->absenceService->updateAbsence($id, $request);
+        if (!$response->isSuccess()) {
+            return $this->json($response->getMessage(), $response->getStatusCode());
         }
         return $this->json(
             [
-                "message" => $responseUpdate->getMessage(),
-                "absence" => $responseUpdate->getData()[ "absence" ]
+                "message" => $response->getMessage(),
+                "absence" => $response->getData()[ "absence" ]
             ],
-            $responseUpdate->getStatusCode(),
+            $response->getStatusCode(),
             [],
             ['groups' => 'absence']
         );
