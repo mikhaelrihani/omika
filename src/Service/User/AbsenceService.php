@@ -142,6 +142,11 @@ class AbsenceService
         // Associate the absence with the user or contact.
         $absent->addAbsence($absence);
 
+        $responseValidation = $this->validateService->validateEntity($absence);
+        if (!$responseValidation->isSuccess()) {
+            return ApiResponse::error($responseValidation->getMessage(), null, $responseValidation->getStatusCode());
+        }
+
         // Persist the absence entity and flush changes to the database.
         $this->em->persist($absence);
         $this->em->flush();
@@ -187,6 +192,12 @@ class AbsenceService
         $absence->setStatus($isActive ? 'active' : 'inactive');
 
         $absence->setAuthor($this->CurrentUser->getCurrentUser()->getFullName());
+
+        $responseValidation = $this->validateService->validateEntity($absence);
+        if (!$responseValidation->isSuccess()) {
+            return ApiResponse::error($responseValidation->getMessage(), null, $responseValidation->getStatusCode());
+        }
+
         $this->em->flush();
         return ApiResponse::success("Absence updated successfully", ["absence" => $absence], Response::HTTP_OK);
     }

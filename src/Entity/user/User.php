@@ -4,7 +4,7 @@ namespace App\Entity\User;
 
 use App\Entity\BaseEntity;
 use App\Entity\Event\Event;
-use App\Entity\Media\Message;
+use App\Entity\Media\Note;
 use App\Repository\User\UserRepository;
 use App\Validator\UniquePictureValidator;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -22,7 +22,7 @@ class User extends BaseEntity implements RecipientInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['event', 'eventRecurring', 'user', "tag", 'absence'])]
+    #[Groups(['event', 'eventRecurring', 'user', "tag", 'absence',"note"])]
     private ?int $id = null;
 
     #[ORM\Column(type: Types::GUID, nullable: false)]
@@ -31,12 +31,12 @@ class User extends BaseEntity implements RecipientInterface
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "First name should not be blank.")]
-    #[Groups(['user', 'absence'])]
+    #[Groups(['user', 'absence',"note"])]
     private ?string $firstname = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Surname should not be blank.")]
-    #[Groups(['user', 'absence'])]
+    #[Groups(['user', 'absence',"note"])]
     private ?string $surname = null;
 
     #[ORM\Column(length: 20, nullable: false)]
@@ -119,12 +119,19 @@ class User extends BaseEntity implements RecipientInterface
     #[ORM\ManyToMany(targetEntity: Event::class, mappedBy: 'favoritedBy', cascade: ['remove'])]
     private Collection $favoriteEvents;
 
+    /**
+     * @var Collection<int, Note>
+     */
+    #[ORM\ManyToMany(targetEntity: Note::class, mappedBy: 'Recipients')]
+    private Collection $notes;
+
 
     public function __construct()
     {
         parent::__construct();
         $this->absences = new ArrayCollection();
         $this->favoriteEvents = new ArrayCollection();
+        $this->notes = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -338,6 +345,33 @@ class User extends BaseEntity implements RecipientInterface
     {
         if ($this->favoriteEvents->removeElement($favoriteEvent)) {
             $favoriteEvent->removeFavoritedBy($this);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Note>
+     */
+    public function getNotes(): Collection
+    {
+        return $this->notes;
+    }
+
+    public function addNote(Note $note): static
+    {
+        if (!$this->notes->contains($note)) {
+            $this->notes->add($note);
+            $note->addRecipient($this);
+        }
+
+        return $this;
+    }
+
+    public function removeNote(Note $note): static
+    {
+        if ($this->notes->removeElement($note)) {
+            $note->removeRecipient($this);
         }
 
         return $this;
