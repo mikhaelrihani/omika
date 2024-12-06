@@ -5,7 +5,7 @@ use App\Entity\Supplier\Category;
 use App\Entity\Supplier\DeliveryDay;
 use App\Entity\Supplier\OrderDay;
 use Doctrine\ORM\EntityManagerInterface;
-use app\Entity\Supplier\Supplier;
+use App\Entity\Supplier\Supplier;
 use App\Entity\User\Contact;
 use App\Repository\Supplier\SupplierRepository;
 use App\Service\Event\EventRecurringService;
@@ -117,7 +117,7 @@ class SupplierService
                 ->setLogistic($responseData->getData()[ 'logistic' ])
                 ->setHabits($responseData->getData()[ 'habits' ])
                 ->setGoodToKnow($responseData->getData()[ 'goodToKnow' ])
-                ->setBusiness($businessResponse->getData()[ 'businessName' ]);
+                ->setBusiness($businessResponse->getData()[ 'business' ]);
 
             $orderDays = $responseData->getData()[ 'orderDays' ];
             foreach ($orderDays as $orderDay) {
@@ -146,12 +146,13 @@ class SupplierService
                 return ApiResponse::error($responseValidation->getMessage(), null, $responseValidation->getStatusCode());
             }
 
-            $responseEvent = $this->createEventRecuring($supplier);
+            $responseEvent = $this->createEventRecuring($supplier, $responseData->getData());
             if (!$responseEvent->isSuccess()) {
                 $this->em->rollback();
                 return ApiResponse::error($responseEvent->getMessage(), null, $responseEvent->getStatusCode());
             }
-            $supplier->setRecurringEvent($responseEvent->getData()[ 'eventRecurring' ]);
+
+            $supplier->setRecurringEvent($responseEvent->getData()[ 'eventRecurring' ]->getData()["eventRecurringParent"]);
 
 
             $ResponseEvent = $this->createEventNewSupplier($supplier);
@@ -197,7 +198,7 @@ class SupplierService
             $supplier = $this->serializer->deserialize($request->getContent(), Supplier::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $supplier]);
 
             $this->eventRecurringService->deleteRecurringEvent($supplier->getEventRecurring());
-            $reponseEvent = $this->createEventRecuring($supplier);
+            $reponseEvent = $this->createEventRecuring($supplier, $request);
             if (!$reponseEvent->isSuccess()) {
                 $this->em->rollback();
                 return $reponseEvent;
@@ -276,18 +277,24 @@ class SupplierService
 
     //! ----------------------------------------------------------------------------------------
 
-    private function createEventRecuring(Supplier $supplier): ApiResponse
+    private function createEventRecuring(Supplier $supplier, array $content): ApiResponse
     {
         [$businessName, $habits, $goodToKnow, $logistic, $date] = $this->getDataEvents($supplier);
 
         $data = [
             "section"     => "supplier",
-            "description" => "Mettre à jour la commande du fournisseur {$businessName} et passer la commande.
+            "description" => "Mettre à jour la commande du fournisseur {$businessName->getName()} et passer la commande.
                             Nos habitudes : {$habits}, Logistique : {$logistic}, Bon à savoir : {$goodToKnow}",
             "type"        => "task",
             "side"        => "office",
-            "title"       => "Commande {$businessName} du {$date}",
+            "title"       => "Commande {$businessName->getName()} du {$date}",
+            "periodDates" => $content[ 'periodDates' ],
+            "isEveryday" => $content[ 'isEveryday'],
+            "weekDays" => $content[ 'weekDays' ],
+            "monthDays" => $content[ 'monthDays' ],
+          
         ];
+   
         $eventRecurring = $this->eventRecurringService->createOneEventRecurringParent($data);
         if (!$eventRecurring) {
             return ApiResponse::error('Event recurring not created', [], Response::HTTP_INTERNAL_SERVER_ERROR);
@@ -298,16 +305,17 @@ class SupplierService
 
     private function createEventNewSupplier(Supplier $supplier): ApiResponse
     {
-        [$businessName, $habits, $goodToKnow, $logistic, $categories] = $this->getDataEvents($supplier);
+        [$businessName, $habits, $goodToKnow, $logistic, $categories,$date] = $this->getDataEvents($supplier);
 
         $data = [
             "section"     => "supplier",
-            "description" => "Un nouveau fournisseur {$businessName} a été ajouté .
-                            {$businessName} est un fournisseur de : {$categories}.
+            "description" => "Un nouveau fournisseur {$businessName->getName()} a été ajouté .
+                            {$businessName->getName()} est un fournisseur de : {$categories}.
                             Nos habitudes : {$habits}, Logistique : {$logistic}, Bon à savoir : {$goodToKnow}.",
             "type"        => "info",
             "side"        => "office",
-            "title"       => "Nouveau Supplier {$businessName}.",
+            "title"       => "Nouveau Supplier {$businessName->getName()}.",
+            "dueDate" => $date
         ];
         $event = $this->eventService->createOneEvent($data);
         if (!$event) {
@@ -353,10 +361,10 @@ class SupplierService
 
         $data = [
             "section"     => "supplier",
-            "description" => "Le fournisseur {$businessName} a été supprimé.",
+            "description" => "Le fournisseur {$businessName->getName()} a été supprimé.",
             "type"        => "info",
             "side"        => "office",
-            "title"       => "Fournisseur {$businessName} supprimé",
+            "title"       => "Fournisseur {$businessName->getName()} supprimé",
         ];
         $event = $this->eventService->createOneEvent($data);
         if (!$event) {
