@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20241205143743 extends AbstractMigration
+final class Version20241206133755 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -20,12 +20,12 @@ final class Version20241205143743 extends AbstractMigration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE note DROP INDEX UNIQ_CFBDFA14F675F31B, ADD INDEX IDX_CFBDFA14F675F31B (author_id)');
+        $this->addSql('ALTER TABLE supplier CHANGE recurring_event_id recurring_event_id INT DEFAULT NULL');
     }
 
     public function down(Schema $schema): void
     {
         // this down() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE note DROP INDEX IDX_CFBDFA14F675F31B, ADD UNIQUE INDEX UNIQ_CFBDFA14F675F31B (author_id)');
+        $this->addSql('ALTER TABLE supplier CHANGE recurring_event_id recurring_event_id INT NOT NULL');
     }
 }

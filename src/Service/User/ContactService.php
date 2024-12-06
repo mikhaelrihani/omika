@@ -200,4 +200,51 @@ class ContactService
         return ApiResponse::success("Contacts found", ["contacts" => $formatedContacts], Response::HTTP_OK);
     }
 
+    //! --------------------------------------------------------------------------------------------
+
+   
+    /**
+     * Deletes a contact by its ID.
+     *
+     * This method fetches a contact entity from the database using the provided ID, 
+     * deletes it, and commits the transaction. If the contact is the last user in the 
+     * business, the associated business is also deleted to maintain data integrity.
+     *
+     * @param int $id The ID of the contact to delete.
+     *
+     * @return ApiResponse Returns a success response if the contact is deleted successfully, 
+     *                     or an error response if the operation fails.
+     */
+    public function deleteContact(int $id): ApiResponse
+    {
+        $this->em->beginTransaction();
+        try {
+            $contact = $this->findContact($id);
+            if (!$contact->isSuccess()) {
+                $this->em->rollback();
+                return ApiResponse::error($contact->getMessage(), null, $contact->getStatusCode());
+            }
+
+            // delete the business if the Contact is the last user in the business
+            $response = $this->businessService->deleteIfLastContact($contact->getData()[ 'contact' ]);
+            if (!$response->isSuccess()) {
+                $this->em->rollback();
+                return ApiResponse::error($response->getMessage(), null, $response->getStatusCode());
+            }
+            try {
+                $this->em->remove($contact->getData()[ 'contact' ]);
+            } catch (Exception $e) {
+                $this->em->rollback();
+                return ApiResponse::error("Failed to delete contact : {$e->getMessage()} ", null,$response->getStatusCode());
+            }
+            $this->em->commit();
+            $this->em->flush();
+            return ApiResponse::success("Contact deleted successfully", null, Response::HTTP_OK);
+
+        } catch (Exception $e) {
+            $this->em->rollback();
+            return ApiResponse::error("Failed to delete contact : {$e->getMessage()} ", null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
 }

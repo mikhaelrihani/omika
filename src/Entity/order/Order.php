@@ -9,6 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 use App\Entity\Supplier\Supplier;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface; 
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: OrderRepository::class)]
 #[ORM\Table(name: '`order`')]
@@ -17,14 +18,17 @@ class Order extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['supplier'])]
     private ?int $id = null;
 
     #[ORM\Column(type: Types::DATE_MUTABLE,nullable: false)]
     #[Assert\NotBlank]
+    #[Groups(['supplier'])]
     private ?\DateTimeInterface $deliveryDate = null;
 
     #[ORM\Column(length: 255,nullable: false)]
     #[Assert\NotBlank(message: "Author should not be blank.")]
+    #[Groups(['supplier'])]
     private ?string $author = null;
 
     #[ORM\Column(length: 255,nullable: false)]
@@ -39,6 +43,7 @@ class Order extends BaseEntity
     private ?string $note = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['supplier'])]
     private ?string $pdfPath = null;
 
     #[ORM\ManyToOne(targetEntity:Supplier::class,inversedBy: 'orders')]

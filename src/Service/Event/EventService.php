@@ -211,15 +211,17 @@ class EventService
         $event = new Event();
         $event
             ->setDescription($data[ "description" ])
-            ->setIsImportant($data[ "isImportant" ])
+
             ->setSide($data[ "side" ])
             ->setTitle($data[ "title" ])
-            ->setCreatedBy($user->getFullName())
-            ->setUpdatedBy($user->getFullName())
             ->setType($data[ "type" ])
             ->setSection($section)
-            ->setDueDate($dueDate)
-            ->setFirstDueDate($dueDate)
+            
+            ->setCreatedBy($user->getFullName())
+            ->setUpdatedBy($user->getFullName())
+            ->setIsImportant($data[ "isImportant" ] ?? false)
+            ->setDueDate($dueDate ?? $this->now)
+            ->setFirstDueDate($dueDate ?? $this->now)
             ->setPublished($data[ "isPublished" ] ?? true)
             ->setPending($data[ "isPending" ] ?? false)
             ->setIsProcessed($data[ "isProcessed" ] ?? false);
@@ -474,9 +476,9 @@ class EventService
             $this->em->flush();
             return ApiResponse::success('User removed from all EventInfos successfully');
         } catch (ORMException $e) {
-            return ApiResponse::error('An error occurred while removing the user from EventInfos: ' . $e->getMessage(),null,Response::HTTP_INTERNAL_SERVER_ERROR);
+            return ApiResponse::error('An error occurred while removing the user from EventInfos: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         } catch (Exception $e) {
-            return ApiResponse::error('An unexpected error occurred while removing the user: ' . $e->getMessage(),null,Response::HTTP_INTERNAL_SERVER_ERROR);
+            return ApiResponse::error('An unexpected error occurred while removing the user: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -515,11 +517,11 @@ class EventService
                 }
             }
             $this->em->flush();
-            return ApiResponse::success('User removed from all EventTasks successfully',null,Response::HTTP_OK);
+            return ApiResponse::success('User removed from all EventTasks successfully', null, Response::HTTP_OK);
         } catch (ORMException $e) {
-            return ApiResponse::error('An error occurred while removing the user from EventTasks: ' . $e->getMessage(),null,Response::HTTP_OK);
+            return ApiResponse::error('An error occurred while removing the user from EventTasks: ' . $e->getMessage(), null, Response::HTTP_OK);
         } catch (Exception $e) {
-            return ApiResponse::error('An unexpected error occurred while removing the user: ' . $e->getMessage(),null,Response::HTTP_OK);
+            return ApiResponse::error('An unexpected error occurred while removing the user: ' . $e->getMessage(), null, Response::HTTP_OK);
         }
     }
 
@@ -537,9 +539,9 @@ class EventService
         try {
             $this->removeUserFromAllEventInfos($user);
             $this->removeUserFromAllEventTasks($user);
-            return ApiResponse::success('User removed from all events successfully',null, Response::HTTP_OK);
+            return ApiResponse::success('User removed from all events successfully', null, Response::HTTP_OK);
         } catch (Exception $e) {
-            return ApiResponse::error('An unexpected error occurred while removing the user from all events: ' . $e->getMessage(),null, Response::HTTP_OK);
+            return ApiResponse::error('An unexpected error occurred while removing the user from all events: ' . $e->getMessage(), null, Response::HTTP_OK);
         }
     }
 
@@ -590,9 +592,9 @@ class EventService
             // Execute the query to fetch results
             $filteredEvents = $qb->getQuery()->getResult();
 
-            return ApiResponse::success('Events filtered successfully.', $filteredEvents,Response::HTTP_OK);
+            return ApiResponse::success('Events filtered successfully.', $filteredEvents, Response::HTTP_OK);
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while filtering events: ' . $e->getMessage(),null,Response::HTTP_INTERNAL_SERVER_ERROR);
+            return ApiResponse::error('An error occurred while filtering events: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 

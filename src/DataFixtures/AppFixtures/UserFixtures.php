@@ -268,7 +268,7 @@ class UserFixtures extends BaseFixtures
 
             $note = new Note();
             $note
-                ->setUser($user)
+                ->setAuthor($user)
                 ->setText($this->faker->text(200))
                 ->setCreatedAt($timestamps[ 'createdAt' ])
                 ->setUpdatedAt($timestamps[ 'updatedAt' ]);

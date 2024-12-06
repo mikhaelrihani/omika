@@ -16,12 +16,12 @@ class Business extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['user', 'contact', 'business'])]
+    #[Groups(['user', 'contact', 'business',"supplier"])]
     private ?int $id = null;
 
     #[ORM\Column(length: 100, nullable: false)]
     #[Assert\NotBlank(message: "The business name should not be blank.")]
-    #[Groups(['user', 'contact', 'business'])]
+    #[Groups(['user', 'contact', 'business',"supplier"])]
     private ?string $name = null;
 
     /**
@@ -110,13 +110,7 @@ class Business extends BaseEntity
 
     public function removeContact(Contact $contact): static
     {
-        if ($this->contacts->removeElement($contact)) {
-            // set the owning side to null (unless already changed)
-            if ($contact->getBusiness() === $this) {
-                $contact->setBusiness(null);
-            }
-        }
-
+        $this->contacts->removeElement($contact);
         return $this;
     }
 }

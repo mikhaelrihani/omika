@@ -3,7 +3,6 @@
 namespace App\Entity\Supplier;
 
 use App\Entity\BaseEntity;
-use App\Entity\Event\Event;
 use App\Entity\Event\EventRecurring;
 use App\Entity\User\Business;
 use App\Repository\Supplier\SupplierRepository;
@@ -13,29 +12,37 @@ use Doctrine\ORM\Mapping as ORM;
 use App\Entity\Product\Product;
 use App\Entity\Order\Order;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: SupplierRepository::class)]
 class Supplier extends BaseEntity
 {
+
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['supplier'])]
     private ?int $id = null;
 
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['supplier'])]
     private ?Business $business = null;
 
 
     #[ORM\Column(length: 1000, nullable: false)]
     #[Assert\NotBlank(message: "Supplier Logistic should not be blank.")]
+    #[Groups(['supplier'])]
     private ?string $logistic = null;
 
     #[ORM\Column(length: 1000, nullable: true)]
+    #[Groups(['supplier'])]
     private ?string $habits = null;
 
 
     #[ORM\Column(length: 1000, nullable: true)]
+    #[Groups(['supplier'])]
     private ?string $goodToKnow = null;
 
 
@@ -44,42 +51,46 @@ class Supplier extends BaseEntity
      * @ORM\OneToMany(targetEntity="App\Entity\product\Product", mappedBy="supplier")
      */
     #[ORM\OneToMany(targetEntity: Product::class, mappedBy: 'supplier', orphanRemoval: true)]
+    #[Groups(['supplier'])]
     private Collection $products;
 
     /**
      * @var Collection<int, Order>
      */
     #[ORM\OneToMany(targetEntity: Order::class, mappedBy: 'supplier', orphanRemoval: true)]
+    #[Groups(['supplier'])]
     private Collection $orders;
 
 
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\OneToOne(cascade: ['persist'])]
+    #[ORM\JoinColumn(nullable: true)]
+    #[Groups(['supplier'])]
     private EventRecurring $recurringEvent;
 
     /**
      * @var Collection<int, OrderDay>
      */
     #[ORM\ManyToMany(targetEntity: OrderDay::class, inversedBy: 'suppliers', cascade: ['persist'])]
+    #[Groups(['supplier'])]
     private Collection $orderDays;
 
     /**
      * @var Collection<int, DeliveryDay>
      */
     #[ORM\ManyToMany(targetEntity: DeliveryDay::class, inversedBy: 'suppliers', cascade: ['persist'])]
+    #[Groups(['supplier'])]
     private Collection $deliveryDays;
 
+    /**
+     * @var Collection<int, Category>
+     */
+    #[ORM\ManyToMany(targetEntity: Category::class, mappedBy: 'Suppliers', cascade: ['persist'])]
+    #[Groups(['supplier'])]
+    private Collection $categories;
 
 
-    public function __construct()
-    {
-        $this->orders = new ArrayCollection();
-        $this->products = new ArrayCollection();
-        $this->orderDays = new ArrayCollection();
-        $this->deliveryDays = new ArrayCollection();
 
-    }
 
     public function getId(): ?int
     {
@@ -125,6 +136,48 @@ class Supplier extends BaseEntity
     }
 
 
+
+    //! --------------------------------------------------------------------------------------------
+
+    public function __construct()
+    {
+        $this->orders = new ArrayCollection();
+        $this->products = new ArrayCollection();
+        $this->orderDays = new ArrayCollection();
+        $this->deliveryDays = new ArrayCollection();
+        $this->categories = new ArrayCollection();
+
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    public function getBusiness(): ?Business
+    {
+        return $this->business;
+    }
+
+    public function setBusiness(Business $business): static
+    {
+        $this->business = $business;
+
+        return $this;
+    }
+
+    public function getRecurringEvent(): EventRecurring
+    {
+        return $this->recurringEvent;
+    }
+
+    public function setRecurringEvent(?EventRecurring $recurringEvent): static
+    {
+        $this->recurringEvent = $recurringEvent;
+
+        return $this;
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+
     /**
      * @return Collection|Product[]
      */
@@ -149,8 +202,16 @@ class Supplier extends BaseEntity
 
         return $this;
     }
+    public function removeAllProducts(): self
+    {
+        foreach ($this->products as $product) {
+            $this->removeProduct($product);
+        }
 
+        return $this;
+    }
 
+    //! --------------------------------------------------------------------------------------------
     /**
      * @return Collection<int, Order>
      */
@@ -165,46 +226,27 @@ class Supplier extends BaseEntity
             $this->orders->add($order);
             $order->setSupplier($this);
         }
-
         return $this;
     }
 
     public function removeOrder(Order $order): static
     {
-        if ($this->orders->removeElement($order)) {
-            // set the owning side to null (unless already changed)
-            if ($order->getSupplier() === $this) {
-                $order->setSupplier(null);
-            }
+        $this->orders->removeElement($order);
+        return $this;
+    }
+
+    public function removeAllOrders(): self
+    {
+        foreach ($this->orders as $order) {
+            $this->removeOrder($order);
         }
 
         return $this;
     }
 
-    public function getBusiness(): ?Business
-    {
-        return $this->business;
-    }
 
-    public function setBusiness(Business $business): static
-    {
-        $this->business = $business;
+    //! --------------------------------------------------------------------------------------------
 
-        return $this;
-    }
-
-    public function getRecurringEvent(): EventRecurring
-    {
-        return $this->recurringEvent;
-    }
-
-    public function setRecurringEvent(EventRecurring $recurringEvent): static
-    {
-        $this->recurringEvent = $recurringEvent;
-
-        return $this;
-    }
-    
     /**
      * @return Collection<int, OrderDay>
      */
@@ -222,13 +264,26 @@ class Supplier extends BaseEntity
         return $this;
     }
 
-    public function removeOrderDay(OrderDay $orderDay): static
+    public function removeOrderDay(OrderDay $orderDay): self
     {
-        $this->orderDays->removeElement($orderDay);
+        if ($this->orderDays->contains($orderDay)) {
+            $this->orderDays->removeElement($orderDay);
+            $orderDay->removeSupplier($this);
+        }
 
         return $this;
     }
 
+    public function removeAllOrderDays(): self
+    {
+        foreach ($this->orderDays as $orderDay) {
+            $this->removeOrderDay($orderDay);
+        }
+
+        return $this;
+    }
+
+    //! --------------------------------------------------------------------------------------------
     /**
      * @return Collection<int, DeliveryDay>
      */
@@ -246,13 +301,75 @@ class Supplier extends BaseEntity
         return $this;
     }
 
-    public function removeDeliveryDay(DeliveryDay $deliveryDay): static
+    public function removeDeliveryDay(DeliveryDay $deliveryDay): self
     {
-        $this->deliveryDays->removeElement($deliveryDay);
+        if ($this->deliveryDays->contains($deliveryDay)) {
+            $this->deliveryDays->removeElement($deliveryDay);
+            $deliveryDay->removeSupplier($this);
+        }
 
         return $this;
     }
 
+    public function removeAllDeliveryDays(): self
+    {
+        foreach ($this->deliveryDays as $deliveryDay) {
+            $this->removeDeliveryDay($deliveryDay);
+        }
+
+        return $this;
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    /**
+     * @return Collection<int, Category>
+     */
+    public function getCategories(): Collection
+    {
+        return $this->categories;
+    }
+
+    public function addCategory(Category $category): static
+    {
+        if (!$this->categories->contains($category)) {
+            $this->categories->add($category);
+            $category->addSupplier($this);
+        }
+
+        return $this;
+    }
+
+    public function removeCategory(Category $category): self
+    {
+        if ($this->categories->contains($category)) {
+            $this->categories->removeElement($category);
+            $category->removeSupplier($this);
+        }
+        return $this;
+    }
+
+    public function removeAllCategories(): self
+    {
+        foreach ($this->categories as $category) {
+            $this->removeCategory($category);
+        }
+
+        return $this;
+    }
+    //! --------------------------------------------------------------------------------------------
+
+   
+    public function removeAllRelations(): self
+    {
+        $this->removeAllOrderDays();
+        $this->removeAllDeliveryDays();
+        $this->removeAllCategories();
+        $this->removeAllProducts();
+        $this->removeAllOrders();
+
+        return $this;
+    }
 
 
 

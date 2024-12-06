@@ -135,33 +135,14 @@ class ContactController extends BaseController
     #[Route('/delete/{id}', name: 'delete', methods: 'delete')]
     public function delete(int $id): JsonResponse
     {
-        $this->em->beginTransaction();
         try {
-            $contact = $this->contactService->findContact($id);
-            if (!$contact->isSuccess()) {
-                $this->em->rollback();
-                return $this->json($contact->getMessage(), $contact->getStatusCode());
-            }
-
-            // delete the business if the Contact is the last user in the business
-            $response = $this->businessService->deleteIfLastContact($contact->getData()[ 'contact' ]);
+            $response = $this->contactService->deleteContact($id);
             if (!$response->isSuccess()) {
-                $this->em->rollback();
                 return $this->json($response->getMessage(), $response->getStatusCode());
             }
-            try {
-                $this->em->remove($contact->getData()[ 'contact' ]);
-            } catch (Exception $e) {
-                $this->em->rollback();
-                return $this->json($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
-            }
-            $this->em->commit();
-            $this->em->flush();
-            return $this->json("Contact deleted successfully", Response::HTTP_OK);
-
+            return $this->json($response->getMessage(), $response->getStatusCode());
         } catch (Exception $e) {
-            $this->em->rollback();
-            return $this->json("Failed to delete contact : {$e->getMessage()} ", Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->json("Failed to delete contact : " . $e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 

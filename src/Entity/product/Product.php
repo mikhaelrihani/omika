@@ -12,6 +12,7 @@ use App\Entity\Supplier\Supplier;
 use App\Entity\Recipe\Unit;
 use App\Entity\Recipe\Recipe;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
 #[ORM\Index(name: "kitchen_name_idx", columns: ["kitchen_name"])]
@@ -23,14 +24,17 @@ class Product extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['supplier'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 50, nullable: false)]
     #[Assert\NotBlank(message: "Kitchen Name should not be blank.")]
+    #[Groups(['supplier'])]
     private ?string $kitchenName = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Commercial Name should not be blank.")]
+    #[Groups(['supplier'])]
     private ?string $commercialName = null;
 
     #[ORM\Column(length: 50, nullable: false)]

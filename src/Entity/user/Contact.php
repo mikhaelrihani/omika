@@ -22,7 +22,7 @@ class Contact extends BaseEntity implements RecipientInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['contact', 'absence'])]
+    #[Groups(['contact', 'absence',"supplier"])]
     private ?int $id = null;
 
     #[ORM\Column(type: Types::GUID, nullable: false)]
@@ -31,12 +31,12 @@ class Contact extends BaseEntity implements RecipientInterface
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "First name should not be blank.")]
-    #[Groups(['contact', 'absence'])]
+    #[Groups(['contact', 'absence',"supplier"])]
     private ?string $firstname = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Surname should not be blank.")]
-    #[Groups(['contact', 'absence'])]
+    #[Groups(['contact', 'absence',"supplier"])]
     private ?string $surname = null;
 
     #[ORM\Column(length: 180)]
@@ -249,13 +249,7 @@ class Contact extends BaseEntity implements RecipientInterface
 
     public function removeAbsence(Absence $absence): static
     {
-        if ($this->absences->removeElement($absence)) {
-            // set the owning side to null (unless already changed)
-            if ($absence->getContact() === $this) {
-                $absence->setContact(null);
-            }
-        }
-
+        $this->absences->removeElement($absence);
         return $this;
     }
 
