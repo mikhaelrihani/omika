@@ -11,6 +11,7 @@ use App\Entity\Event\WeekDay;
 use App\Entity\User\User;
 use App\Repository\Event\EventRecurringRepository;
 use App\Repository\Event\EventRepository;
+use App\Repository\User\UserRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
@@ -42,7 +43,8 @@ class EventRecurringService
         protected CurrentUser $currentUser,
         protected ParameterBagInterface $parameterBag,
         protected ValidatorService $validatorService,
-        protected JsonResponseBuilder $jsonResponseBuilder
+        protected JsonResponseBuilder $jsonResponseBuilder,
+        protected UserRepository $userRepository
     ) {
         $this->now = new DateTimeImmutable('today');
         $this->activeDayStart = $this->parameterBag->get('activeDayStart');
@@ -98,8 +100,14 @@ class EventRecurringService
     {
         try {
             $currentUser = $this->currentUser->getCurrentUser();
-            $users = $this->em->getRepository(User::class)->findBy(['id' => $data[ 'usersId' ]]);
-            if (count($users) !== count($data[ 'usersId' ])) {
+
+            // cela nous permet de creer automatiquement des events recurrents pour tous les users.
+            $allUsers = $this->userRepository->findAll();
+            $allUsersId = array_map(fn($user) => $user->getId(), $allUsers);
+            $usersId = isset($data[ 'usersId' ]) ?? $allUsersId;
+
+            $users = $this->em->getRepository(User::class)->findBy(['id' => $usersId]);
+            if (isset($data['usersId']) && count($users) !== count($data[ 'usersId' ])) {
                 throw new InvalidArgumentException('Some user IDs could not be found.');
             }
 
@@ -122,10 +130,8 @@ class EventRecurringService
 
             $eventRecurring = new EventRecurring();
             $eventRecurring
-                ->setPeriodeStart(new DateTimeImmutable($data[ "periodeStart" ]))
-                ->setPeriodeEnd(new DateTimeImmutable($data[ "periodeEnd" ]))
-                ->setCreatedAt($this->now)
-                ->setUpdatedAt($this->now)
+                ->setPeriodeStart(isset($data[ "periodeStart" ]) ? new DateTimeImmutable($data[ "periodeStart" ]) : $this->now)
+                ->setPeriodeEnd(isset($data[ "periodeEnd" ]) ? new DateTimeImmutable($data[ "periodeEnd" ]) : null)
                 ->setCreatedBy($currentUser->getFullName())
                 ->setUpdatedBy($currentUser->getFullName())
                 ->setSection($section)

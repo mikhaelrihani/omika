@@ -4,6 +4,7 @@ namespace App\Entity\Supplier;
 
 use App\Entity\BaseEntity;
 use App\Entity\Event\Event;
+use App\Entity\Event\EventRecurring;
 use App\Entity\User\Business;
 use App\Repository\Supplier\SupplierRepository;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -33,7 +34,7 @@ class Supplier extends BaseEntity
     #[ORM\Column(length: 1000, nullable: true)]
     private ?string $habits = null;
 
-   
+
     #[ORM\Column(length: 1000, nullable: true)]
     private ?string $goodToKnow = null;
 
@@ -51,38 +52,33 @@ class Supplier extends BaseEntity
     #[ORM\OneToMany(targetEntity: Order::class, mappedBy: 'supplier', orphanRemoval: true)]
     private Collection $orders;
 
-  
 
-    /**
-     * @var Collection<int, Event>
-     */
-    #[ORM\ManyToMany(targetEntity: Event::class)]
-    #[ORM\JoinTable(name: 'supplier_recurring_event_children')]
 
-    private Collection $recurring_Event_children;
+    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[ORM\JoinColumn(nullable: false)]
+    private EventRecurring $recurringEvent;
 
     /**
      * @var Collection<int, OrderDay>
      */
-    #[ORM\ManyToMany(targetEntity: OrderDay::class, inversedBy: 'suppliers',cascade: ['persist'])]
+    #[ORM\ManyToMany(targetEntity: OrderDay::class, inversedBy: 'suppliers', cascade: ['persist'])]
     private Collection $orderDays;
 
     /**
      * @var Collection<int, DeliveryDay>
      */
-    #[ORM\ManyToMany(targetEntity: DeliveryDay::class, inversedBy: 'suppliers',cascade: ['persist'])]
+    #[ORM\ManyToMany(targetEntity: DeliveryDay::class, inversedBy: 'suppliers', cascade: ['persist'])]
     private Collection $deliveryDays;
 
-   
+
 
     public function __construct()
     {
         $this->orders = new ArrayCollection();
         $this->products = new ArrayCollection();
-        $this->recurring_Event_children = new ArrayCollection();
         $this->orderDays = new ArrayCollection();
         $this->deliveryDays = new ArrayCollection();
-   
+
     }
 
     public function getId(): ?int
@@ -115,7 +111,7 @@ class Supplier extends BaseEntity
         return $this;
     }
 
-  
+
     public function getGoodToKnow(): ?string
     {
         return $this->goodToKnow;
@@ -197,32 +193,18 @@ class Supplier extends BaseEntity
         return $this;
     }
 
-  
-
-    /**
-     * @return Collection<int, Event>
-     */
-    public function getRecurringEventChildren(): Collection
+    public function getRecurringEvent(): EventRecurring
     {
-        return $this->recurring_Event_children;
+        return $this->recurringEvent;
     }
 
-    public function addRecurringEventChild(Event $recurringEventChild): static
+    public function setRecurringEvent(EventRecurring $recurringEvent): static
     {
-        if (!$this->recurring_Event_children->contains($recurringEventChild)) {
-            $this->recurring_Event_children->add($recurringEventChild);
-        }
+        $this->recurringEvent = $recurringEvent;
 
         return $this;
     }
-
-    public function removeRecurringEventChild(Event $recurringEventChild): static
-    {
-        $this->recurring_Event_children->removeElement($recurringEventChild);
-
-        return $this;
-    }
-
+    
     /**
      * @return Collection<int, OrderDay>
      */
@@ -273,5 +255,5 @@ class Supplier extends BaseEntity
 
 
 
-   
+
 }

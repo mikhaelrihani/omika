@@ -74,17 +74,23 @@ class BusinessService
      *
      * This method creates a new business entity using the provided JSON data.
      * The method validates the input data, checks if the business name already exists,
-     * and associates the business with a contact entity. If the business is created successfully,
-     * a success response is returned with the new business entity. Otherwise, an error response is returned.
+     * and creates a new business entity with the provided name.
+     * If a contact ID is provided, the method associates the contact with the business.
+     * After successful validation and deserialization, the business entity is persisted.
      *
-     * @param object $data The validated request data containing the business name and contact ID.
+     * @param Request $request The HTTP request containing the JSON payload with the business details.
      *
-     * @return ApiResponse Returns a success response with the new business entity if created successfully,
-     *                     or an error response if the business name already exists or validation fails.
+     * @return ApiResponse Returns a success response with the created business data,
+     *                     or an error response if validation fails or the business name already exists.
      */
-    public function createBusiness(object $data): ApiResponse
+    public function createBusiness(Request $request): ApiResponse
     {
         try {
+
+            $data = $this->validatorService->validateJson($request);
+            if (!$data->isSuccess()) {
+                return ApiResponse::error($data->getMessage(), null, Response::HTTP_BAD_REQUEST);
+            }
 
             // Check if the business name already exists
             $exist = $this->isBusinessAlreadyExist($data);
@@ -97,14 +103,14 @@ class BusinessService
                 ->setName($data->getData()[ "businessName" ]);
 
             // Find and associate the contact
-            if(array_key_exists("contact", $data->getData())){
+            if (array_key_exists("contact", $data->getData())) {
                 $contact = $this->contactRepository->find($data->getData()[ 'contact' ]);
                 if (!$contact) {
                     return ApiResponse::error("There is no contact with this ID", null, Response::HTTP_BAD_REQUEST);
                 }
                 $business->addContact($contact);
             }
-           
+
             // Validate the business entity
             $response = $this->validatorService->validateEntity($business);
             if (!$response->isSuccess()) {
@@ -256,7 +262,7 @@ class BusinessService
      * @return ApiResponse Returns a success response with the business entity if found,
      *                     or an error response if the business is not found.
      */
-    public function getBusinessFromData(object $dataObject)
+    public function getBusinessFromData(object $dataObject): ApiResponse
     {
         $data = $dataObject->getData();
         if (!$data[ 'businessId' ]) {
