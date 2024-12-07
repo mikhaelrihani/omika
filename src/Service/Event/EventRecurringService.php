@@ -107,7 +107,7 @@ class EventRecurringService
             $usersId = isset($data[ 'usersId' ]) ?? $allUsersId;
 
             $users = $this->em->getRepository(User::class)->findBy(['id' => $usersId]);
-            if (isset($data['usersId']) && count($users) !== count($data[ 'usersId' ])) {
+            if (isset($data[ 'usersId' ]) && count($users) !== count($data[ 'usersId' ])) {
                 throw new InvalidArgumentException('Some user IDs could not be found.');
             }
 
@@ -222,7 +222,7 @@ class EventRecurringService
                 case "periodDates":
                     foreach ($recurrenceData as $date) {
                         $periodDate = new PeriodDate();
-                        $periodDate->setDate($date);
+                        $periodDate->setDate(new DateTimeImmutable($date));
                         $eventRecurring->addPeriodDate($periodDate);
                     }
                     break;
@@ -622,7 +622,9 @@ class EventRecurringService
     {
         // on créee les events children dans la periode aujourdhui a 7 jours a chaque creation d'un eventrecurring parent,
         $latestDate = (new DateTimeImmutable($this->now->format('Y-m-d')))->modify("+{$this->activeDayEnd} day");
-        $latestCreationDate = min($latestDate, $parent->getPeriodeEnd());
+
+        $latestCreationDate = $parent->getPeriodeEnd() ?
+            min($latestDate, $parent->getPeriodeEnd()) : $latestDate;
 
         $earliestCreationDate = max($this->now, $parent->getPeriodeStart());
         $earliestCreationDate = new DateTimeImmutable($earliestCreationDate->format('Y-m-d'));

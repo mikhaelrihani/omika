@@ -216,7 +216,7 @@ class EventService
             ->setTitle($data[ "title" ])
             ->setType($data[ "type" ])
             ->setSection($section)
-            
+
             ->setCreatedBy($user->getFullName())
             ->setUpdatedBy($user->getFullName())
             ->setIsImportant($data[ "isImportant" ] ?? false)
@@ -789,9 +789,9 @@ class EventService
                 $response->getStatusCode()
             );
         }
-        $dueDate = $response->getData()[ "dueDate" ] ?? null;
+        $dueDate = isset($response->getData()[ "dueDate" ]);
 
-        if ($dueDate !== null) {
+        if ($dueDate) {
 
             $response = $this->createOneEvent($response->getData());
             if (!$response->isSuccess()) {
