@@ -58,7 +58,6 @@ class Tag extends BaseEntity
    
     public function __construct()
     {
-        parent::__construct();
         $this->tagInfos = new ArrayCollection();
         $this->tagTasks = new ArrayCollection();
     }

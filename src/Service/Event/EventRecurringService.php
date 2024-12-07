@@ -198,7 +198,7 @@ class EventRecurringService
      * - If an invalid recurrence type is provided, an error response is returned.
      * - If an exception occurs during processing, an error response with HTTP 500 status is returned.
      */
-    private function addRecurringParentsRelations(EventRecurring $eventRecurring, string $recurrenceType, array $recurrenceData, ): ApiResponse
+    private function addRecurringParentsRelations(EventRecurring $eventRecurring, string $recurrenceType, bool|array $recurrenceData, ): ApiResponse
     {
         try {
             switch ($recurrenceType) {
@@ -337,10 +337,10 @@ class EventRecurringService
             }
             $this->em->remove($eventRecurring);
             $this->em->flush();
-            return ApiResponse::success('Recurring event deleted successfully');
+            return ApiResponse::success('Recurring event deleted successfully',null,Response::HTTP_OK);
 
         } catch (Exception $e) {
-            return ApiResponse::error('An error occurred while deleting recurring event: ' . $e->getMessage());
+            return ApiResponse::error('An error occurred while deleting recurring event: ' . $e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
     //! --------------------------------------------------------------------------------------------

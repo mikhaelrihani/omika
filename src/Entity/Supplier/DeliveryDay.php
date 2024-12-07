@@ -57,5 +57,13 @@ class DeliveryDay extends BaseEntity
 
         return $this;
     }
+    public function addSupplier(Supplier $supplier): static
+    {
+        if (!$this->suppliers->contains($supplier)) {
+            $this->suppliers->add($supplier);
+            $supplier->addDeliveryDay($this);
+        }
+        return $this;
+    }
 
 }

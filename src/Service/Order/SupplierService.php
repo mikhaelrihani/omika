@@ -185,7 +185,6 @@ class SupplierService
                 return ApiResponse::error($ResponseEvent->getMessage(), null, $ResponseEvent->getStatusCode());
             }
 
-
             $this->em->commit();
             $this->em->flush();
 
@@ -259,10 +258,11 @@ class SupplierService
 
 
     /**
-     * Creates a recurring event parent for a supplier .
+     * Creates a recurring event for a supplier.
      *
-     * This method creates a recurring event for a supplier based on the provided content.
-     * The recurrence type is determined from the content, and the event is created accordingly.
+     * This method creates a recurring event for a supplier based on the provided data.
+     * The event is created with the necessary information and linked to the supplier.
+     * Event children are also created based on the recurrence data.
      *
      * @param Supplier $supplier The supplier entity for which the event is created.
      * @param array $content An associative array containing the recurrence data.
@@ -294,7 +294,13 @@ class SupplierService
             return ApiResponse::error('Event recurring not created', [], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
         $eventRecurring = $eventRecurring->getData()[ "eventRecurringParent" ];
-        return ApiResponse::success('Event recurring created', ['eventRecurring' => $eventRecurring], Response::HTTP_CREATED);
+
+        $childrensResponse = $this->eventRecurringService->createChildrenWithTag($eventRecurring);
+        if (!$childrensResponse) {
+            return ApiResponse::error('Event recurring children not created', [], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        return ApiResponse::success('Event recurring created with its childrens', ['eventRecurring' => $eventRecurring], Response::HTTP_CREATED);
     }
 
 
@@ -585,16 +591,18 @@ class SupplierService
 
     private function handleEventCreationsforUpdatedSupplier(Supplier $supplier, array $content): ApiResponse
     {
-
-        $responseEvent = $this->eventRecurringService->deleteRecurringEvent($supplier->getRecurringEvent());
+        $recuringEvent = $supplier->getRecurringEvent();
+        if (!$recuringEvent) {
+            return ApiResponse::error('Recurring event not found', [], Response::HTTP_BAD_REQUEST);
+        }
+        $supplier->setRecurringEvent(null);
+        $responseEvent = $this->eventRecurringService->deleteRecurringEvent($recuringEvent);
         if (!$responseEvent->isSuccess()) {
-            $this->em->rollback();
             return ApiResponse::error($responseEvent->getMessage(), null, $responseEvent->getStatusCode());
         }
 
         $responseEvent = $this->createEventRecuring($supplier, $content);
         if (!$responseEvent->isSuccess()) {
-            $this->em->rollback();
             return ApiResponse::error($responseEvent->getMessage(), null, $responseEvent->getStatusCode());
         }
 
@@ -603,12 +611,11 @@ class SupplierService
 
         $ResponseEvent = $this->createEventUpdatedSupplier($supplier);
         if (!$ResponseEvent->isSuccess()) {
-            $this->em->rollback();
             return ApiResponse::error($ResponseEvent->getMessage(), null, $ResponseEvent->getStatusCode());
         }
         return ApiResponse::success($ResponseEvent->getMessage(), null, Response::HTTP_CREATED);
-    }
 
+    }
 
     //! ----------------------------------------------------------------------------------------
 
@@ -620,23 +627,8 @@ class SupplierService
             $supplier->removeAllDeliveryDays();
             $supplier->removeAllCategories();
 
-            $orderDays = $responseData->getData()[ 'orderDays' ];
-            foreach ($orderDays as $orderDay) {
-                $orderDay = $this->em->getRepository(OrderDay::class)->findOneBy(['day' => $orderDay]);
-                $supplier->addOrderDay($orderDay);
-            }
+            $this->handleSupplierRelationsOnCreation($supplier, $responseData);
 
-            $deliveryDays = $responseData->getData()[ 'deliveryDays' ];
-            foreach ($deliveryDays as $deliveryDay) {
-                $deliveryDay = $this->em->getRepository(DeliveryDay::class)->findOneBy(['day' => $deliveryDay]);
-                $supplier->addDeliveryDay($deliveryDay);
-            }
-
-            $supplierCategories = $responseData->getData()[ 'categories' ];
-            foreach ($supplierCategories as $supplierCategory) {
-                $category = $this->em->getRepository(Category::class)->findOneBy(['name' => $supplierCategory]);
-                $supplier->addCategory($category);
-            }
         } catch (Exception $e) {
             return ApiResponse::error($e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
@@ -645,12 +637,8 @@ class SupplierService
 
     //! ----------------------------------------------------------------------------------------
 
-    private function deleteEventOnSupplierUpdate():ApiResponse
-    {
 
-        
-        return ApiResponse::success("Event deleted", null, Response::HTTP_OK);
-    }
+
 
 }
 

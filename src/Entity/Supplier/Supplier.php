@@ -66,7 +66,7 @@ class Supplier extends BaseEntity
     #[ORM\OneToOne(cascade: ['persist'])]
     #[ORM\JoinColumn(nullable: true)]
     #[Groups(['supplier'])]
-    private EventRecurring $recurringEvent;
+    private ?EventRecurring $recurringEvent;
 
     /**
      * @var Collection<int, OrderDay>
@@ -163,7 +163,7 @@ class Supplier extends BaseEntity
         return $this;
     }
 
-    public function getRecurringEvent(): EventRecurring
+    public function getRecurringEvent(): ?EventRecurring
     {
         return $this->recurringEvent;
     }
@@ -259,6 +259,8 @@ class Supplier extends BaseEntity
     {
         if (!$this->orderDays->contains($orderDay)) {
             $this->orderDays->add($orderDay);
+            $orderDay->addSupplier($this);
+           
         }
 
         return $this;

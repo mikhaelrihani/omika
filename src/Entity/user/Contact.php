@@ -105,7 +105,6 @@ class Contact extends BaseEntity implements RecipientInterface
 
     public function __construct()
     {
-        parent::__construct();
         $this->absences = new ArrayCollection();
     }
 

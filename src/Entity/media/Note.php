@@ -39,7 +39,7 @@ class Note extends BaseEntity
 
     public function __construct()
     {
-        parent::__construct();
+
         $this->Recipients = new ArrayCollection();
     }
 

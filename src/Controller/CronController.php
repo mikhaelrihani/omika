@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CronController extends AbstractController
 {
-    public static bool $isCronRoute = true;// flag statique vérifié dans le onPreUpdate de updatedAt
+    public static bool $isCronRoute = false;// flag statique vérifié dans le onPreUpdate de updatedAt
     public function __construct(
         protected EventCronService $eventCronService,
         protected UserCronService $userCronService,
@@ -34,6 +34,8 @@ class CronController extends AbstractController
     #[Route('api/cron/load', name: 'app_cron', methods: ['get', 'post'])]
     public function load(): JsonResponse
     {
+        $this::$isCronRoute = true;
+        
         $eventResponse = $this->eventCronService->load();
         if (!$eventResponse->isSuccess()) {
             return $this->json($eventResponse->getMessage(), $eventResponse->getStatusCode());

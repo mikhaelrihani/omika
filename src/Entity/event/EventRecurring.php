@@ -21,7 +21,7 @@ class EventRecurring extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER)]
-    #[Groups(['eventRecurring'])]
+    #[Groups(['eventRecurring',"supplier"])]
     private ?int $id = null;
 
 
@@ -80,7 +80,7 @@ class EventRecurring extends BaseEntity
     private ?bool $isEveryday = false;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['eventRecurring'])]
+    #[Groups(['eventRecurring',"supplier"])]
     private ?string $recurrenceType = null;
 
     #[ORM\Column(length: 255)]
@@ -121,7 +121,6 @@ class EventRecurring extends BaseEntity
 
     public function __construct()
     {
-        parent::__construct();
         $this->events = new ArrayCollection();
         $this->periodDates = new ArrayCollection();
         $this->weekDays = new ArrayCollection();

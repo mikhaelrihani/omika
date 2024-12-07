@@ -134,7 +134,6 @@ class User extends BaseEntity implements RecipientInterface
 
     public function __construct()
     {
-        parent::__construct();
         $this->absences = new ArrayCollection();
         $this->favoriteEvents = new ArrayCollection();
         $this->receivedNotes = new ArrayCollection();
