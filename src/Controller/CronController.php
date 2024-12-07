@@ -12,6 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CronController extends AbstractController
 {
+    public static bool $isCronRoute = true;// flag statique vérifié dans le onPreUpdate de updatedAt
     public function __construct(
         protected EventCronService $eventCronService,
         protected UserCronService $userCronService,

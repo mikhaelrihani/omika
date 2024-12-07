@@ -33,6 +33,12 @@ class CronJobCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+
+        // Forcer la définition de IS_CRON_JOB
+        putenv('IS_CRON_JOB=true');
+        $_ENV[ 'IS_CRON_JOB' ] = 'true';
+
+        $output->writeln('Executing as a cron job.');
         $steps = [
             'responseEvent' => fn() => $this->eventCronService->load(),
             'responseUser'  => fn() => $this->userCronService->load(),

@@ -2,14 +2,16 @@
 
 namespace App\Entity;
 
+use App\Controller\CronController;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\ORM\Mapping\HasLifecycleCallbacks;
 use Doctrine\ORM\Mapping\PrePersist;
 use Doctrine\ORM\Mapping\PreUpdate;
 
+
 #[ORM\MappedSuperclass]
 #[HasLifecycleCallbacks]
-abstract class BaseEntity 
+abstract class BaseEntity
 {
     #[ORM\Column(type: 'datetime_immutable', nullable: false)]
     protected ?\DateTimeImmutable $createdAt = null;
@@ -17,36 +19,23 @@ abstract class BaseEntity
     #[ORM\Column(type: 'datetime_immutable', nullable: false)]
     protected ?\DateTimeImmutable $updatedAt = null;
 
-    public function __construct()
-    {
-        $this->initializeTimestamps();
-    }
-
-    public function initializeTimestamps(): void
-    {
-        $now = new \DateTimeImmutable();
-        $this->createdAt = $now;
-        $this->updatedAt = $now;
-    }
 
     #[PrePersist]
     public function onPrePersist(): void
     {
         $now = new \DateTimeImmutable();
-        if ($this->createdAt === null) {
-            $this->createdAt = $now;
-        }
-        if ($this->updatedAt === null) {
-            $this->updatedAt = $now;
-        }
+        $this->createdAt ?? $now;
+        $this->updatedAt = $now;
     }
-    
+
     #[PreUpdate]
     public function onPreUpdate(): void
     {
+       // Vérifier si c'est un cronjob ou si la route est 'api/cron/load'
+       if ((!getenv('IS_CRON_JOB') || getenv('IS_CRON_JOB') !== 'true') && !CronController::$isCronRoute) {
         $this->updatedAt = new \DateTimeImmutable();
     }
-    
+    }
 
     public function getCreatedAt(): ?\DateTimeImmutable
     {
