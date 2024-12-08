@@ -33,7 +33,7 @@ class Room extends BaseEntity
     /**
      * @ORM\OneToMany(targetEntity="RoomProduct", mappedBy="room")
      */
-    #[ORM\OneToMany(targetEntity: RoomProduct::class, mappedBy: 'room')]
+    #[ORM\OneToMany(targetEntity: RoomProduct::class, mappedBy: 'room', orphanRemoval: true)]
     private Collection $roomProducts;
 
     public function __construct()

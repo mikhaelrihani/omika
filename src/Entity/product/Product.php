@@ -4,13 +4,10 @@ namespace App\Entity\Product;
 
 use App\Entity\BaseEntity;
 use App\Repository\Product\ProductRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Entity\Supplier\Supplier;
 use App\Entity\Recipe\Unit;
-use App\Entity\Recipe\Recipe;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Serializer\Annotation\Groups;
 
@@ -59,26 +56,17 @@ class Product extends BaseEntity
 
     #[ORM\ManyToOne(targetEntity: Supplier::class, inversedBy: 'products')]
     #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(name: 'supplier_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     private ?supplier $supplier = null;
 
     #[ORM\OneToOne(targetEntity: Rupture::class, mappedBy: 'product')]
     private ?Rupture $rupture = null;
 
-    /**
-     * @var Collection<int, Recipe>
-     */
-    #[ORM\ManyToMany(targetEntity: Recipe::class, mappedBy: 'products')]
-    private Collection $recipes;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
     private ?ProductType $type = null;
 
-    public function __construct()
-    {
-        $this->recipes = new ArrayCollection();
-        
-    }
 
     public function getId(): ?int
     {
@@ -182,33 +170,7 @@ class Product extends BaseEntity
         return $this;
     }
 
-    /**
-     * @return Collection<int, Recipe>
-     */
-    public function getRecipes(): Collection
-    {
-        return $this->recipes;
-    }
-
-    public function addRecipe(Recipe $recipe): static
-    {
-        if (!$this->recipes->contains($recipe)) {
-            $this->recipes->add($recipe);
-            $recipe->addProduct($this);
-        }
-
-        return $this;
-    }
-
-    public function removeRecipe(Recipe $recipe): static
-    {
-        if ($this->recipes->removeElement($recipe)) {
-            $recipe->removeProduct($this);
-        }
-
-        return $this;
-    }
-
+   
     public function getProductType(): ?ProductType
     {
         return $this->type;

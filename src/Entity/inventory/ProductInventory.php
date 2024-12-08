@@ -17,11 +17,11 @@ class ProductInventory extends BaseEntity
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: Product::class)]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?Product $product = null;
 
     #[ORM\ManyToOne(targetEntity:Inventory::class, inversedBy: 'productInventories')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?Inventory $inventory = null;
 
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]

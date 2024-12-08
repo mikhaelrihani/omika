@@ -41,8 +41,8 @@ class Rupture extends BaseEntity
      * @ORM\OneToOne(targetEntity="App\Entity\product\Product", inversedBy="rupture")
      * @ORM\JoinColumn(nullable=false)
      */
-    #[ORM\OneToOne(targetEntity: Product::class, inversedBy: 'rupture')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\OneToOne(targetEntity: Product::class, inversedBy: 'rupture',cascade: ['persist'])]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?Product $product = null;
 
     public function getId(): ?int

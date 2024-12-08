@@ -48,6 +48,7 @@ class Order extends BaseEntity
 
     #[ORM\ManyToOne(targetEntity:Supplier::class,inversedBy: 'orders')]
     #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(name: 'supplier_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     private ?Supplier $supplier = null;
 
     public function getId(): ?int

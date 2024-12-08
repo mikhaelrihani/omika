@@ -17,10 +17,11 @@ class RoomProduct extends BaseEntity
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: Room::class, inversedBy: 'roomProducts')]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?Room $room = null;
 
     #[ORM\ManyToOne(targetEntity: Product::class)]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?Product $product = null;
 
     #[ORM\Column(type: 'integer')]

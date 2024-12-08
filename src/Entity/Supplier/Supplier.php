@@ -26,7 +26,7 @@ class Supplier extends BaseEntity
     private ?int $id = null;
 
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true)]
     #[Groups(['supplier'])]
     private ?Business $business = null;
 
@@ -156,7 +156,7 @@ class Supplier extends BaseEntity
         return $this->business;
     }
 
-    public function setBusiness(Business $business): static
+    public function setBusiness(?Business $business): static
     {
         $this->business = $business;
 

@@ -21,10 +21,7 @@ class Ingredient extends BaseEntity
     #[Assert\NotBlank(message: "Quantity should not be blank.")]
     private ?string $quantity = null;
 
-    #[ORM\ManyToOne(targetEntity: Product::class)]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?Product $product = null;
-
+   
     /**
      * @ORM\ManyToOne(targetEntity="App\Entity\Unit")
      * @ORM\JoinColumn(nullable=false)
@@ -35,6 +32,9 @@ class Ingredient extends BaseEntity
 
     #[ORM\ManyToOne]
     private ?Recipe $Recipe = null;
+
+    #[ORM\Column(length: 255)]
+    private ?string $name = null;
 
     public function getId(): ?int
     {
@@ -49,18 +49,6 @@ class Ingredient extends BaseEntity
     public function setQuantity(string $quantity): static
     {
         $this->quantity = $quantity;
-
-        return $this;
-    }
-
-    public function getProduct(): ?product
-    {
-        return $this->product;
-    }
-
-    public function setProduct(Product $product): static
-    {
-        $this->product = $product;
 
         return $this;
     }
@@ -85,6 +73,18 @@ class Ingredient extends BaseEntity
     public function setRecipe(?Recipe $Recipe): static
     {
         $this->Recipe = $Recipe;
+
+        return $this;
+    }
+
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
+
+    public function setName(string $name): static
+    {
+        $this->name = $name;
 
         return $this;
     }

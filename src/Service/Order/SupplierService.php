@@ -16,7 +16,6 @@ use App\Service\ValidatorService;
 use App\Utils\ApiResponse;
 use DateTimeImmutable;
 use Exception;
-use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
@@ -33,7 +32,8 @@ class SupplierService
         protected BusinessService $businessService,
         protected EventRecurringService $eventRecurringService,
         protected EventService $eventService,
-        protected ContactService $contactService
+        protected ContactService $contactService,
+        protected SupplierEventService $supplierEventService
 
     ) {
         $this->now = new DateTimeImmutable('today');
@@ -131,7 +131,7 @@ class SupplierService
                 return ApiResponse::error($responseValidation->getMessage(), null, $responseValidation->getStatusCode());
             }
 
-            $responseEvent = $this->handleEventCreationsforNewSupplier($supplier, $responseData->getData());
+            $responseEvent = $this->supplierEventService->handleEventCreationsforNewSupplier($supplier, $responseData->getData());
             if (!$responseEvent->isSuccess()) {
                 $this->em->rollback();
                 return ApiResponse::error($responseEvent->getMessage(), null, $responseEvent->getStatusCode());
@@ -179,7 +179,7 @@ class SupplierService
                 return $ResponseRelations;
             }
 
-            $ResponseEvent = $this->handleEventCreationsforUpdatedSupplier($supplier, $data->getData());
+            $ResponseEvent = $this->supplierEventService->handleEventCreationsforUpdatedSupplier($supplier, $data->getData());
             if (!$ResponseEvent->isSuccess()) {
                 $this->em->rollback();
                 return ApiResponse::error($ResponseEvent->getMessage(), null, $ResponseEvent->getStatusCode());
@@ -230,17 +230,22 @@ class SupplierService
                 $this->em->rollback();
                 return ApiResponse::error("Error while removing relations", null, Response::HTTP_INTERNAL_SERVER_ERROR);
             }
+
+
+            $ResponseEvent = $this->supplierEventService->createEventDeletedSupplier($supplier);
+            if (!$ResponseEvent->isSuccess()) {
+                $this->em->rollback();
+                return ApiResponse::error($ResponseEvent->getMessage(), null, $ResponseEvent->getStatusCode());
+            }
+
+
             $responseStaff = $this->deleteStaffAndBusiness($supplier);
             if (!$responseStaff->isSuccess()) {
                 $this->em->rollback();
                 return $responseStaff;
             }
 
-            $ResponseEvent = $this->createEventDeletedSupplier($supplier);
-            if (!$ResponseEvent->isSuccess()) {
-                $this->em->rollback();
-                return ApiResponse::error($ResponseEvent->getMessage(), null, $ResponseEvent->getStatusCode());
-            }
+
 
             $this->em->remove($supplier);
             $this->em->commit();
@@ -254,146 +259,6 @@ class SupplierService
         }
     }
 
-    //! ----------------------------------------------------------------------------------------
-
-
-    /**
-     * Creates a recurring event for a supplier.
-     *
-     * This method creates a recurring event for a supplier based on the provided data.
-     * The event is created with the necessary information and linked to the supplier.
-     * Event children are also created based on the recurrence data.
-     *
-     * @param Supplier $supplier The supplier entity for which the event is created.
-     * @param array $content An associative array containing the recurrence data.
-     *
-     * @return ApiResponse Returns a success response with the created event or an error response on failure.
-     */
-    private function createEventRecuring(Supplier $supplier, array $content): ApiResponse
-    {
-        [$businessName, $habits, $goodToKnow, $logistic, $categories, $date] = $this->getDataEvents($supplier);
-
-        $recurrenceType = $this->getRecurrenceType($content);
-
-        if (!$recurrenceType) {
-            return ApiResponse::error('Recurrence type not found', [], Response::HTTP_BAD_REQUEST);
-        }
-
-        $data = [
-            "section"       => "supplier",
-            "description"   => "Mettre à jour la commande du fournisseur {$businessName->getName()} et passer la commande.
-                            Nos habitudes : {$habits}, Logistique : {$logistic}, Bon à savoir : {$goodToKnow}",
-            "type"          => "task",
-            "side"          => "office",
-            "title"         => "Commande - {$businessName->getName()} - {$date}",
-            $recurrenceType => $content[$recurrenceType],
-        ];
-
-        $eventRecurring = $this->eventRecurringService->createOneEventRecurringParent($data);
-        if (!$eventRecurring) {
-            return ApiResponse::error('Event recurring not created', [], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-        $eventRecurring = $eventRecurring->getData()[ "eventRecurringParent" ];
-
-        $childrensResponse = $this->eventRecurringService->createChildrenWithTag($eventRecurring);
-        if (!$childrensResponse) {
-            return ApiResponse::error('Event recurring children not created', [], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-
-        return ApiResponse::success('Event recurring created with its childrens', ['eventRecurring' => $eventRecurring], Response::HTTP_CREATED);
-    }
-
-
-    //! ----------------------------------------------------------------------------------------
-
-    /**
-     * Creates a new event for a newly added supplier.
-     *
-     * @param Supplier $supplier The supplier entity for which the event is created.
-     *
-     * @return ApiResponse Returns a success response with the created event or an error response on failure.
-     *
-     * @throws \Exception If the event creation service encounters an error.
-     */
-    private function createEventNewSupplier(Supplier $supplier): ApiResponse
-    {
-        [$businessName, $habits, $goodToKnow, $logistic, $categories, $date] = $this->getDataEvents($supplier);
-
-        $data = [
-            "section"     => "supplier",
-            "description" => "Un nouveau fournisseur {$businessName->getName()} a été ajouté .
-                            {$businessName->getName()} est un fournisseur de : {$categories}.
-                            Nos habitudes : {$habits}, Logistique : {$logistic}, Bon à savoir : {$goodToKnow}.",
-            "type"        => "info",
-            "side"        => "office",
-            "title"       => "Nouveau fournisseur {$businessName->getName()}.",
-            "dueDate"     => $date
-        ];
-        $event = $this->eventService->createOneEvent($data);
-        if (!$event) {
-            return ApiResponse::error('Event not created', [], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-        return ApiResponse::success('Event created', ['event' => $event], Response::HTTP_CREATED);
-    }
-
-
-
-    //! ----------------------------------------------------------------------------------------
-
-    /**
-     * Collects and returns data related to the supplier for event creation.
-     *
-     * @param Supplier $supplier The supplier entity from which to extract data.
-     *
-     * @return array Returns an array containing the following elements:
-     *               - string $businessName: The business name of the supplier.
-     *               - string|null $habits: The habits associated with the supplier.
-     *               - string|null $goodToKnow: Additional information about the supplier.
-     *               - string|null $logistic: Logistic details of the supplier.
-     *               - string $categories: A comma-separated string of category names.
-     *               - string $date: The current date in 'Y-m-d' format.
-     */
-    private function getDataEvents(Supplier $supplier): array
-    {
-        $businessName = $supplier->getBusiness();
-        $habits = $supplier->getHabits();
-        $goodToKnow = $supplier->getGoodToKnow();
-        $logistic = $supplier->getLogistic();
-        $date = $this->now->format('Y-m-d');
-        $categories = $supplier->getCategories();
-        $categories = $categories->map(fn($category) => $category->getName())->toArray();
-        $categories = empty($categories) ? 'unknown' : implode(", ", $categories);
-
-        return [$businessName, $habits, $goodToKnow, $logistic, $categories, $date];
-    }
-
-    //! ----------------------------------------------------------------------------------------
-
-    /**
-     * Creates an event to log the deletion of a supplier.
-     *
-     * @param Supplier $supplier The supplier that has been deleted.
-     *
-     * @return ApiResponse Returns a success response with the created event data 
-     *                     or an error response if the event creation fails.
-     */
-    public function createEventDeletedSupplier($supplier): ApiResponse
-    {
-        [$businessName] = $this->getDataEvents($supplier);
-
-        $data = [
-            "section"     => "supplier",
-            "description" => "Le fournisseur {$businessName->getName()} a été supprimé.",
-            "type"        => "info",
-            "side"        => "office",
-            "title"       => "Fournisseur {$businessName->getName()} supprimé",
-        ];
-        $event = $this->eventService->createOneEvent($data);
-        if (!$event) {
-            return ApiResponse::error('Event not created', [], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-        return ApiResponse::success('Event created', ['event' => $event], Response::HTTP_CREATED);
-    }
 
     //! ----------------------------------------------------------------------------------------
 
@@ -411,8 +276,9 @@ class SupplierService
     {
         $business = $supplier->getBusiness();
         $staffs = $this->em->getRepository(Contact::class)->findBy(['business' => $business]);
+        $supplier->setBusiness(null);
+
         foreach ($staffs as $staff) {
-            $business->removeContact($staff);
             $response = $this->contactService->deleteContact($staff->getId());
             if (!$response->isSuccess()) {
                 return $response;
@@ -421,136 +287,6 @@ class SupplierService
         return ApiResponse::success('Staffs deleted', null, Response::HTTP_OK);
     }
 
-    //! ----------------------------------------------------------------------------------------
-
-    /**
-     * Create a new category based on the provided JSON request.
-     *
-     * @param Request $request The HTTP request containing the category data in JSON format.
-     *
-     * @return ApiResponse Returns a success response with the created category or an error response if validation fails.
-     *
-     * @throws \Exception If an error occurs during the creation process.
-     */
-    public function createCategory(Request $request): ApiResponse
-    {
-        $responseData = $this->validateService->validateJson($request);
-        if (!$responseData->isSuccess()) {
-            $this->em->rollback();
-            return ApiResponse::error($responseData->getMessage(), null, $responseData->getStatusCode());
-        }
-        $category = new Category();
-        $category->setName($responseData->getData()[ 'name' ]);
-
-        $responseValidation = $this->validateService->validateEntity($category);
-        if (!$responseValidation->isSuccess()) {
-            $this->em->rollback();
-            return ApiResponse::error($responseValidation->getMessage(), null, $responseValidation->getStatusCode());
-        }
-        $this->em->persist($category);
-        $this->em->flush();
-        return ApiResponse::success('Category created', ['category' => $category], Response::HTTP_CREATED);
-    }
-
-    //! ----------------------------------------------------------------------------------------
-    /**
-     * Determine the type of recurrence based on the content.
-     *
-     * @param array $content The array containing recurrence information.
-     *
-     * @return string The key representing the recurrence type.
-     *
-     * @throws InvalidArgumentException If none or more than one recurrence type is set.
-     */
-    private function getRecurrenceType(array $content): string
-    {
-        $values = [
-            "periodDates" => !empty($content[ 'periodDates' ]),
-            "isEveryday"  => !empty($content[ 'isEveryday' ]),
-            "weekDays"    => !empty($content[ 'weekDays' ]),
-            "monthDays"   => !empty($content[ 'monthDays' ]),
-        ];
-
-        // Filtrer pour ne garder que les valeurs à `true`
-        $recurrenceType = array_filter($values);
-
-        // Vérifier qu'une seule valeur est `true`
-        if (count($recurrenceType) !== 1) {
-            throw new InvalidArgumentException(
-                "Exactly one of 'periodDates', 'isEveryday', 'weekDays', or 'monthDays' must be set."
-            );
-        }
-
-        // Retourner la clé correspondant au type de récurrence
-        return array_key_first($recurrenceType);
-    }
-
-
-    //! ----------------------------------------------------------------------------------------
-
-    /**
-     * Handle the creation of events associated with a supplier.
-     *
-     * This method manages the creation of a recurring event and a new supplier event.
-     * If any of the event creation processes fail, the transaction is rolled back, 
-     * and an error response is returned.
-     *
-     * @param Supplier $supplier The supplier entity for which the events are created.
-     * @param array $content An associative array containing the necessary data for creating the recurring event.
-     *
-     * @return ApiResponse Returns a success response if both events are created successfully.
-     *                     Returns an error response if any event creation fails.
-     *
-     * @throws \Exception If an unexpected error occurs during the process.
-     */
-    private function handleEventCreationsforNewSupplier(Supplier $supplier, array $content): ApiResponse
-    {
-        $responseEvent = $this->createEventRecuring($supplier, $content);
-        if (!$responseEvent->isSuccess()) {
-            $this->em->rollback();
-            return ApiResponse::error($responseEvent->getMessage(), null, $responseEvent->getStatusCode());
-        }
-
-        $supplier->setRecurringEvent($responseEvent->getData()[ 'eventRecurring' ]);
-
-
-        $ResponseEvent = $this->createEventNewSupplier($supplier);
-        if (!$ResponseEvent->isSuccess()) {
-            $this->em->rollback();
-            return ApiResponse::error($ResponseEvent->getMessage(), null, $ResponseEvent->getStatusCode());
-        }
-        return ApiResponse::success($ResponseEvent->getMessage(), null, Response::HTTP_CREATED);
-    }
-
-    //! ----------------------------------------------------------------------------------------
-
-    /**
-     * Create a new event for an updated supplier.
-     *
-     * @param Supplier $supplier The supplier entity for which the event is created.
-     *
-     * @return ApiResponse Returns a success response with the created event or an error response on failure.
-     */
-    private function createEventUpdatedSupplier(Supplier $supplier): ApiResponse
-    {
-        [$businessName, $habits, $goodToKnow, $logistic, $categories, $date] = $this->getDataEvents($supplier);
-
-        $data = [
-            "section"     => "supplier",
-            "description" => "Le fournisseur {$businessName->getName()} a été mise a jour .
-                            {$businessName->getName()} est un fournisseur de : {$categories}.
-                            Nos habitudes : {$habits}, Logistique : {$logistic}, Bon à savoir : {$goodToKnow}.",
-            "type"        => "info",
-            "side"        => "office",
-            "title"       => "Mise a jour du fournisseur {$businessName->getName()}.",
-            "dueDate"     => $date
-        ];
-        $event = $this->eventService->createOneEvent($data);
-        if (!$event) {
-            return ApiResponse::error('Event not created', [], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-        return ApiResponse::success('Event created', ['event' => $event], Response::HTTP_CREATED);
-    }
 
 
     //! ----------------------------------------------------------------------------------------
@@ -589,36 +325,22 @@ class SupplierService
 
     //! ----------------------------------------------------------------------------------------
 
-    private function handleEventCreationsforUpdatedSupplier(Supplier $supplier, array $content): ApiResponse
-    {
-        $recuringEvent = $supplier->getRecurringEvent();
-        if (!$recuringEvent) {
-            return ApiResponse::error('Recurring event not found', [], Response::HTTP_BAD_REQUEST);
-        }
-        $supplier->setRecurringEvent(null);
-        $responseEvent = $this->eventRecurringService->deleteRecurringEvent($recuringEvent);
-        if (!$responseEvent->isSuccess()) {
-            return ApiResponse::error($responseEvent->getMessage(), null, $responseEvent->getStatusCode());
-        }
-
-        $responseEvent = $this->createEventRecuring($supplier, $content);
-        if (!$responseEvent->isSuccess()) {
-            return ApiResponse::error($responseEvent->getMessage(), null, $responseEvent->getStatusCode());
-        }
-
-        $supplier->setRecurringEvent($responseEvent->getData()[ 'eventRecurring' ]);
-
-
-        $ResponseEvent = $this->createEventUpdatedSupplier($supplier);
-        if (!$ResponseEvent->isSuccess()) {
-            return ApiResponse::error($ResponseEvent->getMessage(), null, $ResponseEvent->getStatusCode());
-        }
-        return ApiResponse::success($ResponseEvent->getMessage(), null, Response::HTTP_CREATED);
-
-    }
-
-    //! ----------------------------------------------------------------------------------------
-
+    /**
+     * Handle the update of supplier relations.
+     *
+     * This method clears existing order days, delivery days, and categories associated with the supplier,
+     * and reassigns them based on the provided response data. If an exception occurs during the process,
+     * an error response is returned.
+     *
+     * @param Supplier   $supplier    The supplier entity whose relations are being updated.
+     * @param ApiResponse $responseData The response data containing the new relations to assign.
+     *
+     * @return ApiResponse Returns an ApiResponse indicating success or failure.
+     *
+     * Possible response codes:
+     * - 200 (HTTP_OK): When supplier relations are successfully updated.
+     * - 500 (HTTP_INTERNAL_SERVER_ERROR): When an exception occurs during the update process.
+     */
     private function handleSupplierRelationsOnUpdate(Supplier $supplier, ApiResponse $responseData): ApiResponse
     {
 
@@ -637,6 +359,35 @@ class SupplierService
 
     //! ----------------------------------------------------------------------------------------
 
+
+    /**
+     * Create a new category based on the provided JSON request.
+     *
+     * @param Request $request The HTTP request containing the category data in JSON format.
+     *
+     * @return ApiResponse Returns a success response with the created category or an error response if validation fails.
+     *
+     * @throws \Exception If an error occurs during the creation process.
+     */
+    public function createCategory(Request $request): ApiResponse
+    {
+        $responseData = $this->validateService->validateJson($request);
+        if (!$responseData->isSuccess()) {
+            $this->em->rollback();
+            return ApiResponse::error($responseData->getMessage(), null, $responseData->getStatusCode());
+        }
+        $category = new Category();
+        $category->setName($responseData->getData()[ 'name' ]);
+
+        $responseValidation = $this->validateService->validateEntity($category);
+        if (!$responseValidation->isSuccess()) {
+            $this->em->rollback();
+            return ApiResponse::error($responseValidation->getMessage(), null, $responseValidation->getStatusCode());
+        }
+        $this->em->persist($category);
+        $this->em->flush();
+        return ApiResponse::success('Category created', ['category' => $category], Response::HTTP_CREATED);
+    }
 
 
 
