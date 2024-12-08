@@ -22,12 +22,12 @@ class Supplier extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['supplier'])]
+    #[Groups(['supplier', 'product'])]
     private ?int $id = null;
 
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: true)]
-    #[Groups(['supplier'])]
+    #[Groups(['supplier', 'product'])]
     private ?Business $business = null;
 
 

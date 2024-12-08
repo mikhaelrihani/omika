@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Supplier;
+namespace App\Controller\OPS;
 
 use App\Service\OPS\ProductService;
 use App\Utils\ApiResponse;
@@ -91,7 +91,7 @@ class ProductController extends AbstractController
     private function getResponse(ApiResponse $response, ?string $entity = "product", $jsonData = true): JsonResponse
     {
         if (!$response->isSuccess()) {
-            return $this->json($response->getMessage(), $response->getStatusCode());
+            return $this->json(["message"=>$response->getMessage(),"data"=>$response->getData()], $response->getStatusCode());
         }
         $jsonData = $jsonData ?
             ["message" => $response->getMessage(), $entity => $response->getData()[$entity]] :

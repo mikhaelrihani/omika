@@ -16,7 +16,7 @@ class Business extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['user', 'contact', 'business',"supplier"])]
+    #[Groups(['user', 'contact', 'business',"supplier","order","product"])]
     private ?int $id = null;
 
     #[ORM\Column(length: 100, nullable: false)]

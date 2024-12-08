@@ -40,10 +40,11 @@ class ProductService
     public function getProduct(int $id): ApiResponse
     {
         $product = $this->productRepository->find($id);
+       
         if (!$product) {
             return ApiResponse::error('Product not found', [], Response::HTTP_NOT_FOUND);
         }
-        return ApiResponse::success('Product found', ['product' => $product], Response::HTTP_OK);
+        return ApiResponse::success('Product found succesfully', ['product' => $product], Response::HTTP_OK);
     }
 
 
@@ -56,7 +57,7 @@ class ProductService
         if (!$products) {
             return ApiResponse::error('Products not found', [], Response::HTTP_NOT_FOUND);
         }
-        return ApiResponse::success('Products found', ['products' => $products], Response::HTTP_OK);
+        return ApiResponse::success('Products found succesfully', ['products' => $products], Response::HTTP_OK);
     }
 
 
@@ -71,12 +72,12 @@ class ProductService
                 $this->em->rollback();
                 return ApiResponse::error($responseData->getMessage(), null, $responseData->getStatusCode());
             }
-
+//! verifier si le produit existe deja(validator unique constraint?)
             $product = $this->handleProductCreation($responseData);
             $responseValidation = $this->validateService->validateEntity($product);
             if (!$responseValidation->isSuccess()) {
                 $this->em->rollback();
-                return ApiResponse::error($responseValidation->getMessage(), null, $responseValidation->getStatusCode());
+                return ApiResponse::error($responseValidation->getMessage(), $responseValidation->getData()["errors"], $responseValidation->getStatusCode());
             }
 
             $responseEvent = $this->productEventService->createEventNewProduct($product, $product->getSupplier());
@@ -199,7 +200,7 @@ class ProductService
             ->setConditionning($responseData->getData()[ 'conditionning' ])
             ->setUnit($unit)
             ->setSupplier($supplier)
-            ->setProductType($type);
+            ->setType($type);
 
         $supplier->addProduct($product);
 

@@ -6,6 +6,7 @@ use App\Entity\BaseEntity;
 use App\Repository\Recipe\UnitRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: UnitRepository::class)]
 class Unit extends BaseEntity
@@ -13,14 +14,17 @@ class Unit extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['supplier', 'product'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 50, nullable: false)]
     #[Assert\NotBlank(message: "Unit Name should not be blank.")]
+    #[Groups(['supplier', 'product'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 5, nullable: false)]
     #[Assert\NotBlank(message: "Unit Symbol should not be blank.")]
+    #[Groups(['supplier', 'product'])]
     private ?string $symbol = null;
 
     public function getId(): ?int

@@ -34,7 +34,7 @@ class ProductEventService
             "type"        => "info",
             "side"        => "office",
             "title"       => "Nouveau produit : {$product->getKitchenName()}.",
-            "dueDate"     => $this->now
+            "dueDate"     => ($this->now)->format('Y-m-d'),
         ];
         return $this->ApiResponse($data);
     }
@@ -52,7 +52,7 @@ class ProductEventService
             "type"        => "info",
             "side"        => "office",
             "title"       => "Mise a jour du produit {$product->getKitchenName()}.",
-            "dueDate"     => $this->now
+            "dueDate"     => ($this->now)->format('Y-m-d'),
         ];
         return $this->ApiResponse($data);
 
@@ -71,7 +71,7 @@ class ProductEventService
             "type"        => "info",
             "side"        => "office",
             "title"       => "Produit: {$product->getKitchenName()} supprimé",
-            "dueDate"     => $this->now
+            "dueDate"     => ($this->now)->format('Y-m-d'),
         ];
         return $this->ApiResponse($data);
     }

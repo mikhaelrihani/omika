@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Supplier;
+namespace App\Controller\OPS;
 
 use App\Service\OPS\SupplierService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;

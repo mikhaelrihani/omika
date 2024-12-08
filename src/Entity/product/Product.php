@@ -21,53 +21,59 @@ class Product extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['supplier'])]
+    #[Groups(['supplier', 'product'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 50, nullable: false)]
     #[Assert\NotBlank(message: "Kitchen Name should not be blank.")]
-    #[Groups(['supplier'])]
+    #[Groups(['supplier', 'product'])]
     private ?string $kitchenName = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Commercial Name should not be blank.")]
-    #[Groups(['supplier'])]
+    #[Groups(['supplier', 'product'])]
     private ?string $commercialName = null;
 
     #[ORM\Column(length: 50, nullable: false)]
     #[Assert\NotBlank(message: "Slug should not be blank.")]
+    #[Groups(['product'])]
     private ?string $slug = null;
 
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: false)]
     #[Assert\NotBlank(message: "Price should not be blank.")]
+    #[Groups(['product'])]
     private ?string $price = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Conditionning should not be blank.")]
+    #[Groups(['product'])]
     private ?string $conditionning = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['product'])]
     private ?unit $unit = null;
 
     #[ORM\Column(nullable: false)]
-    #[Assert\NotBlank(message: "Supplier Favorite should not be blank.")]
+    #[Groups(['product'])]
     private ?bool $supplierFavorite = false;
 
     #[ORM\ManyToOne(targetEntity: Supplier::class, inversedBy: 'products')]
     #[ORM\JoinColumn(nullable: false)]
     #[ORM\JoinColumn(name: 'supplier_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+    #[Groups(['product'])]
     private ?supplier $supplier = null;
 
     #[ORM\OneToOne(targetEntity: Rupture::class, mappedBy: 'product')]
+    #[Groups(['product'])]
     private ?Rupture $rupture = null;
 
 
-    #[ORM\ManyToOne]
+    #[ORM\ManyToOne(targetEntity: ProductType::class)]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['product'])]
     private ?ProductType $type = null;
-
-
+    
     public function getId(): ?int
     {
         return $this->id;
@@ -170,13 +176,13 @@ class Product extends BaseEntity
         return $this;
     }
 
-   
-    public function getProductType(): ?ProductType
+    public function getType(): ?ProductType
     {
         return $this->type;
     }
+    
 
-    public function setProductType(?ProductType $productType): static
+    public function setType(?ProductType $productType): static
     {
         $this->type = $productType;
 
@@ -187,6 +193,6 @@ class Product extends BaseEntity
     {
         return $this->rupture;
     }
-    
-   
+
+
 }

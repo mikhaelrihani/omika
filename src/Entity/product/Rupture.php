@@ -7,6 +7,7 @@ use App\Repository\Product\RuptureRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 use App\Entity\Product\Product;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * @ORM\Entity(repositoryClass=RuptureRepository::class)
@@ -17,6 +18,7 @@ class Rupture extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
+    #[Groups(['supplier', 'product'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 1000, nullable: false)]
