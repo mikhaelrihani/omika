@@ -52,7 +52,7 @@ class Product extends BaseEntity
 
     #[ORM\Column(nullable: false)]
     #[Assert\NotBlank(message: "Supplier Favorite should not be blank.")]
-    private ?bool $supplierFavorite = null;
+    private ?bool $supplierFavorite = false;
 
     #[ORM\ManyToOne(targetEntity: Supplier::class, inversedBy: 'products')]
     #[ORM\JoinColumn(nullable: false)]

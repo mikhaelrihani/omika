@@ -1,5 +1,5 @@
 <?php
-namespace App\Service\Order;
+namespace App\Service\OPS;
 
 use App\Entity\Supplier\Category;
 use App\Entity\Supplier\DeliveryDay;
@@ -140,7 +140,7 @@ class SupplierService
             $this->em->commit();
             $this->em->flush();
 
-            return ApiResponse::success('Supplier created', ['supplier' => $supplier], Response::HTTP_CREATED);
+            return ApiResponse::success('Supplier created succesfully', ['supplier' => $supplier], Response::HTTP_CREATED);
 
 
         } catch (Exception $e) {
@@ -251,7 +251,7 @@ class SupplierService
             $this->em->commit();
             $this->em->flush();
 
-            return ApiResponse::success("Supplier deleted", null, Response::HTTP_OK);
+            return ApiResponse::success("Supplier deleted succesfully", null, Response::HTTP_OK);
 
         } catch (Exception $e) {
             $this->em->rollback();
@@ -284,7 +284,7 @@ class SupplierService
                 return $response;
             }
         }
-        return ApiResponse::success('Staffs deleted', null, Response::HTTP_OK);
+        return ApiResponse::success('Staffs deleted succesfully', null, Response::HTTP_OK);
     }
 
 
@@ -336,10 +336,6 @@ class SupplierService
      * @param ApiResponse $responseData The response data containing the new relations to assign.
      *
      * @return ApiResponse Returns an ApiResponse indicating success or failure.
-     *
-     * Possible response codes:
-     * - 200 (HTTP_OK): When supplier relations are successfully updated.
-     * - 500 (HTTP_INTERNAL_SERVER_ERROR): When an exception occurs during the update process.
      */
     private function handleSupplierRelationsOnUpdate(Supplier $supplier, ApiResponse $responseData): ApiResponse
     {
@@ -354,7 +350,7 @@ class SupplierService
         } catch (Exception $e) {
             return ApiResponse::error($e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-        return ApiResponse::success("Relations updated", null, Response::HTTP_OK);
+        return ApiResponse::success("Relations updated succesfully", null, Response::HTTP_OK);
     }
 
     //! ----------------------------------------------------------------------------------------
@@ -386,7 +382,7 @@ class SupplierService
         }
         $this->em->persist($category);
         $this->em->flush();
-        return ApiResponse::success('Category created', ['category' => $category], Response::HTTP_CREATED);
+        return ApiResponse::success('Category created succesfully', ['category' => $category], Response::HTTP_CREATED);
     }
 
 

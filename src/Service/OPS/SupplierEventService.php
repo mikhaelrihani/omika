@@ -1,5 +1,5 @@
 <?php
-namespace App\Service\Order;
+namespace App\Service\OPS;
 
 use Doctrine\ORM\EntityManagerInterface;
 use App\Entity\Supplier\Supplier;

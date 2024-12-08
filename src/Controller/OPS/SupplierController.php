@@ -2,11 +2,10 @@
 
 namespace App\Controller\Supplier;
 
-use App\Service\Order\SupplierService;
+use App\Service\OPS\SupplierService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/supplier', name: "app_supplier_")]
@@ -20,7 +19,7 @@ class SupplierController extends AbstractController
 
     //! --------------------------------------------------------------------------------------------
     #[Route('/getSupplier/{id}', name: 'getSupplier', methods: 'get')]
-    public function getsupplier(int $id): JsonResponse
+    public function getSupplier(int $id): JsonResponse
     {
         $response = $this->supplierService->getSupplier($id);
         if (!$response->isSuccess()) {
@@ -32,8 +31,8 @@ class SupplierController extends AbstractController
     //! --------------------------------------------------------------------------------------------
 
 
-    #[Route('/getSuppliers', name: 'getsuppliers', methods: 'get')]
-    public function getsuppliers(): JsonResponse
+    #[Route('/getSuppliers', name: 'getSuppliers', methods: 'get')]
+    public function getSuppliers(): JsonResponse
     {
         $response = $this->supplierService->getSuppliers();
         if (!$response->isSuccess()) {
