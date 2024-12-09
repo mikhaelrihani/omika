@@ -385,6 +385,36 @@ class SupplierService
         return ApiResponse::success('Category created succesfully', ['category' => $category], Response::HTTP_CREATED);
     }
 
+    //! ----------------------------------------------------------------------------------------
+
+    /**
+     * Retrieves all categories.
+     *
+     * This method fetches all categories from the database.
+     * If no categories are found, it returns an error response.
+     *
+     * @return ApiResponse Returns a success response with the list of categories
+     *                     or an error response if no categories are found.
+     */
+    public function getSuppliersByCategory(int $id): ApiResponse
+    {
+        $catégory = $this->em->getRepository(Category::class)->find($id)->getName();
+        $suppliers = $this->supplierRepository->findSuppliersByCategorie($id);
+        if (!$suppliers) {
+            return ApiResponse::error('Suppliers not found', [], Response::HTTP_NOT_FOUND);
+        }
+
+        $data = array_map(fn($supplier) => [
+            'id'   => $supplier[ "id" ],
+            'name' => $supplier[ "name" ],
+        ], $suppliers);
+
+        $count = count($data);
+        $data[ 'category' ] = $catégory;
+        $data[ 'count' ] = $count;
+
+        return ApiResponse::success("{$count} Suppliers found for the catégory {$catégory}", ['suppliers' => $data], Response::HTTP_OK);
+    }
 
 
 }

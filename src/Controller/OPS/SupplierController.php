@@ -92,6 +92,23 @@ class SupplierController extends AbstractController
         return $this->json(["message" => $response->getMessage(), "category" => $response->getData()[ "category" ]], $response->getStatusCode(), [], ['groups' => 'supplier']);
 
     }
+
+    //! --------------------------------------------------------------------------------------------
+
+    #[Route('/updateCategory/{id}', name: 'updateCategory', methods: 'put')]
+
+    //! --------------------------------------------------------------------------------------------
+
+    #[Route('/getSuppliersByCategory/{categoryId}', name: 'getSuppliersByCategory', methods: 'get')]
+    public function getSuppliersByCategory($categoryId): JsonResponse
+    {
+        $response = $this->supplierService->getSuppliersByCategory($categoryId);
+        if (!$response->isSuccess()) {
+            return $this->json($response->getMessage(), $response->getStatusCode());
+        }
+        return $this->json(["message" => $response->getMessage(), "suppliers" => $response->getData()[ "suppliers" ]], $response->getStatusCode(), [], ['groups' => 'supplier']);
+    }
+
 }
 
 

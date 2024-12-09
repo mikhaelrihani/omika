@@ -16,28 +16,34 @@ class ProductRepository extends ServiceEntityRepository
         parent::__construct($registry, Product::class);
     }
 
-    //    /**
-    //     * @return Product[] Returns an array of Product objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('p')
-    //            ->andWhere('p.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('p.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+    //! ------------------------------------------------------------------------------------------------
 
-    //    public function findOneBySomeField($value): ?Product
-    //    {
-    //        return $this->createQueryBuilder('p')
-    //            ->andWhere('p.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+    public function isProductExist(int $id, string $kitchenName): array
+    {
+        return $this->createQueryBuilder('p')
+            ->andWhere('p.supplier = :id')
+            ->andWhere('p.kitchenName = :kitchenName')
+            ->setParameter('id', $id)
+            ->setParameter('kitchenName', $kitchenName)
+            ->getQuery()
+            ->getResult();
+    }
+
+    //! ------------------------------------------------------------------------------------------------
+
+    public function findproductSuppliers(Product $product): array
+    {
+        return $this->createQueryBuilder('p')
+            ->select('s.id', 'b.name')
+            ->join('p.supplier', 's')
+            ->join('s.business', 'b')
+            ->where('p.kitchenName = :kitchenName')
+            ->setParameter('kitchenName', $product->getKitchenName())
+            ->getQuery()
+            ->getResult();
+    }
+
+    //! ------------------------------------------------------------------------------------------------
+
+
 }

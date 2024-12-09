@@ -79,19 +79,48 @@ class ProductController extends AbstractController
 
     //! --------------------------------------------------------------------------------------------
 
-    #[Route('/toggleFavorite/{id}', name: 'toggleFavorite', methods: 'put')]
+    #[Route('/toggleFavorite/{id}', name: 'toggleFavorite', methods: 'post')]
     public function toggleFavorite(int $id): JsonResponse
     {
         $response = $this->productService->toggleFavorite($id);
         return $this->getResponse($response, null, false);
     }
 
+
     //! --------------------------------------------------------------------------------------------
 
-    private function getResponse(ApiResponse $response, ?string $entity = "product", $jsonData = true): JsonResponse
+    #[Route('/findProductSuppliers/{productId}', name: 'findProductSuppliers', methods: 'get')]
+    public function findProductSuppliers(int $productId): JsonResponse
+    {
+        $response = $this->productService->getProductSuppliers($productId);
+        return $this->getResponse($response, "suppliers", true, "supplier");
+
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    #[Route('/search', name: 'search', methods: 'get')]
+    public function search(Request $request): JsonResponse
+    {
+        $response = $this->productService->searchProduct($request);
+        return $this->getResponse($response, "products");
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    #[Route('/getProductRecipes/{productId}', name: 'getProductRecipes', methods: 'get')]
+    public function getProductRecipes(int $productId): JsonResponse
+    {
+        $response = $this->productService->getProductRecipes($productId);
+        return $this->getResponse($response, "recipes", true, "recipe");
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    private function getResponse(ApiResponse $response, ?string $entity = "product", $jsonData = true, $group = "product"): JsonResponse
     {
         if (!$response->isSuccess()) {
-            return $this->json(["message"=>$response->getMessage(),"data"=>$response->getData()], $response->getStatusCode());
+            return $this->json(["message" => $response->getMessage(), "data" => $response->getData()], $response->getStatusCode());
         }
         $jsonData = $jsonData ?
             ["message" => $response->getMessage(), $entity => $response->getData()[$entity]] :
@@ -101,11 +130,10 @@ class ProductController extends AbstractController
             $jsonData,
             $response->getStatusCode(),
             [],
-            ['groups' => "product"]
+            ['groups' => $group]
         );
     }
 
 
+
 }
-
-

@@ -7,7 +7,6 @@ use App\Repository\Recipe\RecipeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\Product\Product; 
 
 
 #[ORM\Entity(repositoryClass: RecipeRepository::class)]
@@ -30,17 +29,6 @@ class Recipe extends BaseEntity
     #[ORM\OneToMany(targetEntity: RecipeAdvise::class, mappedBy: 'recipe', orphanRemoval: true)]
     private Collection $recipeAdvises;
 
-    /**
-     * @var Collection<int, Ingredient>
-     */
-    #[ORM\OneToMany(targetEntity: Ingredient::class, mappedBy: 'recipe', orphanRemoval: true)]
-    private Collection $ingredients;
-
-    /**
-     * @var Collection<int, Product>
-     */
-    #[ORM\ManyToMany(targetEntity: Product::class, inversedBy: 'recipes')]
-    private Collection $products;
 
     #[ORM\Column(length: 255)]
     private ?string $name = null;
@@ -48,12 +36,18 @@ class Recipe extends BaseEntity
     #[ORM\Column(length: 255)]
     private ?string $path = null;
 
+    /**
+     * @var Collection<int, Ingredient>
+     */
+    #[ORM\ManyToMany(targetEntity: Ingredient::class, mappedBy: 'Recipes')]
+    private Collection $ingredients;
+
     public function __construct()
     {
         $this->recipeSteps = new ArrayCollection();
         $this->recipeAdvises = new ArrayCollection();
         $this->ingredients = new ArrayCollection();
-        $this->products = new ArrayCollection();
+    
     }
 
     public function getId(): ?int
@@ -121,54 +115,8 @@ class Recipe extends BaseEntity
         return $this;
     }
 
-    /**
-     * @return Collection<int, ingredient>
-     */
-    public function getIngredient(): Collection
-    {
-        return $this->ingredients;
-    }
-
-    public function addIngredient(Ingredient $ingredient): static
-    {
-        if (!$this->ingredients->contains($ingredient)) {
-            $this->ingredients->add($ingredient);
-        }
-
-        return $this;
-    }
-
-    public function removeIngredient(Ingredient $ingredient): static
-    {
-        $this->ingredients->removeElement($ingredient);
-
-        return $this;
-    }
-
-    /**
-     * @return Collection<int, Product>
-     */
-    public function getProduct(): Collection
-    {
-        return $this->products;
-    }
-
-    public function addProduct(Product $product): static
-    {
-        if (!$this->products->contains($product)) {
-            $this->products->add($product);
-        }
-
-        return $this;
-    }
-
-    public function removeProduct(Product $product): static
-    {
-        $this->products->removeElement($product);
-
-        return $this;
-    }
-
+  
+ 
     public function getName(): ?string
     {
         return $this->name;
@@ -189,6 +137,33 @@ class Recipe extends BaseEntity
     public function setPath(string $path): static
     {
         $this->path = $path;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Ingredient>
+     */
+    public function getIngredients(): Collection
+    {
+        return $this->ingredients;
+    }
+
+    public function addIngredient(Ingredient $ingredient): static
+    {
+        if (!$this->ingredients->contains($ingredient)) {
+            $this->ingredients->add($ingredient);
+            $ingredient->addRecipe($this);
+        }
+
+        return $this;
+    }
+
+    public function removeIngredient(Ingredient $ingredient): static
+    {
+        if ($this->ingredients->removeElement($ingredient)) {
+            $ingredient->removeRecipe($this);
+        }
 
         return $this;
     }

@@ -4,12 +4,14 @@ namespace App\Entity\Recipe;
 
 use App\Entity\BaseEntity;
 use App\Repository\Recipe\IngredientRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use App\Entity\Product\Product;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: IngredientRepository::class)]
+#[ORM\Index(name: "idx_ingredient_name", columns: ["name"])]
 class Ingredient extends BaseEntity
 {
     #[ORM\Id]
@@ -30,11 +32,21 @@ class Ingredient extends BaseEntity
     #[ORM\JoinColumn(nullable: false)]
     private ?Unit $unit = null;
 
-    #[ORM\ManyToOne]
-    private ?Recipe $Recipe = null;
 
     #[ORM\Column(length: 255)]
     private ?string $name = null;
+
+    /**
+     * @var Collection<int, Recipe>
+     */
+    #[ORM\ManyToMany(targetEntity: Recipe::class, inversedBy: 'ingredients')]
+    private Collection $Recipes;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->Recipes = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -65,17 +77,6 @@ class Ingredient extends BaseEntity
         return $this;
     }
 
-    public function getRecipe(): ?Recipe
-    {
-        return $this->Recipe;
-    }
-
-    public function setRecipe(?Recipe $Recipe): static
-    {
-        $this->Recipe = $Recipe;
-
-        return $this;
-    }
 
     public function getName(): ?string
     {
@@ -85,6 +86,30 @@ class Ingredient extends BaseEntity
     public function setName(string $name): static
     {
         $this->name = $name;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Recipe>
+     */
+    public function getRecipes(): Collection
+    {
+        return $this->Recipes;
+    }
+
+    public function addRecipe(Recipe $recipe): static
+    {
+        if (!$this->Recipes->contains($recipe)) {
+            $this->Recipes->add($recipe);
+        }
+
+        return $this;
+    }
+
+    public function removeRecipe(Recipe $recipe): static
+    {
+        $this->Recipes->removeElement($recipe);
 
         return $this;
     }
