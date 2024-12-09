@@ -198,6 +198,7 @@ class Supplier extends BaseEntity
 
     public function removeProduct(Product $product): self
     {
+        $product->setSupplier(null);
         $this->products->removeElement($product);
 
         return $this;

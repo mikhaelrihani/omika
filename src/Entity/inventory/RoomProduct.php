@@ -7,6 +7,7 @@ use App\Repository\Inventory\RoomProductRepository;
 use Doctrine\ORM\Mapping as ORM;
 use App\Entity\Product\Product;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: RoomProductRepository::class)]
 class RoomProduct extends BaseEntity
@@ -14,20 +15,22 @@ class RoomProduct extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['product'])]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Room::class, inversedBy: 'roomProducts')]
+    #[ORM\ManyToOne(targetEntity: Room::class, inversedBy: 'roomProducts', cascade: ['persist'])]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    #[Groups(['product'])]
     private ?Room $room = null;
 
-    #[ORM\ManyToOne(targetEntity: Product::class)]
+    #[ORM\ManyToOne(targetEntity: Product::class, inversedBy: 'roomProducts', cascade: ['persist'])]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?Product $product = null;
 
     #[ORM\Column(type: 'integer')]
-    #[Assert\NotBlank(message: "Room Shelf should not be blank.")]
     #[Assert\GreaterThanOrEqual(0)]
-    private ?int $roomShelf = null;
+    #[Groups(['product'])]
+    private ?int $roomShelf = 0;
 
     public function getId(): ?int
     {

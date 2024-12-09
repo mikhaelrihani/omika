@@ -15,12 +15,15 @@ use Symfony\Component\HttpFoundation\Response;
 class SupplierEventService
 {
     private DateTimeImmutable $now;
+    private string $timeString;
     function __construct(
         private EntityManagerInterface $em,
         protected EventRecurringService $eventRecurringService,
         protected EventService $eventService,
+
     ) {
         $this->now = new DateTimeImmutable('today');
+        $this->timeString = (new DateTimeImmutable('now'))->format('H:i:s');
     }
 
     //! ----------------------------------------------------------------------------------------
@@ -54,7 +57,7 @@ class SupplierEventService
                             Nos habitudes : {$habits}, Logistique : {$logistic}, Bon à savoir : {$goodToKnow}",
             "type"          => "task",
             "side"          => "office",
-            "title"         => "Commande - {$businessName->getName()} - {$date}",
+            "title"         => "Commande - {$businessName->getName()} à {$this->timeString}",
             $recurrenceType => $content[$recurrenceType],
         ];
 
@@ -131,7 +134,7 @@ class SupplierEventService
                             Nos habitudes : {$habits}, Logistique : {$logistic}, Bon à savoir : {$goodToKnow}.",
             "type"        => "info",
             "side"        => "office",
-            "title"       => "Nouveau fournisseur {$businessName->getName()}.",
+            "title"       => "Nouveau fournisseur {$businessName->getName()} à {$this->timeString}.",
             "dueDate"     => $date
         ];
         $event = $this->eventService->createOneEvent($data);
@@ -209,7 +212,7 @@ class SupplierEventService
                             Nos habitudes : {$habits}, Logistique : {$logistic}, Bon à savoir : {$goodToKnow}.",
             "type"        => "info",
             "side"        => "office",
-            "title"       => "Mise a jour du fournisseur {$businessName->getName()}.",
+            "title"       => "Mise a jour du fournisseur {$businessName->getName()} à {$this->timeString}.",
             "dueDate"     => $date
         ];
         $event = $this->eventService->createOneEvent($data);
@@ -239,7 +242,7 @@ class SupplierEventService
             "description" => "Le fournisseur {$businessName->getName()} a été supprimé.",
             "type"        => "info",
             "side"        => "office",
-            "title"       => "Fournisseur {$businessName->getName()} supprimé",
+            "title"       => "Fournisseur {$businessName->getName()} supprimé à {$this->timeString}",
             "dueDate"     => $date
         ];
         $event = $this->eventService->createOneEvent($data);

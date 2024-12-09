@@ -1,6 +1,8 @@
 <?php
 namespace App\Service\OPS;
 
+use App\Entity\Inventory\Room;
+use App\Entity\Inventory\RoomProduct;
 use App\Entity\Product\Product;
 use App\Entity\Product\ProductType;
 use App\Entity\Recipe\Recipe;
@@ -163,16 +165,28 @@ class ProductService
                 return ApiResponse::error("Error while deserializing product", null, Response::HTTP_BAD_REQUEST);
             }
 
-            $ResponseEvent = $this->productEventService->createEventUpdatedProduct($product, $product->getSupplier());
-            if (!$ResponseEvent->isSuccess()) {
+            $responseRelation = $this->handleRelationsOnUpdate($product, $data->getData());
+            if (!$responseRelation) {
                 $this->em->rollback();
-                return ApiResponse::error($ResponseEvent->getMessage(), null, $ResponseEvent->getStatusCode());
+                return ApiResponse::error($responseRelation->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            $responseValidation = $this->validateService->validateEntity($product);
+            if (!$responseValidation->isSuccess()) {
+                $this->em->rollback();
+                return ApiResponse::error($responseValidation->getMessage(), $responseValidation->getData()[ "errors" ], $responseValidation->getStatusCode());
+            }
+
+            $responseEvent = $this->productEventService->createEventUpdatedProduct($product, $product->getSupplier());
+            if (!$responseEvent->isSuccess()) {
+                $this->em->rollback();
+                return ApiResponse::error($responseEvent->getMessage(), $responseEvent->getData(), $responseEvent->getStatusCode());
             }
 
             $this->em->commit();
             $this->em->flush();
 
-            return ApiResponse::success("Succesfully updated {$product->getKichenName()}", ["product" => $product], Response::HTTP_OK);
+            return ApiResponse::success("Succesfully updated {$product->getKitchenName()}", ["product" => $product], Response::HTTP_OK);
         } catch (Exception $e) {
             $this->em->rollback();
             return ApiResponse::error($e->getMessage(), null, Response::HTTP_BAD_REQUEST);
@@ -181,7 +195,6 @@ class ProductService
     }
 
     //! ----------------------------------------------------------------------------------------
-
 
     /**
      * Supprime un produit en fonction de son identifiant.
@@ -204,15 +217,15 @@ class ProductService
                 return ApiResponse::error("There is no product with this id", null, Response::HTTP_BAD_REQUEST);
             }
 
-            // @todo: Remove all relations????
-            $responseRelation = $product->removeAllRelations();
+
+            $responseRelation = $this->handleRelationsOnDelete($product);
             if (!$responseRelation) {
                 $this->em->rollback();
-                return ApiResponse::error("Error while removing relations", null, Response::HTTP_INTERNAL_SERVER_ERROR);
+                return ApiResponse::error($responseRelation->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
             }
 
 
-            $ResponseEvent = $this->productEventService->createEventDeletedProduct($product, $product->getSupplier());
+            $ResponseEvent = $this->productEventService->createEventDeletedProduct($product);
             if (!$ResponseEvent->isSuccess()) {
                 $this->em->rollback();
                 return ApiResponse::error($ResponseEvent->getMessage(), null, $ResponseEvent->getStatusCode());
@@ -273,6 +286,87 @@ class ProductService
 
     }
 
+
+    //! ----------------------------------------------------------------------------------------
+
+
+    /**
+     * Met à jour les relations associées à un produit.
+     *
+     * Cette méthode gère la mise à jour des relations entre un produit et ses entités associées comme l'unité, le type
+     * et les pièces (rooms). Elle permet de :
+     * - Mettre à jour l'unité (`Unit`) si elle est spécifiée.
+     * - Mettre à jour le type (`ProductType`) si elle est spécifiée.
+     * - Mettre à jour les pièces (`Room`) liées au produit. Les relations existantes avec les pièces sont supprimées
+     *   avant d'ajouter les nouvelles relations.
+     *
+     * @param Product $product L'entité du produit à mettre à jour.
+     * @param array $data Les données mises à jour contenant éventuellement des clés pour 'unit', 'type' et 'room'.
+     *
+     * @return ApiResponse Retourne un objet `ApiResponse` indiquant le succès ou l'erreur de l'opération.
+     *
+     * @throws Exception Si une erreur survient pendant le processus de mise à jour des relations.
+     *
+     * @todo Vérifier les doublons sur les chambres et étagères.
+     * @todo Créer un Cronjob pour envoyer un événement de rappel afin de mettre à jour les étagères des produits si égal à zéro.
+     */
+    private function handleRelationsOnUpdate(Product $product, array $data): ApiResponse
+    {
+        //@todo verifier les doublons sur les chambres et étageres
+        //@todo créer un Cronjob pour envoyer un event de rappel pour mettre a jour les roomsshelf des produits si egal a zero
+        //@todo mettre a jour la creation de product avec room
+        try {
+            if (isset($data[ 'unit' ])) {
+                $unit = $this->em->getRepository(Unit::class)->find($data[ 'unit' ]);
+                $product->setUnit($unit);
+            }
+            if (isset($data[ 'type' ])) {
+                $type = $this->em->getRepository(ProductType::class)->find($data[ 'type' ]);
+                $product->setType($type);
+            }
+            if (isset($data[ 'roomProducts' ])) {
+                $currentRoomProducts = $product->getRoomProducts();
+                foreach ($currentRoomProducts as $roomProduct) {
+                    $product->removeRoomProduct($roomProduct);
+                }
+                foreach ($data[ 'roomProducts' ] as $roomData) {
+                    $room = $this->em->getRepository(Room::class)->find($roomData[ 'room' ]);
+                    if ($room) {
+                        $roomProduct = new RoomProduct();
+                        $roomProduct->setRoom($room);
+                        $roomProduct->setRoomShelf($roomData[ 'roomShelf' ]);
+                        $roomProduct->setProduct($product);
+                        $product->addRoomProduct($roomProduct);
+                    }
+                }
+            }
+
+            $this->em->persist($product);
+
+
+            return ApiResponse::success("Relations updated succesfully", null, Response::HTTP_OK);
+        } catch (Exception $e) {
+            return ApiResponse::error($e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+    //! ----------------------------------------------------------------------------------------
+
+    private function handleRelationsOnDelete(Product $product): ApiResponse
+    {
+        try {
+            $product->setUnit(null);
+            $product->setType(null);
+            $product->setRupture(null);
+            $product->getSupplier()->removeProduct($product);
+
+            return ApiResponse::success("Relations removed succesfully", null, Response::HTTP_OK);
+        } catch (Exception $e) {
+            return ApiResponse::error($e->getMessage(), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
+
     //! ----------------------------------------------------------------------------------------
 
     /**
@@ -302,14 +396,14 @@ class ProductService
 
     //! ----------------------------------------------------------------------------------------
 
-    public function toggleFavorite(int $id): ApiResponse
+    public function toggleFavorite(int $productId): ApiResponse
     {
         try {
-            $currentProduct = $this->productRepository->find($id);
+            $currentProduct = $this->productRepository->find($productId);
             if (!$currentProduct) {
                 return ApiResponse::error('Product not found', [], Response::HTTP_NOT_FOUND);
             }
-            $currentProduct->setFavorite(!$currentProduct->getFavorite());
+            $currentProduct->setSupplierFavorite(!$currentProduct->isSupplierFavorite());
 
             $KitchenName = $currentProduct->getKitchenName();
             $suppliers = $this->em->getRepository(Supplier::class)->findAll();
@@ -317,15 +411,17 @@ class ProductService
                 $product = $supplier->getProducts()->filter(function ($product) use ($KitchenName) {
                     return $product->getKitchenName() === $KitchenName;
                 })->first();
-                if ($product && $currentProduct->getFavorite() === true) {
-                    $product->setFavorite(false);
+                if ($product && $currentProduct->isSupplierFavorite() === true) {
+                    $product->setSupplierFavorite(false);
                 }
             }
+
             $this->em->flush();
+            return ApiResponse::success('Product favorite status updated succesfully', null, Response::HTTP_OK);
+
         } catch (Exception $e) {
             return ApiResponse::error($e->getMessage(), [], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-        return ApiResponse::success('Product favorite status updated succesfully', null, Response::HTTP_OK);
     }
 
     //! ----------------------------------------------------------------------------------------

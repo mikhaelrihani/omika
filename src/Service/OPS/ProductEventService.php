@@ -13,11 +13,13 @@ use Symfony\Component\HttpFoundation\Response;
 class ProductEventService
 {
     private DateTimeImmutable $now;
+    private string $timeString;
     function __construct(
         private EntityManagerInterface $em,
         protected EventService $eventService,
     ) {
         $this->now = new DateTimeImmutable('today');
+        $this->timeString = (new DateTimeImmutable('now'))->format('H:i:s');
     }
 
 
@@ -33,10 +35,10 @@ class ProductEventService
                             Le fournisseur est {$supplier->getBusiness()->getName()}.",
             "type"        => "info",
             "side"        => "office",
-            "title"       => "Nouveau produit : {$product->getKitchenName()}.",
+            "title"       => "Nouveau produit : {$product->getKitchenName()} à {$this->timeString}.",
             "dueDate"     => ($this->now)->format('Y-m-d'),
         ];
-        return $this->ApiResponse($data);
+        return $this->ApiEventResponse($data);
     }
 
     //! ----------------------------------------------------------------------------------------
@@ -51,10 +53,11 @@ class ProductEventService
                             Le fournisseur est {$supplier->getBusiness()->getName()}.",
             "type"        => "info",
             "side"        => "office",
-            "title"       => "Mise a jour du produit {$product->getKitchenName()}.",
+            "title"       => "Mise a jour du produit {$product->getKitchenName()} à {$this->timeString}.",
             "dueDate"     => ($this->now)->format('Y-m-d'),
         ];
-        return $this->ApiResponse($data);
+
+        return $this->ApiEventResponse($data);
 
     }
 
@@ -62,7 +65,7 @@ class ProductEventService
     //! ----------------------------------------------------------------------------------------
 
 
-    public function createEventDeletedProduct($product, Supplier $supplier): ApiResponse
+    public function createEventDeletedProduct($product): ApiResponse
     {
 
         $data = [
@@ -70,18 +73,19 @@ class ProductEventService
             "description" => "Le produit: {$product->getKitchenName()}  a été supprimé.",
             "type"        => "info",
             "side"        => "office",
-            "title"       => "Produit: {$product->getKitchenName()} supprimé",
+            "title"       => "Produit: {$product->getKitchenName()}supprimé à {$this->timeString}",
             "dueDate"     => ($this->now)->format('Y-m-d'),
         ];
-        return $this->ApiResponse($data);
+        return $this->ApiEventResponse($data);
     }
     //! ----------------------------------------------------------------------------------------
 
-    private function ApiResponse($data): ApiResponse
+    private function ApiEventResponse(array $data): ApiResponse
     {
         $event = $this->eventService->createOneEvent($data);
-        if (!$event) {
-            return ApiResponse::error('Event not created', [], Response::HTTP_INTERNAL_SERVER_ERROR);
+
+        if (!$event->isSuccess()) {
+            return ApiResponse::error('Event not created', ["error" => $event->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
         return ApiResponse::success('Event created', ['event' => $event], Response::HTTP_CREATED);
     }

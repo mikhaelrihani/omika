@@ -118,24 +118,17 @@ class EventService
      */
     private function doesEventAlreadyExist(Event $event): bool
     {
+      
         $query = $this->em->createQuery(
             'SELECT COUNT(e.id)
              FROM App\Entity\Event\Event e
              WHERE e.title = :title
-               AND e.dueDate = :dueDate
-               AND e.section = :section
-               AND e.type = :type
-               AND e.side = :side
-               AND e.isRecurring = :isRecurring'
+               AND e.dueDate = :dueDate'
         );
 
         $query->setParameters([
             'title'       => $event->getTitle(),
             'dueDate'     => $event->getDueDate()->format('Y-m-d'),
-            'section'     => $event->getSection(),
-            'type'        => $event->getType(),
-            'side'        => $event->getSide(),
-            'isRecurring' => $event->isRecurring(),
         ]);
 
         return (bool) $query->getSingleScalarResult();

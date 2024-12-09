@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: RoomRepository::class)]
 class Room extends BaseEntity
@@ -14,10 +15,12 @@ class Room extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['product'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Room Name should not be blank.")]
+    #[Groups(['product'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255, nullable: false)]
@@ -33,7 +36,7 @@ class Room extends BaseEntity
     /**
      * @ORM\OneToMany(targetEntity="RoomProduct", mappedBy="room")
      */
-    #[ORM\OneToMany(targetEntity: RoomProduct::class, mappedBy: 'room', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: RoomProduct::class, cascade: ['persist', 'remove'], mappedBy: 'room', orphanRemoval: true)]
     private Collection $roomProducts;
 
     public function __construct()
@@ -96,6 +99,16 @@ class Room extends BaseEntity
         return $this;
     }
 
+    public function removeRoomProduct(RoomProduct $roomProduct): static
+    {
+        if ($this->roomProducts->removeElement($roomProduct)) {
+            if ($roomProduct->getRoom() === $this) {
+                $roomProduct->setRoom(null);
+            }
+        }
+
+        return $this;
+    }
 
 
     /**

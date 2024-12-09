@@ -123,9 +123,10 @@ class ProductController extends AbstractController
             return $this->json(["message" => $response->getMessage(), "data" => $response->getData()], $response->getStatusCode());
         }
         $jsonData = $jsonData ?
-            ["message" => $response->getMessage(), $entity => $response->getData()[$entity]] :
+            [$entity => $response->getData()[$entity]] :
             null;
-
+        $jsonData[ 'message' ] = $response->getMessage();
+        
         return $this->json(
             $jsonData,
             $response->getStatusCode(),

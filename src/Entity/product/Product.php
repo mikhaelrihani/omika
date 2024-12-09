@@ -3,13 +3,18 @@
 namespace App\Entity\Product;
 
 use App\Entity\BaseEntity;
+use App\Entity\Inventory\Room;
+use App\Entity\Inventory\RoomProduct;
 use App\Repository\Product\ProductRepository;
+use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Entity\Supplier\Supplier;
 use App\Entity\Recipe\Unit;
+use Doctrine\Common\Collections\Collection;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints\Cascade;
 
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
 #[ORM\Index(name: "kitchen_name_idx", columns: ["kitchen_name"])]
@@ -49,7 +54,7 @@ class Product extends BaseEntity
     #[Groups(['product'])]
     private ?string $conditionning = null;
 
-    #[ORM\ManyToOne]
+    #[ORM\ManyToOne(cascade: ['persist'])]
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['product'])]
     private ?unit $unit = null;
@@ -69,11 +74,47 @@ class Product extends BaseEntity
     private ?Rupture $rupture = null;
 
 
-    #[ORM\ManyToOne(targetEntity: ProductType::class)]
+    #[ORM\ManyToOne(targetEntity: ProductType::class, cascade: ['persist'])]
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['product'])]
     private ?ProductType $type = null;
-    
+
+    #[ORM\OneToMany(targetEntity: RoomProduct::class, cascade: ['persist', 'remove'], mappedBy: 'product')]
+    #[Groups(['product'])]
+    private Collection $roomProducts;
+
+
+    public function __construct()
+    {
+        $this->roomProducts = new ArrayCollection();
+    }
+
+    public function getRoomProducts(): Collection
+    {
+        return $this->roomProducts;
+    }
+
+    public function addRoomProduct(RoomProduct $roomProduct): static
+    {
+        if (!$this->roomProducts->contains($roomProduct)) {
+            $this->roomProducts[] = $roomProduct;
+            $roomProduct->setProduct($this);
+        }
+
+        return $this;
+    }
+
+    public function removeRoomProduct(RoomProduct $roomProduct): static
+    {
+        if ($this->roomProducts->removeElement($roomProduct)) {
+            if ($roomProduct->getProduct() === $this) {
+                $roomProduct->setProduct(null);
+            }
+        }
+
+        return $this;
+    }
+
     public function getId(): ?int
     {
         return $this->id;
@@ -180,7 +221,7 @@ class Product extends BaseEntity
     {
         return $this->type;
     }
-    
+
 
     public function setType(?ProductType $productType): static
     {
@@ -194,5 +235,11 @@ class Product extends BaseEntity
         return $this->rupture;
     }
 
+    public function setRupture(?Rupture $rupture): static
+    {
+        $this->rupture = $rupture;
+
+        return $this;
+    }
 
 }
