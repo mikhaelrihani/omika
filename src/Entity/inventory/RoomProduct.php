@@ -15,7 +15,7 @@ class RoomProduct extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['product'])]
+    #[Groups(['product','room'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: Room::class, inversedBy: 'roomProducts', cascade: ['persist'])]
@@ -25,11 +25,12 @@ class RoomProduct extends BaseEntity
 
     #[ORM\ManyToOne(targetEntity: Product::class, inversedBy: 'roomProducts', cascade: ['persist'])]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    #[Groups(['room'])]
     private ?Product $product = null;
 
     #[ORM\Column(type: 'integer')]
     #[Assert\GreaterThanOrEqual(0)]
-    #[Groups(['product'])]
+    #[Groups(['product','room'])]
     private ?int $roomShelf = 0;
 
     public function getId(): ?int

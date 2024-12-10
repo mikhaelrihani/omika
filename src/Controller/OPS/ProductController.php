@@ -117,6 +117,24 @@ class ProductController extends AbstractController
 
     //! --------------------------------------------------------------------------------------------
 
+    // #[Route('/getProductRupture/{productId}', name: 'getProductRupture', methods: 'get')]
+    // public function getProductRupture(int $productId): JsonResponse
+    // {
+    //     $response = $this->RuptureService->getProductRupture($productId);
+    //     return $this->getResponse($response, "rupture", true, "rupture");
+    // }
+
+    //! --------------------------------------------------------------------------------------------
+
+    #[Route('/getProductsWithoutShelf', name: 'getProductsWithoutShelf', methods: 'get')]
+    public function getProductsWithoutShelf(): JsonResponse
+    {
+        $response = $this->productService->getProductsWithoutShelf();
+        return $this->getResponse($response, "productsWithoutShelf");
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
     private function getResponse(ApiResponse $response, ?string $entity = "product", $jsonData = true, $group = "product"): JsonResponse
     {
         if (!$response->isSuccess()) {
@@ -126,7 +144,7 @@ class ProductController extends AbstractController
             [$entity => $response->getData()[$entity]] :
             null;
         $jsonData[ 'message' ] = $response->getMessage();
-        
+
         return $this->json(
             $jsonData,
             $response->getStatusCode(),
@@ -134,6 +152,8 @@ class ProductController extends AbstractController
             ['groups' => $group]
         );
     }
+
+    //! --------------------------------------------------------------------------------------------
 
 
 

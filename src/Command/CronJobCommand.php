@@ -5,6 +5,7 @@ namespace App\Command;
 use App\Service\Event\CronService as EventCronService;
 use App\Service\Media\CronService as MediaCronService;
 use App\Service\User\CronService as UserCronService;
+use App\Service\OPS\CronService as ProductCronService;
 use Exception;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -21,7 +22,8 @@ class CronJobCommand extends Command
     public function __construct(
         protected EventCronService $eventCronService,
         protected UserCronService $userCronService,
-        protected MediaCronService $mediaCronService
+        protected MediaCronService $mediaCronService,
+        protected ProductCronService $productCronService
     ) {
         parent::__construct();
     }
@@ -43,6 +45,7 @@ class CronJobCommand extends Command
             'responseEvent' => fn() => $this->eventCronService->load(),
             'responseUser'  => fn() => $this->userCronService->load(),
             'responseMedia' => fn() => $this->mediaCronService->load(),
+            'responseProduct' => fn() => $this->productCronService->load(),
         ];
 
         foreach ($steps as $stepName => $step) {

@@ -80,9 +80,9 @@ class ProductEventService
     }
     //! ----------------------------------------------------------------------------------------
 
-    private function ApiEventResponse(array $data): ApiResponse
+    private function ApiEventResponse(array $data, $cronJob = false): ApiResponse
     {
-        $event = $this->eventService->createOneEvent($data);
+        $event = $this->eventService->createOneEvent($data, $cronJob);
 
         if (!$event->isSuccess()) {
             return ApiResponse::error('Event not created', ["error" => $event->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
@@ -90,7 +90,22 @@ class ProductEventService
         return ApiResponse::success('Event created', ['event' => $event], Response::HTTP_CREATED);
     }
 
+    //! ----------------------------------------------------------------------------------------
 
+    public function createEventProductsWithoutShelf(int $count): ApiResponse
+    {
+        $data = [
+            "section"     => "product",
+            "description" => "Il y a {$count} produits sans étagère.",
+            "type"        => "info",
+            "side"        => "office",
+            "title"       => "Produits sans étagère. à {$this->timeString}.",
+            "dueDate"     => ($this->now)->format('Y-m-d'),
+        ];
+
+        return $this->ApiEventResponse($data, true);
+
+    }
 
 }
 

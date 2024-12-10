@@ -47,7 +47,7 @@ class Inventory extends BaseEntity
     /**
      * @var Collection<int, Room>
      */
-    #[ORM\ManyToMany(targetEntity: Room::class, inversedBy: 'inventories')]
+    #[ORM\ManyToMany(targetEntity: Room::class, inversedBy: 'inventories', cascade: ['persist'])]
     private Collection $room;
 
     /**

@@ -130,16 +130,15 @@ class RecipeFixtures extends BaseFixtures implements DependentFixtureInterface
                 $product = $this->faker->randomElement($products);
                 $ingredient = new Ingredient();
                 $ingredient
-                    ->setRecipe($recipe)
-                    ->setProduct($product)
+                    ->addRecipe($recipe)
                     ->setQuantity($this->faker->randomFloat(2, 1, 100))
                     ->setUnit($this->faker->randomElement($units))
+                    ->setName($product->getKitchenName())
                     ->setCreatedAt($recipe->getCreatedAt())
                     ->setUpdatedAt($recipe->getUpdatedAt());
 
                 $this->em->persist($ingredient);
-                // Ajouter le produit à la recette
-                $recipe->addProduct($product);
+             
 
             }
         }

@@ -8,6 +8,7 @@ use App\Entity\Event\EventTask;
 use App\Entity\Event\Section;
 use App\Entity\Event\UserInfo;
 use App\Entity\User\User;
+use App\Entity\User\UserLogin;
 use App\Repository\Event\EventRepository;
 use App\Repository\Event\EventTaskRepository;
 use App\Repository\Event\SectionRepository;
@@ -25,6 +26,7 @@ use Doctrine\ORM\Exception\ORMException;
 use Doctrine\ORM\PersistentCollection;
 use Exception;
 use InvalidArgumentException;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -55,6 +57,7 @@ class EventService
     protected $now;
     protected $activeDayStart;
     protected $activeDayEnd;
+    protected $cronUser;
 
     public function __construct(
         protected EventRepository $eventRepository,
@@ -68,11 +71,13 @@ class EventService
         protected SectionRepository $sectionRepository,
         protected SerializerInterface $serializer,
         protected JsonResponseBuilder $jsonResponseBuilder,
-        protected EventRecurringService $eventRecurringService
+        protected EventRecurringService $eventRecurringService,
+        protected Security $security
     ) {
         $this->now = new DateTimeImmutable('today');
         $this->activeDayStart = $this->parameterBag->get('activeDayStart');
         $this->activeDayEnd = $this->parameterBag->get('activeDayEnd');
+        $this->cronUser = $this->parameterBag->get('cronUser');
     }
     //! --------------------------------------------------------------------------------------------
 
@@ -82,9 +87,15 @@ class EventService
      * @param array $data Les données de l'événement à créer.
      * @return ApiResponse L'objet de réponse de succès ou d'erreur.
      */
-    public function createOneEvent(array $data): ApiResponse
+    public function createOneEvent(array $data, bool $cronJob = false): ApiResponse
     {
-        $currentUser = $this->currentUser->getCurrentUser();
+        $currentUser = $cronJob ?
+            $this->loadCronUser() :
+            $this->currentUser->getCurrentUser();
+
+        if (!$currentUser) {
+            return ApiResponse::error("currentUser not found", null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
 
         $event = $this->setEventBase($data, $currentUser);
         if ($event === null) {
@@ -118,7 +129,7 @@ class EventService
      */
     private function doesEventAlreadyExist(Event $event): bool
     {
-      
+
         $query = $this->em->createQuery(
             'SELECT COUNT(e.id)
              FROM App\Entity\Event\Event e
@@ -127,8 +138,8 @@ class EventService
         );
 
         $query->setParameters([
-            'title'       => $event->getTitle(),
-            'dueDate'     => $event->getDueDate()->format('Y-m-d'),
+            'title'   => $event->getTitle(),
+            'dueDate' => $event->getDueDate()->format('Y-m-d'),
         ]);
 
         return (bool) $query->getSingleScalarResult();
@@ -795,6 +806,14 @@ class EventService
 
             return $this->eventRecurringService->createOneEventRecurringParentWithChildrenAndTags($response);
         }
+    }
+
+    //! --------------------------------------------------------------------------------------------
+
+    private function loadCronUser(): User
+    {
+        $CronUser = $this->em->getRepository('App\Entity\User\UserLogin')->findOneBy(['email' => $this->cronUser]);
+        return $CronUser;
     }
 
 }

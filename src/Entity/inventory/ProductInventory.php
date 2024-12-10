@@ -20,7 +20,7 @@ class ProductInventory extends BaseEntity
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?Product $product = null;
 
-    #[ORM\ManyToOne(targetEntity:Inventory::class, inversedBy: 'productInventories')]
+    #[ORM\ManyToOne(targetEntity:Inventory::class, inversedBy: 'productInventories', cascade: ['persist'])]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?Inventory $inventory = null;
 

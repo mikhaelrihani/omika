@@ -14,7 +14,7 @@ use App\Entity\Recipe\Unit;
 use Doctrine\Common\Collections\Collection;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Serializer\Annotation\Groups;
-use Symfony\Component\Validator\Constraints\Cascade;
+
 
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
 #[ORM\Index(name: "kitchen_name_idx", columns: ["kitchen_name"])]
@@ -63,13 +63,13 @@ class Product extends BaseEntity
     #[Groups(['product'])]
     private ?bool $supplierFavorite = false;
 
-    #[ORM\ManyToOne(targetEntity: Supplier::class, inversedBy: 'products')]
+    #[ORM\ManyToOne(targetEntity: Supplier::class, inversedBy: 'products', cascade: ['persist'])]
     #[ORM\JoinColumn(nullable: false)]
     #[ORM\JoinColumn(name: 'supplier_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     #[Groups(['product'])]
     private ?supplier $supplier = null;
 
-    #[ORM\OneToOne(targetEntity: Rupture::class, mappedBy: 'product')]
+    #[ORM\OneToOne(targetEntity: Rupture::class, mappedBy: 'product', cascade: ['persist'])]
     #[Groups(['product'])]
     private ?Rupture $rupture = null;
 
@@ -79,7 +79,7 @@ class Product extends BaseEntity
     #[Groups(['product'])]
     private ?ProductType $type = null;
 
-    #[ORM\OneToMany(targetEntity: RoomProduct::class, cascade: ['persist', 'remove'], mappedBy: 'product')]
+    #[ORM\OneToMany(targetEntity: RoomProduct::class, cascade: ['persist','remove'], mappedBy: 'product')]
     #[Groups(['product'])]
     private Collection $roomProducts;
 
@@ -106,11 +106,7 @@ class Product extends BaseEntity
 
     public function removeRoomProduct(RoomProduct $roomProduct): static
     {
-        if ($this->roomProducts->removeElement($roomProduct)) {
-            if ($roomProduct->getProduct() === $this) {
-                $roomProduct->setProduct(null);
-            }
-        }
+        $this->roomProducts->removeElement($roomProduct);
 
         return $this;
     }

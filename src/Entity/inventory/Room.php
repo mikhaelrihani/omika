@@ -15,28 +15,29 @@ class Room extends BaseEntity
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['product'])]
+    #[Groups(['product',"room"])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255, nullable: false)]
-    #[Assert\NotBlank(message: "Room Name should not be blank.")]
-    #[Groups(['product'])]
+    #[Groups(['product',"room"])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255, nullable: false)]
     #[Assert\NotBlank(message: "Location Details should not be blank.")]
+    #[Groups(["room"])]
     private ?string $locationDetails = null;
 
     /**
      * @var Collection<int, Inventory>
      */
-    #[ORM\ManyToMany(targetEntity: Inventory::class, mappedBy: 'room')]
+    #[ORM\ManyToMany(targetEntity: Inventory::class, mappedBy: 'room', cascade: ['persist'])]
     private Collection $inventories;
 
     /**
      * @ORM\OneToMany(targetEntity="RoomProduct", mappedBy="room")
      */
-    #[ORM\OneToMany(targetEntity: RoomProduct::class, cascade: ['persist', 'remove'], mappedBy: 'room', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: RoomProduct::class, cascade: ['persist','remove'], mappedBy: 'room', orphanRemoval: true)]
+    #[Groups(["room"])]
     private Collection $roomProducts;
 
     public function __construct()

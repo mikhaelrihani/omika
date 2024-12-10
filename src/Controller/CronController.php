@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Service\Event\CronService as EventCronService;
 use App\Service\User\CronService as UserCronService;
 use App\Service\Media\CronService as MediaCronService;
+use App\Service\OPS\CronService as ProductCronService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -16,7 +17,8 @@ class CronController extends AbstractController
     public function __construct(
         protected EventCronService $eventCronService,
         protected UserCronService $userCronService,
-        protected MediaCronService $mediaCronService
+        protected MediaCronService $mediaCronService,
+        protected ProductCronService $productCronService
     ) {
     }
 
@@ -35,7 +37,7 @@ class CronController extends AbstractController
     public function load(): JsonResponse
     {
         $this::$isCronRoute = true;
-        
+
         $eventResponse = $this->eventCronService->load();
         if (!$eventResponse->isSuccess()) {
             return $this->json($eventResponse->getMessage(), $eventResponse->getStatusCode());
@@ -51,8 +53,17 @@ class CronController extends AbstractController
             return $this->json($mediaResponse->getMessage(), $mediaResponse->getStatusCode());
         }
 
+        $productResponse = $this->productCronService->load();
+        if (!$productResponse->isSuccess()) {
+            return $this->json($productResponse->getMessage(), $productResponse->getStatusCode());
+        }
+
         return $this->json(
-            "Cron job completed successfully. {$eventResponse->getMessage()}, {$userResponse->getMessage()}, {$mediaResponse->getMessage()}.",
+            "Cron job completed successfully.
+                {$eventResponse->getMessage()},
+                {$userResponse->getMessage()},
+                {$mediaResponse->getMessage()}
+                {$productResponse->getMessage()}.",
             Response::HTTP_OK
         );
     }

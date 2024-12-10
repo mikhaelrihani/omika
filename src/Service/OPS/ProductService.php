@@ -158,12 +158,18 @@ class ProductService
                 return ApiResponse::error($data->getMessage(), null, Response::HTTP_BAD_REQUEST);
             }
 
-            $product = $this->serializer->deserialize($request->getContent(), Product::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $product]);
+            $product = $this->serializer->deserialize(
+                $request->getContent(),
+                Product::class,
+                'json',
+                [AbstractNormalizer::OBJECT_TO_POPULATE => $product, AbstractNormalizer::IGNORED_ATTRIBUTES => ['roomProducts']]
+            );
 
             if (!$product) {
                 $this->em->rollback();
                 return ApiResponse::error("Error while deserializing product", null, Response::HTTP_BAD_REQUEST);
             }
+
 
             $responseRelation = $this->handleRelationsOnUpdate($product, $data->getData());
             if (!$responseRelation) {
@@ -176,6 +182,7 @@ class ProductService
                 $this->em->rollback();
                 return ApiResponse::error($responseValidation->getMessage(), $responseValidation->getData()[ "errors" ], $responseValidation->getStatusCode());
             }
+
 
             $responseEvent = $this->productEventService->createEventUpdatedProduct($product, $product->getSupplier());
             if (!$responseEvent->isSuccess()) {
@@ -281,6 +288,8 @@ class ProductService
 
         $supplier->addProduct($product);
 
+        $this->hanleRoomProductRelation($responseData->getData()[ 'roomProducts' ], $product);
+
         $this->em->persist($product);
         return $product;
 
@@ -288,34 +297,60 @@ class ProductService
 
 
     //! ----------------------------------------------------------------------------------------
-
-
     /**
-     * Met à jour les relations associées à un produit.
+     * Gère la mise à jour des relations d'un produit en fonction des données de la réponse API.
      *
-     * Cette méthode gère la mise à jour des relations entre un produit et ses entités associées comme l'unité, le type
-     * et les pièces (rooms). Elle permet de :
-     * - Mettre à jour l'unité (`Unit`) si elle est spécifiée.
-     * - Mettre à jour le type (`ProductType`) si elle est spécifiée.
-     * - Mettre à jour les pièces (`Room`) liées au produit. Les relations existantes avec les pièces sont supprimées
-     *   avant d'ajouter les nouvelles relations.
+     * @param Product $product Le produit à mettre à jour.
+     * @param array   $data    Les données de la réponse API nécessaires à la mise à jour des relations.
      *
-     * @param Product $product L'entité du produit à mettre à jour.
-     * @param array $data Les données mises à jour contenant éventuellement des clés pour 'unit', 'type' et 'room'.
+     * @return ApiResponse Retourne une réponse API indiquant le succès ou l'échec de la mise à jour des relations.
+     * /**
+     * Exemple de syntaxe JSON pour les relations `roomProducts`.
      *
-     * @return ApiResponse Retourne un objet `ApiResponse` indiquant le succès ou l'erreur de l'opération.
+     * La clé `roomProducts` est un tableau d'objets contenant des informations sur chaque relation
+     * entre un produit et une pièce (room). Chaque objet doit inclure :
      *
-     * @throws Exception Si une erreur survient pendant le processus de mise à jour des relations.
+     * - `room` : (int) L'identifiant de la pièce associée (obligatoire).
+     * - `roomShelf` : (int) Le numéro ou l'identifiant de l'étagère dans la pièce (obligatoire).
      *
-     * @todo Vérifier les doublons sur les chambres et étagères.
-     * @todo Créer un Cronjob pour envoyer un événement de rappel afin de mettre à jour les étagères des produits si égal à zéro.
+     * Exemple de JSON valide :
+     *
+     * {
+     *     "kitchenName": "Odit.",
+     *     "commercialName": "Ex harum sapiente doloribus autem autem.",
+     *     "price": "17.63",
+     *     "conditionning": "Quia nihil ipsum qui cumque.",
+     *     "unit": 28,
+     *     "type": 17,
+     *     "roomProducts": [
+     *         {
+     *             "room": 4,
+     *             "roomShelf": 8
+     *         },
+     *         {
+     *             "room": 3,
+     *             "roomShelf": 8
+     *         }
+     *     ]
+     * }
+     *
+     * @property string $kitchenName    Le nom interne du produit.
+     * @property string $commercialName Le nom commercial du produit.
+     * @property string $price          Le prix du produit.
+     * @property string $conditionning  Le conditionnement du produit.
+     * @property int    $unit           L'identifiant de l'unité associée.
+     * @property int    $type           L'identifiant du type de produit.
+     * @property array  $roomProducts   Tableau des relations pièce/étagère, chaque élément contenant :
+     *                                  - `room` (int) : L'ID de la pièce.
+     *                                  - `roomShelf` (int) : Le numéro de l'étagère.
      */
+
     private function handleRelationsOnUpdate(Product $product, array $data): ApiResponse
     {
-        //@todo verifier les doublons sur les chambres et étageres
+
         //@todo créer un Cronjob pour envoyer un event de rappel pour mettre a jour les roomsshelf des produits si egal a zero
-        //@todo mettre a jour la creation de product avec room
         try {
+
             if (isset($data[ 'unit' ])) {
                 $unit = $this->em->getRepository(Unit::class)->find($data[ 'unit' ]);
                 $product->setUnit($unit);
@@ -327,21 +362,12 @@ class ProductService
             if (isset($data[ 'roomProducts' ])) {
                 $currentRoomProducts = $product->getRoomProducts();
                 foreach ($currentRoomProducts as $roomProduct) {
-                    $product->removeRoomProduct($roomProduct);
+                    $this->em->remove($roomProduct);
+                    $this->em->flush();
                 }
-                foreach ($data[ 'roomProducts' ] as $roomData) {
-                    $room = $this->em->getRepository(Room::class)->find($roomData[ 'room' ]);
-                    if ($room) {
-                        $roomProduct = new RoomProduct();
-                        $roomProduct->setRoom($room);
-                        $roomProduct->setRoomShelf($roomData[ 'roomShelf' ]);
-                        $roomProduct->setProduct($product);
-                        $product->addRoomProduct($roomProduct);
-                    }
-                }
+                $this->hanleRoomProductRelation($data[ 'roomProducts' ], $product);
             }
 
-            $this->em->persist($product);
 
 
             return ApiResponse::success("Relations updated succesfully", null, Response::HTTP_OK);
@@ -539,6 +565,38 @@ class ProductService
         return ApiResponse::success('Recipes found', ['recipes' => $data], Response::HTTP_OK);
     }
 
+    //! ----------------------------------------------------------------------------------------
+
+    private function hanleRoomProductRelation(array $data, Product $product): void
+    {
+        foreach ($data as $roomData) {
+            $room = $this->em->getRepository(Room::class)->find($roomData[ 'room' ]);
+            if ($room) {
+
+                $roomProduct = new RoomProduct();
+                $roomProduct->setRoom($room);
+                $roomProduct->setRoomShelf($roomData[ 'roomShelf' ]);
+                $roomProduct->setProduct($product);
+                $product->addRoomProduct($roomProduct);
+                $this->em->persist($roomProduct);
+            }
+        }
+    }
+
+    //! ----------------------------------------------------------------------------------------
+
+    public function getProductsWithoutShelf(): ApiResponse
+    {
+        $roomProducts = $this->em->getRepository(RoomProduct::class)->findAll();
+        $productsWithoutShelf = [];
+        foreach ($roomProducts as $roomProduct) {
+            if ($roomProduct->getRoomShelf() === 0) {
+                $productsWithoutShelf[] = ["room" => $roomProduct->getRoom()->getId(), "product" => $roomProduct->getProduct()->getId()];
+            }
+        }
+        $count = count($productsWithoutShelf);
+        return ApiResponse::success("{$count} Product(s) without shelf found", ['productsWithoutShelf' => $productsWithoutShelf], Response::HTTP_OK);
+    }
 }
 
 

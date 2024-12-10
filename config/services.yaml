@@ -11,6 +11,7 @@ parameters:
     twillio_file_upload_public: '%env(resolve:TWILIO_FILE_UPLOAD_PUBLIC)%'
     activeDayStart: -3
     activeDayEnd: 7
+    cronUser: '%env(CRON_USER)%'
 
 services:
     # default configuration for services in *this* file

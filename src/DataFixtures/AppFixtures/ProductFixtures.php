@@ -229,7 +229,7 @@ class ProductFixtures extends BaseFixtures implements DependentFixtureInterface
 
             // Set product type and kitchen name
             $productKitchenName = $this->faker->randomElement(array_keys($kitchenName));
-            $product->setProductType($kitchenName[$productKitchenName]);
+            $product->setType($kitchenName[$productKitchenName]);
             $product->setKitchenName($productKitchenName);
 
             // Ensure at least one product per kitchen name is marked as a supplier favorite
