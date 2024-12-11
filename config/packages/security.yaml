@@ -55,6 +55,9 @@ security:
          # Autoriser l'accès aux routes de réinitialisation de mot de passe sans authentification
         - { path: ^/api/security/sendPasswordLink, roles: PUBLIC_ACCESS }
         - { path: ^/api/security/reset-password, roles: PUBLIC_ACCESS }
+
+         # autoriser le Cron Job à s'exécuter sans authentification préalable a l'appel de la method loadCronJob
+        - { path: ^/api/cron, roles: PUBLIC_ACCESS }
         
          # autoriser les admin a changer le role
         - { path: ^/api/user/updateUserRole, roles: ROLE_ADMIN }

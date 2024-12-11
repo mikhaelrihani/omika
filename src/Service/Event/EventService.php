@@ -8,7 +8,6 @@ use App\Entity\Event\EventTask;
 use App\Entity\Event\Section;
 use App\Entity\Event\UserInfo;
 use App\Entity\User\User;
-use App\Entity\User\UserLogin;
 use App\Repository\Event\EventRepository;
 use App\Repository\Event\EventTaskRepository;
 use App\Repository\Event\SectionRepository;
@@ -810,7 +809,7 @@ class EventService
 
     //! --------------------------------------------------------------------------------------------
 
-    private function loadCronUser(): User
+    public function loadCronUser(): User
     {
         $CronUserLogin = $this->em->getRepository('App\Entity\User\UserLogin')->findOneBy(['email' => $this->cronUsername]);
      
