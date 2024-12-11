@@ -13,7 +13,8 @@ class CronService
     public function __construct(
         protected ProductService $productService,
         protected EventService $eventService,
-        protected ProductEventService $productEventService
+        protected ProductEventService $productEventService,
+   
     ) {
         $this->productsWithoutShelfCount = 0;
     }
@@ -21,6 +22,8 @@ class CronService
 
     public function load(): ApiResponse
     {
+
+      
         $steps = [
             "productsWithoutShelf" => fn() => $this->createEventIfProductsWithoutShelf(),
         ];
@@ -51,6 +54,7 @@ class CronService
     {
         $productsWithoutShelf = $this->productService->getProductsWithoutShelf();
         $this->productsWithoutShelfCount = count($productsWithoutShelf->getData());
+        
         if ($this->productsWithoutShelfCount > 0) {
             $this->productEventService->createEventProductsWithoutShelf($this->productsWithoutShelfCount);
         }

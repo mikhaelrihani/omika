@@ -4,14 +4,14 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
-    app_url: '%env(APP_URL)%'
+    apiUrl: '%env(API_URL)%'
     server_files_path: '%env(SERVER_FILES_PATH)%'
     server_private_files_path: '%env(SERVER_PRIVATE_FILES_PATH)%'
     upload_directory: '%kernel.project_dir%/public/upload'
     twillio_file_upload_public: '%env(resolve:TWILIO_FILE_UPLOAD_PUBLIC)%'
     activeDayStart: -3
     activeDayEnd: 7
-    cronUser: '%env(CRON_USER)%'
+    cronUsername: '%env(CRON_USERNAME)%'
 
 services:
     # default configuration for services in *this* file

@@ -21,7 +21,7 @@ class JwtTokenService
 
     private UserProviderInterface $userProvider;
     private JWTEncoderInterface $jwtEncoder;
-    private $appUrl;
+    private $apiUrl;
     private RefreshTokenRepository $refreshTokenRepository;
     private EntityManagerInterface $em;
 
@@ -34,7 +34,7 @@ class JwtTokenService
     ) {
         $this->userProvider = $userProvider;
         $this->jwtEncoder = $jwtEncoder;
-        $this->appUrl = $params->get('app_url');
+        $this->apiUrl = $params->get('apiUrl');
         $this->refreshTokenRepository = $refreshTokenRepository;
         $this->em = $em;
     }
@@ -100,7 +100,7 @@ class JwtTokenService
     $httpClient = HttpClient::create();
 
     try {
-        $response = $httpClient->request('POST', $this->appUrl . 'api/token/refresh', [
+        $response = $httpClient->request('POST', $this->apiUrl . 'api/token/refresh', [
             'headers' => ['Content-Type' => 'application/json'],
             'json'    => ['refresh_token' => $refreshToken],
         ]);

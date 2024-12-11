@@ -57,7 +57,7 @@ class EventService
     protected $now;
     protected $activeDayStart;
     protected $activeDayEnd;
-    protected $cronUser;
+    protected $cronUsername;
 
     public function __construct(
         protected EventRepository $eventRepository,
@@ -77,7 +77,7 @@ class EventService
         $this->now = new DateTimeImmutable('today');
         $this->activeDayStart = $this->parameterBag->get('activeDayStart');
         $this->activeDayEnd = $this->parameterBag->get('activeDayEnd');
-        $this->cronUser = $this->parameterBag->get('cronUser');
+        $this->cronUsername = $this->parameterBag->get('cronUsername');
     }
     //! --------------------------------------------------------------------------------------------
 
@@ -812,7 +812,16 @@ class EventService
 
     private function loadCronUser(): User
     {
-        $CronUser = $this->em->getRepository('App\Entity\User\UserLogin')->findOneBy(['email' => $this->cronUser]);
+        $CronUserLogin = $this->em->getRepository('App\Entity\User\UserLogin')->findOneBy(['email' => $this->cronUsername]);
+     
+        if (!$CronUserLogin) {
+            throw new Exception("Cron user not found");
+        }
+        $CronUser = $this->em->getRepository('App\Entity\User\User')->find($CronUserLogin->getId());
+        if (!$CronUser) {
+            throw new Exception("Cron user not found");
+        }
+
         return $CronUser;
     }
 
